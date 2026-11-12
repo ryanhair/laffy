@@ -31,6 +31,19 @@ cargo run --release -- --verify       # same checksums
 root size and the sum of `x + y + width + height` over every node's rounded layout, which is a strong check
 that both sides built an equivalent tree and computed the same layout.
 
+### In CI
+
+The `Benchmark` workflow (`.github/workflows/bench.yml`) runs the same comparison on a GitHub runner. It
+only runs on demand: from the Actions tab, or with
+
+```sh
+gh workflow run bench.yml -f runs=5 -f os=ubuntu-latest
+```
+
+It first checks that the `--verify` output of both programs is identical, then writes the comparison table
+to the run summary and uploads it as an artifact. Shared runners are noisy: read the ratios rather than
+the absolute times.
+
 ## Methodology
 
 - Workloads mirror the shapes in taffy's own `benches/` (wide tree, deep hierarchy, super-deep chain, random grid,

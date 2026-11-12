@@ -1,0 +1,65 @@
+name: Benchmark
+
+# Runs on demand only: Actions tab > Benchmark > Run workflow, or
+#   gh workflow run bench.yml -f runs=5 -f os=ubuntu-latest
+#
+# Shared runners are noisy, so read the laffy / taffy ratios rather than the absolute times, and
+# raise `runs` if two runs of this workflow disagree.
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: Runs per workload (the best run is reported)
+        default: "3"
+      os:
+        description: Runner
+        type: choice
+        default: ubuntu-latest
+        options:
+          - ubuntu-latest
+          - macos-latest
+
+jobs:
+  bench:
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.1
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            benches/taffy-compare/target
+          key: taffy-compare-${{ runner.os }}-${{ hashFiles('benches/taffy-compare/Cargo.lock') }}
+      - name: Build both programs
+        run: |
+          zig build bench -- flex-chain-100
+          cargo build --release --manifest-path benches/taffy-compare/Cargo.toml
+      - name: Check that both libraries compute the same layouts
+        run: |
+          zig build bench -- --verify > laffy-verify.txt
+          benches/taffy-compare/target/release/taffy-compare --verify > taffy-verify.txt
+          diff laffy-verify.txt taffy-verify.txt
+      - name: Compare
+        env:
+          RUNS: ${{ inputs.runs }}
+        run: |
+          case "$RUNS" in
+            ''|*[!0-9]*) echo "runs must be a whole number" >&2; exit 1 ;;
+          esac
+          benches/compare.sh "$RUNS" | tee comparison.md
+          {
+            echo "## laffy vs taffy"
+            echo
+            echo "Commit ${GITHUB_SHA}, runner ${{ inputs.os }}, best of ${RUNS} runs. Times are microseconds; a ratio is laffy / taffy."
+            echo
+            cat comparison.md
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-${{ inputs.os }}-${{ github.sha }}
+          path: comparison.md
