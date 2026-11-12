@@ -105,7 +105,9 @@ being replaced:
   Style accessor interfaces are gone: algorithms read `Style` fields.
   Lengths are tagged unions instead of a packed tagged pointer, which also removes the
   64-bit-only restriction.
-- Candidates: a smaller per-node record.
+  The layout cache is stored as parallel arrays (480 to 344 bytes per node). Detailed grid info
+  is opt-in.
+- Candidates: moving the grid-only half of `Style` (256 of its 512 bytes) out of line.
 
 ## Risks to check early
 

@@ -63,6 +63,10 @@ pub const TaffyError = error{
 const TaffyConfig = struct {
     /// Whether to round layout values
     use_rounding: bool = true,
+    /// Whether to record the detailed grid info of every grid container (see
+    /// `TaffyTree.detailedLayoutInfo`). When this is off, the info is only recorded for grids
+    /// that have out-of-flow boxes to position, which need it.
+    detailed_grid_info: bool = false,
 };
 
 /// The default measurer of `TaffyTree.computeLayout`: every leaf has a zero-sized content box
@@ -270,6 +274,17 @@ pub fn TaffyTree(comptime NodeContext: type) type {
         /// Disable rounding of layout values. Rounding is enabled by default.
         pub fn disableRounding(self: *Self) void {
             self.config.use_rounding = false;
+        }
+
+        /// Record the detailed grid info (track sizes and item placements) of every grid
+        /// container when it is laid out, for `detailedLayoutInfo` to return. Disabled by default.
+        pub fn enableDetailedGridInfo(self: *Self) void {
+            self.config.detailed_grid_info = true;
+        }
+
+        /// Stop recording detailed grid info. This is the default.
+        pub fn disableDetailedGridInfo(self: *Self) void {
+            self.config.detailed_grid_info = false;
         }
 
         /// Creates and adds a new unattached leaf node to the tree, and returns the node of the new node
@@ -839,10 +854,16 @@ pub fn TaffyTree(comptime NodeContext: type) type {
                 }
 
                 /// The node's detailed grid info, which the grid algorithm refills on every full
-                /// layout. It is allocated the first time the node is laid out as a grid and then
-                /// kept, so that later layouts reuse its memory.
-                pub fn detailedGridInfo(self: *ViewSelf, node_id: NodeId) LayoutError!?*DetailedGridInfo {
+                /// layout, if the tree is configured to record it or the grid needs it itself
+                /// (`required`). It is allocated the first time and then kept, so that later
+                /// layouts reuse its memory.
+                pub fn detailedGridInfo(self: *ViewSelf, node_id: NodeId, required: bool) LayoutError!?*DetailedGridInfo {
                     const data = self.taffy.nodeData(node_id);
+                    if (!required and !self.taffy.config.detailed_grid_info) {
+                        // Do not leave info from an earlier layout behind: it would be out of date
+                        data.detailed_layout_info.deinit(self.taffy.gpa);
+                        return null;
+                    }
                     switch (data.detailed_layout_info) {
                         .grid => |info| return info,
                         .none => {
@@ -1545,10 +1566,11 @@ test "the layout view implements every interface method" {
     try testing.expect(view.getOofItemStyle(child) == taffy.style(child));
     try testing.expect(view.getDetailedLayoutInfo(root).* == .none);
     // Detailed grid info storage is created on first use, then reused, and freed with the node
-    const info = (try view.detailedGridInfo(root)).?;
+    try testing.expect(try view.detailedGridInfo(root, false) == null);
+    const info = (try view.detailedGridInfo(root, true)).?;
     try testing.expect(view.getDetailedLayoutInfo(root).* == .grid);
     info.items = try testing.allocator.alloc(@import("../compute/grid.zig").DetailedGridItemsInfo, 2);
-    try testing.expect((try view.detailedGridInfo(root)).? == info);
+    try testing.expect((try view.detailedGridInfo(root, true)).? == info);
     try testing.expectEqual(@as(usize, 2), taffy.detailedLayoutInfo(root).grid.items.len);
     try testing.expectEqual(@as(f32, 0.0), traits.calc(&view, 1, 1.0));
     try testing.expect(!view.isOutOfFlow(child));

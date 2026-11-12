@@ -166,10 +166,13 @@
 //!   - `getGridContainerStyle(self, node_id: NodeId) *const Style`: required.
 //!   - `getGridChildStyle(self, child_node_id: NodeId) *const Style`: required. Interpreted in
 //!     the container's axes.
-//!   - `detailedGridInfo(self, node_id: NodeId) LayoutError!?*DetailedGridInfo`: default
-//!     (`LayoutGridContainerDefaults.detailedGridInfo`, returns `null`). The storage that the
-//!     grid algorithm records the node's detailed grid info in (the computed size of each grid
-//!     track and the placement of each grid item), or `null` to not record it. The algorithm
+//!   - `detailedGridInfo(self, node_id: NodeId, required: bool) LayoutError!?*DetailedGridInfo`:
+//!     default (`LayoutGridContainerDefaults.detailedGridInfo`, returns `null`). The storage
+//!     that the grid algorithm records the node's detailed grid info in (the computed size of
+//!     each grid track and the placement of each grid item), or `null` to not record it.
+//!     `required` is true when the grid has out-of-flow boxes to position: their grid areas
+//!     are resolved from this info (through `getDetailedLayoutInfo`), and without it they are
+//!     positioned against the grid's padding box. The algorithm
 //!     refills the same `DetailedGridInfo` on every full layout, reusing its memory, so return
 //!     the same pointer each time. Its lists are allocated with `self.allocator()`; the tree
 //!     frees them with `DetailedGridInfo.deinit`. The info borrows line and area names from
@@ -238,9 +241,10 @@ pub const LayoutContainingBlockDefaults = struct {
 /// Default methods of `LayoutGridContainer`
 pub const LayoutGridContainerDefaults = struct {
     /// The storage for the node's detailed grid information (default: `null`, do not record it)
-    pub fn detailedGridInfo(self: anytype, node_id: NodeId) LayoutError!?*DetailedGridInfo {
+    pub fn detailedGridInfo(self: anytype, node_id: NodeId, required: bool) LayoutError!?*DetailedGridInfo {
         _ = self;
         _ = node_id;
+        _ = required;
         return null;
     }
 };
@@ -401,6 +405,6 @@ test "interface method lists" {
     try std.testing.expectEqual(@as(f32, 0.0), dummy.resolveCalcValue(1, 10.0));
     try std.testing.expectEqual(@as(f32, 0.0), calc(&dummy, 1, 10.0));
     try std.testing.expect(dummy.getDetailedLayoutInfo(NodeId.new(0)).* == .none);
-    try std.testing.expect(try dummy.detailedGridInfo(NodeId.new(0)) == null);
+    try std.testing.expect(try dummy.detailedGridInfo(NodeId.new(0), true) == null);
     try std.testing.expect(TreeType(*Dummy) == Dummy);
 }

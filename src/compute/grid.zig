@@ -862,7 +862,7 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
     const absolute_position_offset: Point(f32) = .{ .x = padding_box_inset.left, .y = padding_box_inset.top };
     // Record the detailed grid info before the out-of-flow positioning pass so that the pass can
     // resolve the grid areas of out-of-flow boxes whose containing block is this grid
-    if (try tree.detailedGridInfo(node)) |info| {
+    if (try tree.detailedGridInfo(node, oof_candidates.items.len != 0)) |info| {
         try fillDetailedGridInfo(
             info,
             gpa,
@@ -1532,6 +1532,7 @@ fn testNamedLine(name: []const u8, index: i16) GridPlacement {
 fn layoutNestedGrid(gpa: Allocator) !void {
     var taffy = try TaffyTree(void).init(gpa);
     defer taffy.deinit();
+    taffy.enableDetailedGridInfo();
 
     var leaf_style: Style = .{};
     leaf_style.size = Size(Dimension).fromLengths(20.0, 10.0);
@@ -1679,6 +1680,7 @@ test "multi-level grid layout frees everything when allocations fail" {
 test "grid places items and records detailed grid info" {
     var taffy = try TaffyTree(void).init(testing.allocator);
     defer taffy.deinit();
+    taffy.enableDetailedGridInfo();
 
     const columns = [_]GridTemplateComponent{ GridTemplateComponent.fromLength(50.0), GridTemplateComponent.fromFr(1.0) };
     var grid_style: Style = .{ .display = .grid };
@@ -1727,6 +1729,7 @@ test "relayout of a grid without named lines does not allocate" {
     var counting = testing.FailingAllocator.init(testing.allocator, .{});
     var taffy = try TaffyTree(void).init(counting.allocator());
     defer taffy.deinit();
+    taffy.enableDetailedGridInfo();
 
     var leaf_style: Style = .{};
     leaf_style.size = Size(Dimension).fromLengths(20.0, 10.0);

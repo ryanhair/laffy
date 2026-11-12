@@ -65,6 +65,8 @@ A C API over `TaffyTree` is in `include/laffy.h`; see [docs/c-api.md](docs/c-api
   A `calc()` value holds a `u32` handle that the tree's `resolveCalcValue` interprets, not a
   pointer. 32-bit targets are supported.
 - `TaffyTree` resolves `calc()` values to zero, as upstream's does. Custom trees can resolve them.
+- Detailed grid info (`detailedLayoutInfo`) is recorded only after `enableDetailedGridInfo()`,
+  like upstream's `detailed_layout_info` feature.
 - Not ported: Cargo feature flags (everything is always on), `serde` support, and CSS string
   parsing of style values.
 

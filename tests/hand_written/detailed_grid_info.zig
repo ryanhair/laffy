@@ -94,6 +94,7 @@ const auto_placement: GridPlacement = .auto;
 test "no_line_names" {
     var tree = try TaffyTree.init(testing.allocator);
     defer tree.deinit();
+    tree.enableDetailedGridInfo();
     const child = try tree.newLeaf(Style{});
     const root = try tree.newWithChildren(
         .{
@@ -120,6 +121,7 @@ test "no_line_names" {
 test "zoomed_track_list" {
     var tree = try TaffyTree.init(testing.allocator);
     defer tree.deinit();
+    tree.enableDetailedGridInfo();
     const child = try tree.newLeaf(Style{});
     const root = try tree.newWithChildren(
         .{
@@ -139,6 +141,7 @@ test "zoomed_track_list" {
 test "template_and_area_line_names" {
     var tree = try TaffyTree.init(testing.allocator);
     defer tree.deinit();
+    tree.enableDetailedGridInfo();
     const child = try tree.newLeaf(Style{});
     const root = try tree.newWithChildren(
         .{
@@ -199,6 +202,7 @@ test "template_and_area_line_names" {
 test "repeat_expansion_line_names" {
     var tree = try TaffyTree.init(testing.allocator);
     defer tree.deinit();
+    tree.enableDetailedGridInfo();
     const child = try tree.newLeaf(Style{});
     const root = try tree.newWithChildren(
         .{
@@ -232,6 +236,7 @@ test "repeat_expansion_line_names" {
 test "implicit_tracks_shift_line_names" {
     var tree = try TaffyTree.init(testing.allocator);
     defer tree.deinit();
+    tree.enableDetailedGridInfo();
     const child = try tree.newLeaf(.{
         .grid_column = .{ .start = ln(-3), .end = auto_placement },
     });
@@ -265,6 +270,7 @@ test "implicit_tracks_shift_line_names" {
 test "item_grid_area" {
     var tree = try TaffyTree.init(testing.allocator);
     defer tree.deinit();
+    tree.enableDetailedGridInfo();
     const child_a = try tree.newLeaf(Style{});
     const child_b = try tree.newLeaf(.{
         .grid_row = Line(GridPlacement).fromLineIndex(2),
@@ -351,6 +357,7 @@ test "item_grid_area" {
 test "absolute_grid_area_named_span" {
     var tree = try TaffyTree.init(testing.allocator);
     defer tree.deinit();
+    tree.enableDetailedGridInfo();
     const child = try tree.newLeaf(Style{});
     const root = try tree.newWithChildren(
         .{
@@ -388,6 +395,7 @@ test "absolute_grid_area_named_span" {
 test "rtl_line_names_are_logical_order" {
     var tree = try TaffyTree.init(testing.allocator);
     defer tree.deinit();
+    tree.enableDetailedGridInfo();
     const child = try tree.newLeaf(Style{});
     const root = try tree.newWithChildren(
         .{

@@ -70,20 +70,20 @@ laffy is slower.
 
 | workload | nodes | laffy full | taffy full | ratio | laffy relayout | taffy relayout | ratio | alloc KiB, laffy / taffy | allocation calls, laffy / taffy |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| flex-wide-1000 | 1001 | 359 | 385 | 0.93 | 37 | 46 | 0.81 | 105 / 544 | 2 / 1598 |
-| flex-wide-10000 | 10001 | 3820 | 4160 | 0.92 | 423 | 566 | 0.75 | 1045 / 5532 | 2 / 16118 |
-| flex-deep-4000 | 3071 | 1183 | 1295 | 0.91 | 6 | 44 | 0.13 | 16 / 1743 | 2 / 9260 |
-| flex-deep-10000 | 8191 | 3127 | 3308 | 0.95 | 6 | 111 | 0.06 | 16 / 4553 | 2 / 18502 |
-| flex-deep-auto-4000 | 3071 | 2780 | 3080 | 0.90 | 14 | 54 | 0.27 | 16 / 4601 | 2 / 24546 |
-| flex-deep-auto-10000 | 8191 | 7194 | 7601 | 0.95 | 16 | 121 | 0.13 | 16 / 12089 | 2 / 49122 |
+| flex-wide-1000 | 1001 | 358 | 384 | 0.93 | 37 | 46 | 0.80 | 105 / 544 | 2 / 1598 |
+| flex-wide-10000 | 10001 | 3827 | 4134 | 0.93 | 421 | 588 | 0.72 | 1045 / 5532 | 2 / 16118 |
+| flex-deep-4000 | 3071 | 1182 | 1303 | 0.91 | 6 | 45 | 0.13 | 16 / 1743 | 2 / 9260 |
+| flex-deep-10000 | 8191 | 3116 | 3284 | 0.95 | 6 | 112 | 0.06 | 16 / 4553 | 2 / 18502 |
+| flex-deep-auto-4000 | 3071 | 2763 | 3078 | 0.90 | 14 | 54 | 0.27 | 16 / 4601 | 2 / 24546 |
+| flex-deep-auto-10000 | 8191 | 7108 | 7565 | 0.94 | 16 | 121 | 0.13 | 16 / 12089 | 2 / 49122 |
 | flex-chain-100 | 301 | 239 | 253 | 0.94 | 102 | 110 | 0.93 | 112 / 431 | 4 / 1186 |
-| flex-chain-1000 | 3001 | 2436 | 2615 | 0.93 | 1061 | 1145 | 0.93 | 1008 / 4354 | 7 / 11986 |
-| grid-flat-31x31 | 962 | 287 | 275 | 1.04 | 248 | 252 | 0.98 | 1462 / 363 | 7 / 14 |
-| grid-flat-100x100 | 10001 | 3511 | 3489 | 1.01 | 2741 | 2892 | 0.95 | 6144 / 3704 | 7 / 14 |
-| grid-nested-3x3-d4 | 7381 | 6588 | 6707 | 0.98 | 45 | 141 | 0.32 | 592 / 13919 | 3279 / 28651 |
-| grid-nested-2x2-d7 | 21845 | 25145 | 26071 | 0.96 | 27 | 688 | 0.04 | 3375 / 45922 | 21843 / 180140 |
-| block-wide-10000 | 10002 | 1514 | 1478 | 1.02 | 236 | 459 | 0.51 | 1441 / 4975 | 2 / 2870 |
-| block-deep-10000 | 9557 | 1738 | 1510 | 1.15 | 2 | 127 | 0.02 | 16 / 6997 | 2 / 5461 |
+| flex-chain-1000 | 3001 | 2427 | 2634 | 0.92 | 1062 | 1146 | 0.93 | 1008 / 4354 | 7 / 11986 |
+| grid-flat-31x31 | 962 | 284 | 276 | 1.03 | 246 | 252 | 0.98 | 1453 / 363 | 3 / 14 |
+| grid-flat-100x100 | 10001 | 3500 | 3468 | 1.01 | 2716 | 2892 | 0.94 | 6064 / 3704 | 3 / 14 |
+| grid-nested-3x3-d4 | 7381 | 6483 | 6674 | 0.97 | 45 | 140 | 0.32 | 48 / 13919 | 3 / 28651 |
+| grid-nested-2x2-d7 | 21845 | 24459 | 25906 | 0.94 | 27 | 692 | 0.04 | 48 / 45922 | 3 / 180140 |
+| block-wide-10000 | 10002 | 1514 | 1484 | 1.02 | 235 | 454 | 0.52 | 1441 / 4975 | 2 / 2870 |
+| block-deep-10000 | 9557 | 1733 | 1510 | 1.15 | 2 | 127 | 0.02 | 16 / 6997 | 2 / 5461 |
 
 `--verify` output was byte-identical between the two programs for all 14 workloads (node counts, root sizes and
 per-node layout checksums), so the trees and the computed layouts are equivalent.
@@ -114,8 +114,9 @@ per-node layout checksums), so the trees and the computed layouts are equivalent
   while repeated layouts of one built tree (`--profile-full`) moved by 2 percent.
 - Memory: the temporary lists of the algorithms come from a scratch allocator owned by the tree
   (`src/util/scratch.zig`), which hands out memory from a few large chunks and releases it when each algorithm
-  returns. A layout pass therefore makes only a handful of allocation calls, apart from grids, which allocate
-  their detailed grid info per container the first time they are laid out (and reuse it afterwards). The
+  returns. A layout pass therefore makes only a handful of allocation calls. (Detailed grid info is off by
+  default; with `enableDetailedGridInfo` every grid container allocates its info the first time it is laid out
+  and reuses it afterwards.) The
   "alloc KiB" column for laffy is mostly the size of those chunks; on the flat grid workloads it is larger than
   taffy's total because chunk sizes grow in steps. The tree keeps up to 1 MiB of scratch chunks between layout
   passes and frees the rest.

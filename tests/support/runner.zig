@@ -399,6 +399,7 @@ pub fn runFixtureSource(gpa: Allocator, source: []const u8, report: *Io.Writer) 
     var tree = try Tree.init(gpa);
     defer tree.deinit();
     if (use_rounding) tree.enableRounding() else tree.disableRounding();
+    tree.enableDetailedGridInfo();
 
     var builder: Builder = .{ .arena = arena, .tree = &tree };
     const expected = builder.constructTree(input.children[0], expectations.children[0], null, false) catch |err| switch (err) {
