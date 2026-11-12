@@ -181,7 +181,7 @@ static void test_flexbox(void) {
     OK(laffy_node_set_children(tree, root2, children2, 2));
     OK(laffy_node_set_size(tree, root2, laffy_dim_length(200), laffy_dim_auto()));
     OK(laffy_node_set_gap(tree, root2, laffy_lp_length(10), laffy_lp_length(0)));
-    OK(laffy_node_set_padding(tree, root2, laffy_lp_length(0), laffy_lp_length(0), laffy_lp_length(5), laffy_lp_length(5)));
+    OK(laffy_node_set_padding(tree, root2, laffy_lp_length(5), laffy_lp_length(0), laffy_lp_length(5), laffy_lp_length(0)));
     OK(laffy_tree_compute_layout(tree, root2, laffy_available_definite(1000), laffy_available_definite(1000)));
     CHECK_BOX(tree, root2, 0, 0, 200, 50);
     CHECK_BOX(tree, d, 0, 5, 123, 40);
@@ -259,6 +259,27 @@ static void test_grid(void) {
         /* item3: auto-placed into the first free cell (row 1, column 1) */
         OK(laffy_node_new(tree, &item3));
 
+        /* Getters return what was set; placement names are the tree's own copies */
+        {
+            LaffyGridPlacement start, end;
+            LaffyDisplay display = LAFFY_DISPLAY_NONE;
+            LaffyLengthPercentage column_gap, row_gap;
+            OK(laffy_node_get_display(tree, root, &display));
+            CHECK(display == LAFFY_DISPLAY_GRID);
+            OK(laffy_node_get_gap(tree, root, &column_gap, &row_gap));
+            CHECK(column_gap.unit == LAFFY_UNIT_LENGTH);
+            CHECK_FLOAT(column_gap.value, 10);
+            OK(laffy_node_get_grid_column(tree, item1, &start, &end));
+            CHECK(start.kind == LAFFY_GRID_PLACEMENT_NAMED_LINE);
+            CHECK(start.line == 2);
+            CHECK(start.name != names_buffer[1]);
+            CHECK(strcmp(start.name, "mid") == 0);
+            CHECK(strcmp(end.name, "right") == 0);
+            OK(laffy_node_get_grid_row(tree, item1, &start, &end));
+            CHECK(start.kind == LAFFY_GRID_PLACEMENT_LINE && start.line == 1);
+            CHECK(end.kind == LAFFY_GRID_PLACEMENT_SPAN && end.span == 2);
+        }
+
         memset(names_buffer, 'x', sizeof names_buffer);
     }
 
@@ -308,11 +329,11 @@ static void test_block(void) {
     OK(laffy_node_new(tree, &first));
     OK(laffy_node_set_display(tree, first, LAFFY_DISPLAY_BLOCK));
     OK(laffy_node_set_size(tree, first, laffy_dim_auto(), laffy_dim_length(50)));
-    OK(laffy_node_set_margin(tree, first, laffy_lpa_length(0), laffy_lpa_length(0), laffy_lpa_length(0), laffy_lpa_length(20)));
+    OK(laffy_node_set_margin(tree, first, laffy_lpa_length(0), laffy_lpa_length(0), laffy_lpa_length(20), laffy_lpa_length(0)));
     OK(laffy_node_new(tree, &second));
     OK(laffy_node_set_display(tree, second, LAFFY_DISPLAY_BLOCK));
     OK(laffy_node_set_size(tree, second, laffy_dim_auto(), laffy_dim_length(30)));
-    OK(laffy_node_set_margin(tree, second, laffy_lpa_length(15), laffy_lpa_length(0), laffy_lpa_length(10), laffy_lpa_length(0)));
+    OK(laffy_node_set_margin(tree, second, laffy_lpa_length(10), laffy_lpa_length(0), laffy_lpa_length(0), laffy_lpa_length(15)));
     OK(laffy_node_new(tree, &root));
     OK(laffy_node_set_display(tree, root, LAFFY_DISPLAY_BLOCK));
     OK(laffy_node_set_size(tree, root, laffy_dim_length(200), laffy_dim_auto()));

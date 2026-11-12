@@ -129,7 +129,7 @@ pub const LaffyAvailableSpace = extern struct { tag: c_int, value: f32 };
 
 pub const LaffyPoint = extern struct { x: f32, y: f32 };
 pub const LaffySize = extern struct { width: f32, height: f32 };
-pub const LaffyRect = extern struct { left: f32, right: f32, top: f32, bottom: f32 };
+pub const LaffyRect = extern struct { top: f32, right: f32, bottom: f32, left: f32 };
 
 pub const LaffyLayout = extern struct {
     order: u32,
@@ -534,9 +534,10 @@ fn cSlice(comptime T: type, ptr: ?[*]const T, len: usize) CError![]const T {
     return p[0..len];
 }
 
+/// Copy a C string. The copy keeps its NUL terminator so that getters can hand it back to C.
 fn dupeName(arena: Allocator, name: ?[*:0]const u8) CError![]const u8 {
     const n = name orelse return error.InvalidArgument;
-    return try arena.dupe(u8, std.mem.span(n));
+    return try arena.dupeSentinel(u8, std.mem.span(n), 0);
 }
 
 fn dupeLineNameSets(arena: Allocator, sets: []const LaffyLineNameSet) CError![]const []const []const u8 {
@@ -1161,40 +1162,40 @@ export fn laffy_node_set_contain(tree: ?*LaffyTree, node: u64, flags: u32) Laffy
     return toStatus(updateStyle(tree, node, S.apply, .{flags}));
 }
 
-export fn laffy_node_set_inset(tree: ?*LaffyTree, node: u64, left: LaffyLengthPercentageAuto, right: LaffyLengthPercentageAuto, top: LaffyLengthPercentageAuto, bottom: LaffyLengthPercentageAuto) LaffyStatus {
+export fn laffy_node_set_inset(tree: ?*LaffyTree, node: u64, top: LaffyLengthPercentageAuto, right: LaffyLengthPercentageAuto, bottom: LaffyLengthPercentageAuto, left: LaffyLengthPercentageAuto) LaffyStatus {
     const S = struct {
-        fn apply(style: *Style, l: LaffyLengthPercentageAuto, r: LaffyLengthPercentageAuto, t: LaffyLengthPercentageAuto, b: LaffyLengthPercentageAuto) CError!void {
+        fn apply(style: *Style, t: LaffyLengthPercentageAuto, r: LaffyLengthPercentageAuto, b: LaffyLengthPercentageAuto, l: LaffyLengthPercentageAuto) CError!void {
             style.inset = .{ .left = try toLengthPercentageAuto(l), .right = try toLengthPercentageAuto(r), .top = try toLengthPercentageAuto(t), .bottom = try toLengthPercentageAuto(b) };
         }
     };
-    return toStatus(updateStyle(tree, node, S.apply, .{ left, right, top, bottom }));
+    return toStatus(updateStyle(tree, node, S.apply, .{ top, right, bottom, left }));
 }
 
-export fn laffy_node_set_margin(tree: ?*LaffyTree, node: u64, left: LaffyLengthPercentageAuto, right: LaffyLengthPercentageAuto, top: LaffyLengthPercentageAuto, bottom: LaffyLengthPercentageAuto) LaffyStatus {
+export fn laffy_node_set_margin(tree: ?*LaffyTree, node: u64, top: LaffyLengthPercentageAuto, right: LaffyLengthPercentageAuto, bottom: LaffyLengthPercentageAuto, left: LaffyLengthPercentageAuto) LaffyStatus {
     const S = struct {
-        fn apply(style: *Style, l: LaffyLengthPercentageAuto, r: LaffyLengthPercentageAuto, t: LaffyLengthPercentageAuto, b: LaffyLengthPercentageAuto) CError!void {
+        fn apply(style: *Style, t: LaffyLengthPercentageAuto, r: LaffyLengthPercentageAuto, b: LaffyLengthPercentageAuto, l: LaffyLengthPercentageAuto) CError!void {
             style.margin = .{ .left = try toLengthPercentageAuto(l), .right = try toLengthPercentageAuto(r), .top = try toLengthPercentageAuto(t), .bottom = try toLengthPercentageAuto(b) };
         }
     };
-    return toStatus(updateStyle(tree, node, S.apply, .{ left, right, top, bottom }));
+    return toStatus(updateStyle(tree, node, S.apply, .{ top, right, bottom, left }));
 }
 
-export fn laffy_node_set_padding(tree: ?*LaffyTree, node: u64, left: LaffyLengthPercentage, right: LaffyLengthPercentage, top: LaffyLengthPercentage, bottom: LaffyLengthPercentage) LaffyStatus {
+export fn laffy_node_set_padding(tree: ?*LaffyTree, node: u64, top: LaffyLengthPercentage, right: LaffyLengthPercentage, bottom: LaffyLengthPercentage, left: LaffyLengthPercentage) LaffyStatus {
     const S = struct {
-        fn apply(style: *Style, l: LaffyLengthPercentage, r: LaffyLengthPercentage, t: LaffyLengthPercentage, b: LaffyLengthPercentage) CError!void {
+        fn apply(style: *Style, t: LaffyLengthPercentage, r: LaffyLengthPercentage, b: LaffyLengthPercentage, l: LaffyLengthPercentage) CError!void {
             style.padding = .{ .left = try toLengthPercentage(l), .right = try toLengthPercentage(r), .top = try toLengthPercentage(t), .bottom = try toLengthPercentage(b) };
         }
     };
-    return toStatus(updateStyle(tree, node, S.apply, .{ left, right, top, bottom }));
+    return toStatus(updateStyle(tree, node, S.apply, .{ top, right, bottom, left }));
 }
 
-export fn laffy_node_set_border(tree: ?*LaffyTree, node: u64, left: LaffyLengthPercentage, right: LaffyLengthPercentage, top: LaffyLengthPercentage, bottom: LaffyLengthPercentage) LaffyStatus {
+export fn laffy_node_set_border(tree: ?*LaffyTree, node: u64, top: LaffyLengthPercentage, right: LaffyLengthPercentage, bottom: LaffyLengthPercentage, left: LaffyLengthPercentage) LaffyStatus {
     const S = struct {
-        fn apply(style: *Style, l: LaffyLengthPercentage, r: LaffyLengthPercentage, t: LaffyLengthPercentage, b: LaffyLengthPercentage) CError!void {
+        fn apply(style: *Style, t: LaffyLengthPercentage, r: LaffyLengthPercentage, b: LaffyLengthPercentage, l: LaffyLengthPercentage) CError!void {
             style.border = .{ .left = try toLengthPercentage(l), .right = try toLengthPercentage(r), .top = try toLengthPercentage(t), .bottom = try toLengthPercentage(b) };
         }
     };
-    return toStatus(updateStyle(tree, node, S.apply, .{ left, right, top, bottom }));
+    return toStatus(updateStyle(tree, node, S.apply, .{ top, right, bottom, left }));
 }
 
 export fn laffy_node_set_size(tree: ?*LaffyTree, node: u64, width: LaffyDimension, height: LaffyDimension) LaffyStatus {
@@ -1437,6 +1438,230 @@ export fn laffy_node_set_grid_row(tree: ?*LaffyTree, node: u64, start: LaffyGrid
 
 export fn laffy_node_set_grid_column(tree: ?*LaffyTree, node: u64, start: LaffyGridPlacement, end: LaffyGridPlacement) LaffyStatus {
     return toStatus(updateGridStyle(tree, node, .column, PlacementBuilder.column, .{ start, end }));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Exported functions: style getters
+//
+// Every getter is generated at compile time from the name of the `Style` field it reads and a
+// codec that converts the field's value to its C representation. The declarations of
+// `style_getters` are exported under their own names.
+
+/// The C unit that represents the union tag `tag` of a length-like style value
+fn unitOfTag(comptime tag: []const u8) LaffyUnit {
+    if (comptime std.mem.eql(u8, tag, "fit_content_px")) return .fit_content_length;
+    return @field(LaffyUnit, tag);
+}
+
+/// Converts a length-like union (`Dimension`, `LengthPercentage`, ...) to the `{unit, value}`
+/// struct `CType`. The C API cannot store `calc()` values, so a style never holds one.
+fn UnitCodec(comptime CType: type) type {
+    return struct {
+        const C = CType;
+        fn encode(value: anytype) CType {
+            return switch (value) {
+                inline else => |payload, tag| blk: {
+                    const name = @tagName(tag);
+                    if (comptime std.mem.endsWith(u8, name, "calc")) unreachable;
+                    break :blk .{
+                        .unit = @backingInt(comptime unitOfTag(name)),
+                        .value = if (@TypeOf(payload) == void) 0 else payload,
+                    };
+                },
+            };
+        }
+    };
+}
+
+/// Converts a laffy enum to the value of the tag with the same name in the C enum `Source`
+fn EnumCodec(comptime Source: type) type {
+    return struct {
+        const C = c_int;
+        fn encode(value: anytype) c_int {
+            return switch (value) {
+                inline else => |tag| @backingInt(@field(Source, @tagName(tag))),
+            };
+        }
+    };
+}
+
+/// Passes a value through unchanged
+fn PlainCodec(comptime T: type) type {
+    return struct {
+        const C = T;
+        fn encode(value: T) T {
+            return value;
+        }
+    };
+}
+
+const AspectRatioCodec = struct {
+    const C = f32;
+    fn encode(value: ?f32) f32 {
+        return value orelse std.math.nan(f32);
+    }
+};
+
+const ContainCodec = struct {
+    const C = u32;
+    fn encode(value: laffy.Contain) u32 {
+        var flags: u32 = 0;
+        if (value.inner & laffy.Contain.layout.inner != 0) flags |= contain_layout;
+        if (value.inner & laffy.Contain.paint.inner != 0) flags |= contain_paint;
+        return flags;
+    }
+};
+
+/// Line names are stored NUL-terminated (see `dupeName`), so they can be returned to C as is
+const PlacementCodec = struct {
+    const C = LaffyGridPlacement;
+    fn encode(value: GridPlacement) LaffyGridPlacement {
+        const kind = struct {
+            fn of(k: LaffyGridPlacementKind) c_int {
+                return @backingInt(k);
+            }
+        }.of;
+        return switch (value) {
+            .auto => .{ .kind = kind(.auto), .line = 0, .span = 0, .name = null },
+            .line => |line| .{ .kind = kind(.line), .line = line.inner, .span = 0, .name = null },
+            .span => |span| .{ .kind = kind(.span), .line = 0, .span = span, .name = null },
+            .named_line => |named| .{ .kind = kind(.named_line), .line = named.index, .span = 0, .name = @ptrCast(named.name.ptr) },
+            .named_span => |named| .{ .kind = kind(.named_span), .line = 0, .span = named.count, .name = @ptrCast(named.name.ptr) },
+        };
+    }
+};
+
+fn styleFor(tree: ?*LaffyTree, id: u64) CError!*const Style {
+    const impl = try implOf(tree);
+    const node = try checkNode(impl, id, error.InvalidInputNode);
+    return impl.tree.style(node);
+}
+
+/// Generates the getter of a style field that has a single C value
+fn Getter(comptime field: []const u8, comptime Codec: type) type {
+    return struct {
+        fn get(tree: ?*LaffyTree, node: u64, out: ?*Codec.C) callconv(.c) LaffyStatus {
+            return toStatus(read(tree, node, out));
+        }
+        fn read(tree: ?*LaffyTree, node: u64, out: ?*Codec.C) CError!void {
+            const style = try styleFor(tree, node);
+            const dst = out orelse return error.InvalidArgument;
+            dst.* = Codec.encode(@field(style, field));
+        }
+    };
+}
+
+/// Generates the getter of a style field made of two parts (`Size`, `Point` or `Line`), named
+/// `first` and `second` in the field's type
+fn PairGetter(comptime field: []const u8, comptime first: []const u8, comptime second: []const u8, comptime Codec: type) type {
+    return struct {
+        fn get(tree: ?*LaffyTree, node: u64, out_first: ?*Codec.C, out_second: ?*Codec.C) callconv(.c) LaffyStatus {
+            return toStatus(read(tree, node, out_first, out_second));
+        }
+        fn read(tree: ?*LaffyTree, node: u64, out_first: ?*Codec.C, out_second: ?*Codec.C) CError!void {
+            const style = try styleFor(tree, node);
+            const a = out_first orelse return error.InvalidArgument;
+            const b = out_second orelse return error.InvalidArgument;
+            const value = @field(style, field);
+            a.* = Codec.encode(@field(value, first));
+            b.* = Codec.encode(@field(value, second));
+        }
+    };
+}
+
+/// Generates the getter of a `Rect` style field; the edges are in CSS order
+fn RectGetter(comptime field: []const u8, comptime Codec: type) type {
+    return struct {
+        fn get(tree: ?*LaffyTree, node: u64, out_top: ?*Codec.C, out_right: ?*Codec.C, out_bottom: ?*Codec.C, out_left: ?*Codec.C) callconv(.c) LaffyStatus {
+            return toStatus(read(tree, node, out_top, out_right, out_bottom, out_left));
+        }
+        fn read(tree: ?*LaffyTree, node: u64, out_top: ?*Codec.C, out_right: ?*Codec.C, out_bottom: ?*Codec.C, out_left: ?*Codec.C) CError!void {
+            const style = try styleFor(tree, node);
+            const top = out_top orelse return error.InvalidArgument;
+            const right = out_right orelse return error.InvalidArgument;
+            const bottom = out_bottom orelse return error.InvalidArgument;
+            const left = out_left orelse return error.InvalidArgument;
+            const value = @field(style, field);
+            top.* = Codec.encode(value.top);
+            right.* = Codec.encode(value.right);
+            bottom.* = Codec.encode(value.bottom);
+            left.* = Codec.encode(value.left);
+        }
+    };
+}
+
+/// Generates the getter of an alignment field: a keyword of the C enum `Keyword` and a safety.
+/// An unset `align-self` / `justify-self` reads as `auto` with the default safety.
+fn AlignGetter(comptime field: []const u8, comptime Keyword: type) type {
+    return struct {
+        fn get(tree: ?*LaffyTree, node: u64, out_keyword: ?*c_int, out_safety: ?*c_int) callconv(.c) LaffyStatus {
+            return toStatus(read(tree, node, out_keyword, out_safety));
+        }
+        fn read(tree: ?*LaffyTree, node: u64, out_keyword: ?*c_int, out_safety: ?*c_int) CError!void {
+            const style = try styleFor(tree, node);
+            const keyword = out_keyword orelse return error.InvalidArgument;
+            const safety = out_safety orelse return error.InvalidArgument;
+            const stored = @field(style, field);
+            if (@typeInfo(@TypeOf(stored)) == .optional) {
+                if (stored) |value| {
+                    keyword.* = EnumCodec(Keyword).encode(value.keyword);
+                    safety.* = EnumCodec(LaffyAlignmentSafety).encode(value.safety);
+                } else {
+                    keyword.* = @backingInt(LaffyAlignItems.auto);
+                    safety.* = @backingInt(LaffyAlignmentSafety.default);
+                }
+            } else {
+                keyword.* = EnumCodec(Keyword).encode(stored.keyword);
+                safety.* = EnumCodec(LaffyAlignmentSafety).encode(stored.safety);
+            }
+        }
+    };
+}
+
+const style_getters = struct {
+    pub const laffy_node_get_display = Getter("display", EnumCodec(LaffyDisplay)).get;
+    pub const laffy_node_get_box_sizing = Getter("box_sizing", EnumCodec(LaffyBoxSizing)).get;
+    pub const laffy_node_get_direction = Getter("direction", EnumCodec(LaffyDirection)).get;
+    pub const laffy_node_get_item_is_table = Getter("item_is_table", PlainCodec(bool)).get;
+    pub const laffy_node_get_item_is_replaced = Getter("item_is_replaced", PlainCodec(bool)).get;
+    pub const laffy_node_get_item_is_compressible_replaced = Getter("item_is_compressible_replaced", PlainCodec(bool)).get;
+    pub const laffy_node_get_overflow = PairGetter("overflow", "x", "y", EnumCodec(LaffyOverflow)).get;
+    pub const laffy_node_get_scrollbar_width = Getter("scrollbar_width", PlainCodec(f32)).get;
+    pub const laffy_node_get_contain = Getter("contain", ContainCodec).get;
+    pub const laffy_node_get_float = Getter("float", EnumCodec(LaffyFloat)).get;
+    pub const laffy_node_get_clear = Getter("clear", EnumCodec(LaffyClear)).get;
+    pub const laffy_node_get_position = Getter("position", EnumCodec(LaffyPosition)).get;
+    pub const laffy_node_get_inset = RectGetter("inset", UnitCodec(LaffyLengthPercentageAuto)).get;
+    pub const laffy_node_get_size = PairGetter("size", "width", "height", UnitCodec(LaffyDimension)).get;
+    pub const laffy_node_get_min_size = PairGetter("min_size", "width", "height", UnitCodec(LaffyLengthPercentageAuto)).get;
+    pub const laffy_node_get_max_size = PairGetter("max_size", "width", "height", UnitCodec(LaffyLengthPercentageAuto)).get;
+    pub const laffy_node_get_aspect_ratio = Getter("aspect_ratio", AspectRatioCodec).get;
+    pub const laffy_node_get_margin = RectGetter("margin", UnitCodec(LaffyLengthPercentageAuto)).get;
+    pub const laffy_node_get_padding = RectGetter("padding", UnitCodec(LaffyLengthPercentage)).get;
+    pub const laffy_node_get_border = RectGetter("border", UnitCodec(LaffyLengthPercentage)).get;
+    pub const laffy_node_get_gap = PairGetter("gap", "width", "height", UnitCodec(LaffyLengthPercentage)).get;
+    pub const laffy_node_get_align_items = AlignGetter("align_items", LaffyAlignItems).get;
+    pub const laffy_node_get_justify_items = AlignGetter("justify_items", LaffyAlignItems).get;
+    pub const laffy_node_get_align_self = AlignGetter("align_self", LaffyAlignItems).get;
+    pub const laffy_node_get_justify_self = AlignGetter("justify_self", LaffyAlignItems).get;
+    pub const laffy_node_get_align_content = AlignGetter("align_content", LaffyAlignContent).get;
+    pub const laffy_node_get_justify_content = AlignGetter("justify_content", LaffyAlignContent).get;
+    pub const laffy_node_get_text_align = Getter("text_align", EnumCodec(LaffyTextAlign)).get;
+    pub const laffy_node_get_flex_direction = Getter("flex_direction", EnumCodec(LaffyFlexDirection)).get;
+    pub const laffy_node_get_flex_wrap = Getter("flex_wrap", EnumCodec(LaffyFlexWrap)).get;
+    pub const laffy_node_get_flex_line_count = Getter("flex_line_count", PlainCodec(u16)).get;
+    pub const laffy_node_get_flex_basis = Getter("flex_basis", UnitCodec(LaffyDimension)).get;
+    pub const laffy_node_get_flex_grow = Getter("flex_grow", PlainCodec(f32)).get;
+    pub const laffy_node_get_flex_shrink = Getter("flex_shrink", PlainCodec(f32)).get;
+    pub const laffy_node_get_grid_auto_flow = Getter("grid_auto_flow", EnumCodec(LaffyGridAutoFlow)).get;
+    pub const laffy_node_get_grid_row = PairGetter("grid_row", "start", "end", PlacementCodec).get;
+    pub const laffy_node_get_grid_column = PairGetter("grid_column", "start", "end", PlacementCodec).get;
+};
+
+comptime {
+    for (@typeInfo(style_getters).@"struct".decl_names) |name| {
+        @export(&@field(style_getters, name), .{ .name = name });
+    }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1721,14 +1946,14 @@ test "scalar style setters round-trip" {
         .float = .right,
         .clear = .both,
         .position = .sticky,
-        .inset = .{ .left = .fromLength(1), .right = .fromPercent(0.5), .top = .auto, .bottom = .fromLength(4) },
+        .inset = .{ .top = .fromLength(1), .right = .fromPercent(0.5), .bottom = .auto, .left = .fromLength(4) },
         .size = .{ .width = .fitContentPx(30), .height = .stretch },
         .min_size = .{ .width = .fromLength(5), .height = .fromPercent(0.25) },
         .max_size = .{ .width = .auto, .height = .fromLength(500) },
         .aspect_ratio = 1.5,
-        .margin = .{ .left = .fromLength(1), .right = .fromLength(2), .top = .auto, .bottom = .fromLength(4) },
-        .padding = .{ .left = .fromLength(5), .right = .fromLength(6), .top = .fromPercent(0.1), .bottom = .fromLength(8) },
-        .border = .{ .left = .fromLength(9), .right = .fromLength(10), .top = .fromLength(11), .bottom = .fromLength(12) },
+        .margin = .{ .top = .fromLength(1), .right = .fromLength(2), .bottom = .auto, .left = .fromLength(4) },
+        .padding = .{ .top = .fromLength(5), .right = .fromLength(6), .bottom = .fromPercent(0.1), .left = .fromLength(8) },
+        .border = .{ .top = .fromLength(9), .right = .fromLength(10), .bottom = .fromLength(11), .left = .fromLength(12) },
         .align_items = AlignItems.safe_center,
         .justify_items = AlignItems.self_end,
         .align_self = AlignItems.baseline.withSafety(.unsafe),
@@ -1773,6 +1998,120 @@ test "scalar style setters round-trip" {
 
 fn expectTrack(expected: TrackSizingFunction, actual: TrackSizingFunction) !void {
     try testing.expect(expected.eql(actual));
+}
+
+test "style getters read back what the setters stored" {
+    const g = style_getters;
+    const tree = try newTestTree(testing.allocator);
+    defer laffy_tree_free(tree);
+    var n: u64 = 0;
+    const ok = LaffyStatus.ok;
+    try testing.expectEqual(ok, laffy_node_new(tree, &n));
+
+    // Defaults
+    var int_a: c_int = -1;
+    var int_b: c_int = -1;
+    var float: f32 = -1;
+    var flag = true;
+    try testing.expectEqual(ok, g.laffy_node_get_display(tree, n, &int_a));
+    try testing.expectEqual(@backingInt(LaffyDisplay.flex), int_a);
+    try testing.expectEqual(ok, g.laffy_node_get_item_is_table(tree, n, &flag));
+    try testing.expect(!flag);
+    try testing.expectEqual(ok, g.laffy_node_get_aspect_ratio(tree, n, &float));
+    try testing.expect(std.math.isNan(float));
+    try testing.expectEqual(ok, g.laffy_node_get_align_self(tree, n, &int_a, &int_b));
+    try testing.expectEqual(@backingInt(LaffyAlignItems.auto), int_a);
+    try testing.expectEqual(@backingInt(LaffyAlignmentSafety.default), int_b);
+    try testing.expectEqual(ok, g.laffy_node_get_flex_shrink(tree, n, &float));
+    try testing.expectEqual(@as(f32, 1), float);
+
+    // Enums, bools, numbers and flags
+    try testing.expectEqual(ok, laffy_node_set_position(tree, n, @backingInt(LaffyPosition.sticky)));
+    try testing.expectEqual(ok, g.laffy_node_get_position(tree, n, &int_a));
+    try testing.expectEqual(@backingInt(LaffyPosition.sticky), int_a);
+    try testing.expectEqual(ok, laffy_node_set_overflow(tree, n, @backingInt(LaffyOverflow.clip), @backingInt(LaffyOverflow.scroll)));
+    try testing.expectEqual(ok, g.laffy_node_get_overflow(tree, n, &int_a, &int_b));
+    try testing.expectEqual(@backingInt(LaffyOverflow.clip), int_a);
+    try testing.expectEqual(@backingInt(LaffyOverflow.scroll), int_b);
+    try testing.expectEqual(ok, laffy_node_set_item_is_replaced(tree, n, true));
+    flag = false;
+    try testing.expectEqual(ok, g.laffy_node_get_item_is_replaced(tree, n, &flag));
+    try testing.expect(flag);
+    try testing.expectEqual(ok, laffy_node_set_aspect_ratio(tree, n, 1.5));
+    try testing.expectEqual(ok, g.laffy_node_get_aspect_ratio(tree, n, &float));
+    try testing.expectEqual(@as(f32, 1.5), float);
+    var flags: u32 = 99;
+    try testing.expectEqual(ok, laffy_node_set_contain(tree, n, contain_paint));
+    try testing.expectEqual(ok, g.laffy_node_get_contain(tree, n, &flags));
+    try testing.expectEqual(contain_paint, flags);
+    var count: u16 = 0;
+    try testing.expectEqual(ok, laffy_node_set_flex_line_count(tree, n, 3));
+    try testing.expectEqual(ok, g.laffy_node_get_flex_line_count(tree, n, &count));
+    try testing.expectEqual(@as(u16, 3), count);
+
+    // Alignment
+    try testing.expectEqual(ok, laffy_node_set_align_self(tree, n, @backingInt(LaffyAlignItems.baseline), @backingInt(LaffyAlignmentSafety.unsafe)));
+    try testing.expectEqual(ok, g.laffy_node_get_align_self(tree, n, &int_a, &int_b));
+    try testing.expectEqual(@backingInt(LaffyAlignItems.baseline), int_a);
+    try testing.expectEqual(@backingInt(LaffyAlignmentSafety.unsafe), int_b);
+    try testing.expectEqual(ok, laffy_node_set_justify_content(tree, n, @backingInt(LaffyAlignContent.space_evenly), @backingInt(LaffyAlignmentSafety.safe)));
+    try testing.expectEqual(ok, g.laffy_node_get_justify_content(tree, n, &int_a, &int_b));
+    try testing.expectEqual(@backingInt(LaffyAlignContent.space_evenly), int_a);
+    try testing.expectEqual(@backingInt(LaffyAlignmentSafety.safe), int_b);
+
+    // Every unit a dimension accepts survives the round trip
+    const units = [_]LaffyUnit{ .length, .percent, .auto, .min_content, .max_content, .fit_content_length, .fit_content_percent, .fit_content, .stretch, .content };
+    for (units) |unit| {
+        const has_value = switch (unit) {
+            .length, .percent, .fit_content_length, .fit_content_percent => true,
+            else => false,
+        };
+        const value: f32 = if (has_value) 0.25 else 0;
+        try testing.expectEqual(ok, laffy_node_set_size(tree, n, unitValue(LaffyDimension, unit, value), dim(7)));
+        var width: LaffyDimension = undefined;
+        var height: LaffyDimension = undefined;
+        try testing.expectEqual(ok, g.laffy_node_get_size(tree, n, &width, &height));
+        try testing.expectEqual(unitValue(LaffyDimension, unit, value), width);
+        try testing.expectEqual(dim(7), height);
+    }
+
+    // Rectangles are top, right, bottom, left
+    var edges: [4]LaffyLengthPercentageAuto = undefined;
+    try testing.expectEqual(ok, laffy_node_set_margin(tree, n, lpa(1), lpa(2), unitValue(LaffyLengthPercentageAuto, .auto, 0), unitValue(LaffyLengthPercentageAuto, .percent, 0.5)));
+    try testing.expectEqual(ok, g.laffy_node_get_margin(tree, n, &edges[0], &edges[1], &edges[2], &edges[3]));
+    try testing.expectEqual(lpa(1), edges[0]);
+    try testing.expectEqual(lpa(2), edges[1]);
+    try testing.expectEqual(unitValue(LaffyLengthPercentageAuto, .auto, 0), edges[2]);
+    try testing.expectEqual(unitValue(LaffyLengthPercentageAuto, .percent, 0.5), edges[3]);
+    try testing.expect(styleOf(tree, n).margin.left.eql(.fromPercent(0.5)));
+
+    // Grid placements, including names
+    var start: LaffyGridPlacement = undefined;
+    var end: LaffyGridPlacement = undefined;
+    try testing.expectEqual(ok, laffy_node_set_grid_row(
+        tree,
+        n,
+        .{ .kind = @backingInt(LaffyGridPlacementKind.named_line), .line = -2, .span = 0, .name = "header" },
+        .{ .kind = @backingInt(LaffyGridPlacementKind.named_span), .line = 0, .span = 3, .name = "footer" },
+    ));
+    try testing.expectEqual(ok, g.laffy_node_get_grid_row(tree, n, &start, &end));
+    try testing.expectEqual(@backingInt(LaffyGridPlacementKind.named_line), start.kind);
+    try testing.expectEqual(@as(i16, -2), start.line);
+    try testing.expectEqualStrings("header", std.mem.span(start.name.?));
+    try testing.expectEqual(@backingInt(LaffyGridPlacementKind.named_span), end.kind);
+    try testing.expectEqual(@as(u16, 3), end.span);
+    try testing.expectEqualStrings("footer", std.mem.span(end.name.?));
+    try testing.expectEqual(ok, g.laffy_node_get_grid_column(tree, n, &start, &end));
+    try testing.expectEqual(@backingInt(LaffyGridPlacementKind.auto), start.kind);
+    try testing.expectEqual(@as(?[*:0]const u8, null), start.name);
+
+    // Failures leave the out-parameters untouched
+    int_a = 77;
+    try testing.expectEqual(LaffyStatus.invalid_input_node, g.laffy_node_get_display(tree, 0, &int_a));
+    try testing.expectEqual(LaffyStatus.invalid_argument, g.laffy_node_get_display(tree, n, null));
+    try testing.expectEqual(LaffyStatus.invalid_argument, g.laffy_node_get_display(null, n, &int_a));
+    try testing.expectEqual(LaffyStatus.invalid_argument, g.laffy_node_get_overflow(tree, n, &int_a, null));
+    try testing.expectEqual(@as(c_int, 77), int_a);
 }
 
 test "grid setters round-trip and copy their data" {

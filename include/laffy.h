@@ -13,8 +13,8 @@
  * are fractions: 50% is 0.5, not 50. Percentages resolve against the parent's size as in CSS
  * (padding and border percentages resolve against the parent's width on both axes).
  *
- * Edges. Rectangles (margin, padding, border, inset) are given in the order left, right, top,
- * bottom, as in taffy's `Rect`. Sizes are width then height. A gap is (column gap, row gap).
+ * Edges. Rectangles (margin, padding, border, inset) are given in the CSS shorthand order: top,
+ * right, bottom, left. Sizes are width then height. A gap is (column gap, row gap).
  *
  * NaN. NaN is never a valid style value: passing NaN in a length, percentage, fr value or
  * definite available space is LAFFY_STATUS_INVALID_ARGUMENT. NaN is used only to mean "none" or
@@ -447,10 +447,10 @@ typedef struct LaffySize {
 } LaffySize;
 
 typedef struct LaffyRect {
-    float left;
-    float right;
     float top;
+    float right;
     float bottom;
+    float left;
 } LaffyRect;
 
 /* The computed layout of a node. Positions are relative to the parent's border box (for an
@@ -607,6 +607,11 @@ LaffyStatus laffy_node_is_dirty(LaffyTree *tree, uint64_t node, bool *out_dirty)
 /*                                                                                             */
 /* Every setter changes one property (group) of the node's style and marks the node dirty.     */
 /* Defaults are those of taffy's Style::DEFAULT (display: flex, flex-shrink: 1, etc.).         */
+/*                                                                                             */
+/* Every property except the list-valued grid properties (template rows / columns / areas and  */
+/* auto rows / columns) has a getter, laffy_node_get_*, that takes one out-parameter for each  */
+/* parameter of the setter, in the same order. All out-parameters are required. A getter       */
+/* returns exactly what the setter stored; the value of a unit that ignores it reads as 0.     */
 
 /* Reset every property to its default (and free the node's copied grid data) */
 LaffyStatus laffy_node_reset_style(LaffyTree *tree, uint64_t node);
@@ -636,8 +641,8 @@ LaffyStatus laffy_node_set_clear(LaffyTree *tree, uint64_t node, LaffyClear clea
 /* Positioning */
 LaffyStatus laffy_node_set_position(LaffyTree *tree, uint64_t node, LaffyPosition position);
 /* Default: auto on every edge */
-LaffyStatus laffy_node_set_inset(LaffyTree *tree, uint64_t node, LaffyLengthPercentageAuto left, LaffyLengthPercentageAuto right, LaffyLengthPercentageAuto top,
-                                 LaffyLengthPercentageAuto bottom);
+LaffyStatus laffy_node_set_inset(LaffyTree *tree, uint64_t node, LaffyLengthPercentageAuto top, LaffyLengthPercentageAuto right, LaffyLengthPercentageAuto bottom,
+                                 LaffyLengthPercentageAuto left);
 
 /* Size (default auto), min size (default auto), max size (default auto) */
 LaffyStatus laffy_node_set_size(LaffyTree *tree, uint64_t node, LaffyDimension width, LaffyDimension height);
@@ -647,12 +652,12 @@ LaffyStatus laffy_node_set_max_size(LaffyTree *tree, uint64_t node, LaffyLengthP
 LaffyStatus laffy_node_set_aspect_ratio(LaffyTree *tree, uint64_t node, float ratio);
 
 /* Spacing (all default 0) */
-LaffyStatus laffy_node_set_margin(LaffyTree *tree, uint64_t node, LaffyLengthPercentageAuto left, LaffyLengthPercentageAuto right, LaffyLengthPercentageAuto top,
-                                  LaffyLengthPercentageAuto bottom);
-LaffyStatus laffy_node_set_padding(LaffyTree *tree, uint64_t node, LaffyLengthPercentage left, LaffyLengthPercentage right, LaffyLengthPercentage top,
-                                   LaffyLengthPercentage bottom);
-LaffyStatus laffy_node_set_border(LaffyTree *tree, uint64_t node, LaffyLengthPercentage left, LaffyLengthPercentage right, LaffyLengthPercentage top,
-                                  LaffyLengthPercentage bottom);
+LaffyStatus laffy_node_set_margin(LaffyTree *tree, uint64_t node, LaffyLengthPercentageAuto top, LaffyLengthPercentageAuto right, LaffyLengthPercentageAuto bottom,
+                                  LaffyLengthPercentageAuto left);
+LaffyStatus laffy_node_set_padding(LaffyTree *tree, uint64_t node, LaffyLengthPercentage top, LaffyLengthPercentage right, LaffyLengthPercentage bottom,
+                                   LaffyLengthPercentage left);
+LaffyStatus laffy_node_set_border(LaffyTree *tree, uint64_t node, LaffyLengthPercentage top, LaffyLengthPercentage right, LaffyLengthPercentage bottom,
+                                  LaffyLengthPercentage left);
 /* Gap between flex items / grid tracks: width is the column gap, height the row gap */
 LaffyStatus laffy_node_set_gap(LaffyTree *tree, uint64_t node, LaffyLengthPercentage width, LaffyLengthPercentage height);
 
@@ -702,6 +707,54 @@ LaffyStatus laffy_node_set_grid_template_areas(LaffyTree *tree, uint64_t node, c
 /* Grid items: grid-row / grid-column as start / end placements (default auto / auto) */
 LaffyStatus laffy_node_set_grid_row(LaffyTree *tree, uint64_t node, LaffyGridPlacement start, LaffyGridPlacement end);
 LaffyStatus laffy_node_set_grid_column(LaffyTree *tree, uint64_t node, LaffyGridPlacement start, LaffyGridPlacement end);
+
+/* Style getters (see the introduction of this section) */
+LaffyStatus laffy_node_get_display(LaffyTree *tree, uint64_t node, LaffyDisplay *out_display);
+LaffyStatus laffy_node_get_box_sizing(LaffyTree *tree, uint64_t node, LaffyBoxSizing *out_box_sizing);
+LaffyStatus laffy_node_get_direction(LaffyTree *tree, uint64_t node, LaffyDirection *out_direction);
+LaffyStatus laffy_node_get_item_is_table(LaffyTree *tree, uint64_t node, bool *out_is_table);
+LaffyStatus laffy_node_get_item_is_replaced(LaffyTree *tree, uint64_t node, bool *out_is_replaced);
+LaffyStatus laffy_node_get_item_is_compressible_replaced(LaffyTree *tree, uint64_t node, bool *out_is_compressible_replaced);
+LaffyStatus laffy_node_get_overflow(LaffyTree *tree, uint64_t node, LaffyOverflow *out_x, LaffyOverflow *out_y);
+LaffyStatus laffy_node_get_scrollbar_width(LaffyTree *tree, uint64_t node, float *out_width);
+LaffyStatus laffy_node_get_contain(LaffyTree *tree, uint64_t node, uint32_t *out_flags);
+LaffyStatus laffy_node_get_float(LaffyTree *tree, uint64_t node, LaffyFloat *out_float);
+LaffyStatus laffy_node_get_clear(LaffyTree *tree, uint64_t node, LaffyClear *out_clear);
+LaffyStatus laffy_node_get_position(LaffyTree *tree, uint64_t node, LaffyPosition *out_position);
+LaffyStatus laffy_node_get_inset(LaffyTree *tree, uint64_t node, LaffyLengthPercentageAuto *out_top, LaffyLengthPercentageAuto *out_right,
+                                 LaffyLengthPercentageAuto *out_bottom, LaffyLengthPercentageAuto *out_left);
+LaffyStatus laffy_node_get_size(LaffyTree *tree, uint64_t node, LaffyDimension *out_width, LaffyDimension *out_height);
+LaffyStatus laffy_node_get_min_size(LaffyTree *tree, uint64_t node, LaffyLengthPercentageAuto *out_width, LaffyLengthPercentageAuto *out_height);
+LaffyStatus laffy_node_get_max_size(LaffyTree *tree, uint64_t node, LaffyLengthPercentageAuto *out_width, LaffyLengthPercentageAuto *out_height);
+/* NaN when the node has no aspect ratio */
+LaffyStatus laffy_node_get_aspect_ratio(LaffyTree *tree, uint64_t node, float *out_ratio);
+LaffyStatus laffy_node_get_margin(LaffyTree *tree, uint64_t node, LaffyLengthPercentageAuto *out_top, LaffyLengthPercentageAuto *out_right,
+                                  LaffyLengthPercentageAuto *out_bottom, LaffyLengthPercentageAuto *out_left);
+LaffyStatus laffy_node_get_padding(LaffyTree *tree, uint64_t node, LaffyLengthPercentage *out_top, LaffyLengthPercentage *out_right,
+                                   LaffyLengthPercentage *out_bottom, LaffyLengthPercentage *out_left);
+LaffyStatus laffy_node_get_border(LaffyTree *tree, uint64_t node, LaffyLengthPercentage *out_top, LaffyLengthPercentage *out_right,
+                                  LaffyLengthPercentage *out_bottom, LaffyLengthPercentage *out_left);
+LaffyStatus laffy_node_get_gap(LaffyTree *tree, uint64_t node, LaffyLengthPercentage *out_width, LaffyLengthPercentage *out_height);
+/* An unset align-self / justify-self reads as LAFFY_ALIGN_ITEMS_AUTO */
+LaffyStatus laffy_node_get_align_items(LaffyTree *tree, uint64_t node, LaffyAlignItems *out_keyword, LaffyAlignmentSafety *out_safety);
+LaffyStatus laffy_node_get_justify_items(LaffyTree *tree, uint64_t node, LaffyAlignItems *out_keyword, LaffyAlignmentSafety *out_safety);
+LaffyStatus laffy_node_get_align_self(LaffyTree *tree, uint64_t node, LaffyAlignItems *out_keyword, LaffyAlignmentSafety *out_safety);
+LaffyStatus laffy_node_get_justify_self(LaffyTree *tree, uint64_t node, LaffyAlignItems *out_keyword, LaffyAlignmentSafety *out_safety);
+LaffyStatus laffy_node_get_align_content(LaffyTree *tree, uint64_t node, LaffyAlignContent *out_keyword, LaffyAlignmentSafety *out_safety);
+LaffyStatus laffy_node_get_justify_content(LaffyTree *tree, uint64_t node, LaffyAlignContent *out_keyword, LaffyAlignmentSafety *out_safety);
+LaffyStatus laffy_node_get_text_align(LaffyTree *tree, uint64_t node, LaffyTextAlign *out_text_align);
+LaffyStatus laffy_node_get_flex_direction(LaffyTree *tree, uint64_t node, LaffyFlexDirection *out_direction);
+LaffyStatus laffy_node_get_flex_wrap(LaffyTree *tree, uint64_t node, LaffyFlexWrap *out_wrap);
+LaffyStatus laffy_node_get_flex_line_count(LaffyTree *tree, uint64_t node, uint16_t *out_count);
+LaffyStatus laffy_node_get_flex_basis(LaffyTree *tree, uint64_t node, LaffyDimension *out_basis);
+LaffyStatus laffy_node_get_flex_grow(LaffyTree *tree, uint64_t node, float *out_grow);
+LaffyStatus laffy_node_get_flex_shrink(LaffyTree *tree, uint64_t node, float *out_shrink);
+LaffyStatus laffy_node_get_grid_auto_flow(LaffyTree *tree, uint64_t node, LaffyGridAutoFlow *out_flow);
+/* The `name` of a named placement points to the tree's copy of the string. It stays valid until
+ * the property is set again, the style is reset, the node is removed or the tree is cleared or
+ * freed. */
+LaffyStatus laffy_node_get_grid_row(LaffyTree *tree, uint64_t node, LaffyGridPlacement *out_start, LaffyGridPlacement *out_end);
+LaffyStatus laffy_node_get_grid_column(LaffyTree *tree, uint64_t node, LaffyGridPlacement *out_start, LaffyGridPlacement *out_end);
 
 #ifdef __cplusplus
 } /* extern "C" */
