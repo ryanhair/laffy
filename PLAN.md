@@ -58,6 +58,8 @@ decisions behind the port and the milestone roadmap.
 - Harness: minimal XML reader, CSS value parser, port of the test measure function (Ahem text,
   fixed and aspect-ratio nodes), runner that reports pass counts per group.
 - Gate: `leaf` 60/60.
+- Status: done. `leaf` is 56/60; the remaining 4 fixtures have a flex container and run once
+  flexbox is ported.
 
 ### 2. Flexbox
 
@@ -143,3 +145,11 @@ These apply to every file in the port so that independently written pieces fit t
 - **Comptime closures.** `map`, `zipMap` and similar take `comptime` functions and cannot capture
   runtime state; write the field-wise code out when a capture is needed.
 - **Already ported ahead of schedule.** `src/compute/grid/types/coordinates.zig`.
+
+## Conformance workflow
+
+- `zig build conformance -- [group ...] [--filter substring] [--verbose]` runs fixture groups and
+  prints pass counts, failing fixture names and expected/actual diffs.
+- `tests/support/runner.zig` has a `ported` struct; fixtures needing an unported algorithm are
+  skipped instead of hitting the placeholder panic. Flip the flag when an algorithm lands.
+- `tests/fixtures.zig` lists `enabled_groups`, which `zig build fixtures` requires to pass fully.

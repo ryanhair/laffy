@@ -32,4 +32,29 @@ pub fn build(b: *std.Build) void {
 
     const fixtures_step = b.step("fixtures", "Run fixture conformance tests");
     fixtures_step.dependOn(&run_fixture_tests.step);
+
+    // Development runner for the fixtures: `zig build conformance -- [group ...] [--filter s] [--verbose]`.
+    // Built in ReleaseSafe by default so that full groups run quickly.
+    const conformance_optimize: std.builtin.OptimizeMode = if (b.user_input_options.contains("optimize")) optimize else .ReleaseSafe;
+    const conformance_mod = b.addModule("laffy_conformance", .{
+        .root_source_file = b.path("src/root.zig"),
+        .target = target,
+        .optimize = conformance_optimize,
+    });
+    const conformance_exe = b.addExecutable(.{
+        .name = "conformance",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/conformance.zig"),
+            .target = target,
+            .optimize = conformance_optimize,
+            .imports = &.{.{ .name = "laffy", .module = conformance_mod }},
+        }),
+    });
+    const run_conformance = b.addRunArtifact(conformance_exe);
+    run_conformance.setCwd(b.path("."));
+    run_conformance.has_side_effects = true;
+    run_conformance.addPassthruArgs();
+
+    const conformance_step = b.step("conformance", "Run fixture groups: [group ...] [--filter substring] [--verbose]");
+    conformance_step.dependOn(&run_conformance.step);
 }
