@@ -788,7 +788,6 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
 
         // Position hidden child
         if (child_style.getBoxGenerationMode() == .none) {
-            tree.setUnroundedLayout(child, &Layout.withOrder(order));
             _ = try traits.performChildLayout(
                 tree,
                 child,
@@ -798,6 +797,9 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
                 .inherent_size,
                 Line(bool).false,
             );
+            // Hidden layout gives the node order 0. Set its real order afterwards, so that it is the
+            // same whether the hidden layout ran or was served from the cache.
+            tree.setUnroundedLayout(child, &Layout.withOrder(order));
             order += 1;
             continue;
         }

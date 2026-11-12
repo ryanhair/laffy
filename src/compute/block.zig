@@ -914,7 +914,6 @@ fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: 
         const child = tree.getChildId(node_id, order);
         const child_style = tree.getBlockChildStyle(child);
         if (child_style.getBoxGenerationMode() == .none) {
-            tree.setUnroundedLayout(child, &Layout.withOrder(@intCast(order)));
             _ = try traits.performChildLayout(
                 tree,
                 child,
@@ -924,6 +923,9 @@ fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: 
                 .inherent_size,
                 Line(bool).false,
             );
+            // Hidden layout gives the node order 0. Set its real order afterwards, so that it is the
+            // same whether the hidden layout ran or was served from the cache.
+            tree.setUnroundedLayout(child, &Layout.withOrder(@intCast(order)));
         }
     }
 

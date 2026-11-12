@@ -529,7 +529,6 @@ fn computePreliminary(tree: anytype, node: NodeId, inputs: LayoutInput) LayoutEr
     for (0..len) |order| {
         const child = tree.getChildId(node, order);
         if (tree.getFlexboxChildStyle(child).getBoxGenerationMode() == .none) {
-            tree.setUnroundedLayout(child, &Layout.withOrder(@intCast(order)));
             _ = try traits.performChildLayout(
                 tree,
                 child,
@@ -539,6 +538,9 @@ fn computePreliminary(tree: anytype, node: NodeId, inputs: LayoutInput) LayoutEr
                 .content_size,
                 Line(bool).false,
             );
+            // Hidden layout gives the node order 0. Set its real order afterwards, so that it is the
+            // same whether the hidden layout ran or was served from the cache.
+            tree.setUnroundedLayout(child, &Layout.withOrder(@intCast(order)));
         }
     }
 

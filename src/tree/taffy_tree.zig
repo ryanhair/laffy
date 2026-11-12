@@ -602,6 +602,10 @@ pub fn TaffyTree(comptime NodeContext: type) type {
             var taffy_view: View(@TypeOf(measurer)) = .{ .taffy = self, .measurer = measurer };
             // Keep a modest amount of scratch memory for the next layout pass
             defer self.scratch_allocator.trim(scratch_retain_limit);
+            // Laying a node out as the root positions it as a root and may resize it. If it has a
+            // parent, the parent's cached layout no longer describes it, so the parent must lay it
+            // out again the next time the parent is laid out.
+            defer if (self.nodeData(node_id).parent) |parent_id| self.markDirty(parent_id);
             try compute_mod.computeRootLayout(&taffy_view, node_id, available_space);
             if (use_rounding) {
                 compute_mod.roundLayout(&taffy_view, node_id);
@@ -1347,7 +1351,11 @@ test "mark dirty on leaves" {
     var input = LayoutInput.hidden;
     input.run_mode = .compute_size;
     taffy.cacheStore(parent_node, &input, LayoutOutput.fromOuterSize(Size(f32).zero));
+    try testing.expect(!taffy.dirty(parent_node));
+    // Laying the child out as a root invalidates its parent, which positioned it differently
     try taffy.computeLayout(node, Size(AvailableSpace).max_content);
+    try testing.expect(taffy.dirty(parent_node));
+    taffy.cacheStore(parent_node, &input, LayoutOutput.fromOuterSize(Size(f32).zero));
     try testing.expect(!taffy.dirty(parent_node));
     taffy.markDirty(node);
     try testing.expect(taffy.dirty(node));
@@ -1748,6 +1756,39 @@ test "rounding after a relayout matches rounding the whole tree" {
             std.debug.print("scenario {d}\n", .{index});
             return err;
         };
+    }
+}
+
+test "a hidden node keeps its order when its parent is laid out again" {
+    var fixture = try RoundingFixture.init();
+    defer fixture.deinit();
+    const F = RoundingFixture;
+    const taffy = &fixture.taffy;
+    try taffy.computeLayout(fixture.nodes[F.root], F.available);
+    // The hidden node is the third child of the column
+    try testing.expectEqual(@as(u32, 2), taffy.layout(fixture.nodes[F.hidden]).order);
+    taffy.markDirty(fixture.nodes[F.leaf_c]);
+    try taffy.computeLayout(fixture.nodes[F.root], F.available);
+    try testing.expectEqual(@as(u32, 2), taffy.layout(fixture.nodes[F.hidden]).order);
+}
+
+test "laying out a subtree on its own does not leave it misplaced in the full tree" {
+    var fixture = try RoundingFixture.init();
+    defer fixture.deinit();
+    var fresh = try RoundingFixture.init();
+    defer fresh.deinit();
+    const F = RoundingFixture;
+    const taffy = &fixture.taffy;
+
+    try taffy.computeLayout(fixture.nodes[F.root], F.available);
+    try taffy.computeLayout(fixture.nodes[F.column], .{ .width = .{ .definite = 31.7 }, .height = .max_content });
+    try testing.expect(taffy.dirty(fixture.nodes[F.row]));
+    try testing.expect(taffy.dirty(fixture.nodes[F.root]));
+    try taffy.computeLayout(fixture.nodes[F.root], F.available);
+
+    try fresh.taffy.computeLayout(fresh.nodes[F.root], F.available);
+    for (fixture.nodes, fresh.nodes) |a, b| {
+        try testing.expect(taffy.layout(a).eql(fresh.taffy.layout(b).*));
     }
 }
 
