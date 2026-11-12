@@ -12,6 +12,8 @@ pub const geometry = @import("geometry.zig");
 pub const style = @import("style.zig");
 pub const style_helpers = @import("style_helpers.zig");
 pub const util = @import("util.zig");
+pub const tree = @import("tree.zig");
+pub const compute = @import("compute.zig");
 
 // geometry (upstream `pub use crate::geometry::*`)
 pub const AbsoluteAxis = geometry.AbsoluteAxis;
@@ -94,6 +96,52 @@ pub const maybeSub = util.maybeSub;
 pub const maybeResolve = util.maybeResolve;
 pub const resolveOrZero = util.resolveOrZero;
 
+// compute (upstream `pub use crate::compute::{...}`)
+pub const computeCachedLayout = compute.computeCachedLayout;
+pub const computeHiddenLayout = compute.computeHiddenLayout;
+pub const computeLeafLayout = compute.computeLeafLayout;
+pub const computeOofLayout = compute.computeOofLayout;
+pub const computeOofLayoutForArea = compute.computeOofLayoutForArea;
+pub const computeRootLayout = compute.computeRootLayout;
+pub const resolveStaticOffset = compute.resolveStaticOffset;
+pub const roundLayout = compute.roundLayout;
+pub const OofLayoutResult = compute.OofLayoutResult;
+pub const detailed_info = compute.detailed_info;
+
+// tree (upstream `pub use crate::tree::*` and `pub use crate::tree::traits::*`)
+pub const traits = tree.traits;
+pub const Cache = tree.Cache;
+pub const ClearState = tree.ClearState;
+pub const AxisStaticAlign = tree.AxisStaticAlign;
+pub const AxisStaticEdge = tree.AxisStaticEdge;
+pub const AxisStaticPosition = tree.AxisStaticPosition;
+pub const Baselines = tree.Baselines;
+pub const CollapsibleMarginSet = tree.CollapsibleMarginSet;
+pub const DetailedLayoutInfo = tree.DetailedLayoutInfo;
+pub const Layout = tree.Layout;
+pub const LayoutError = tree.LayoutError;
+pub const LayoutInput = tree.LayoutInput;
+pub const LayoutOutput = tree.LayoutOutput;
+pub const OofCandidate = tree.OofCandidate;
+pub const OofCandidates = tree.OofCandidates;
+pub const OofPositioningArea = tree.OofPositioningArea;
+pub const RequestedAxis = tree.RequestedAxis;
+pub const RunMode = tree.RunMode;
+pub const ScrollableOverflow = tree.ScrollableOverflow;
+pub const SizingMode = tree.SizingMode;
+pub const NodeId = tree.NodeId;
+pub const TaffyTree = tree.TaffyTree;
+pub const TaffyError = tree.TaffyError;
+pub const LeafMeasurer = tree.LeafMeasurer;
+pub const ZeroMeasure = tree.ZeroMeasure;
+pub const measureChildSize = traits.measureChildSize;
+pub const measureChildSizeBoth = traits.measureChildSizeBoth;
+pub const performChildLayout = traits.performChildLayout;
+
+// util (upstream `pub use crate::util::print_tree` / `write_tree`)
+pub const printTree = util.printTree;
+pub const writeTree = util.writeTree;
+
 // style_helpers (upstream prelude)
 pub const zero = style_helpers.zero;
 pub const auto = style_helpers.auto;
@@ -116,5 +164,7 @@ test {
     _ = style;
     _ = style_helpers;
     _ = util;
+    _ = tree;
+    _ = compute;
     _ = @import("compute/grid/types/coordinates.zig");
 }
