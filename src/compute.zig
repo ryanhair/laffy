@@ -10,7 +10,7 @@
 //! | ---                      | ---                                                                                                                                                                                                |
 //! | `computeFlexboxLayout`   | Layout a Flexbox container and it's direct children                                                                                                                                                |
 //! | `computeGridLayout`      | Layout a CSS Grid container and it's direct children (not ported yet)                                                                                                                              |
-//! | `computeBlockLayout`     | Layout a Block container and it's direct children (not ported yet)                                                                                                                                 |
+//! | `computeBlockLayout`     | Layout a Block container and it's direct children                                                                                                                                                  |
 //! | `computeLeafLayout`      | Applies common properties like padding/border/aspect-ratio to a node before deferring to a passed measure function to determine it's size. Can be applied to nodes like text or image nodes.      |
 //! | `computeRootLayout`      | Layout the root node of a tree (regardless of it's layout mode). This function is typically called once to begin a layout run.                                                                     |
 //! | `computeHiddenLayout`    | Mark a node as hidden during layout (like `Display.none`)                                                                                                                                          |
@@ -61,10 +61,21 @@ pub const common = struct {
     pub const scrollable_overflow = @import("compute/common/scrollable_overflow.zig");
     pub const sizing_keyword = @import("compute/common/sizing_keyword.zig");
 };
+pub const block = @import("compute/block.zig");
 pub const flexbox = @import("compute/flexbox.zig");
+pub const float = @import("compute/float.zig");
 pub const leaf = @import("compute/leaf.zig");
 pub const oof = @import("compute/oof.zig");
 
+pub const computeBlockAlignContentOffset = block.computeBlockAlignContentOffset;
+pub const computeBlockLayout = block.computeBlockLayout;
+pub const BlockContext = block.BlockContext;
+pub const BlockFormattingContext = block.BlockFormattingContext;
+pub const FloatMark = block.FloatMark;
+pub const BfcSlot = float.BfcSlot;
+pub const ContentSlot = float.ContentSlot;
+pub const FloatContext = float.FloatContext;
+pub const FloatIntrinsicWidthCalculator = float.FloatIntrinsicWidthCalculator;
 pub const computeFlexboxLayout = flexbox.computeFlexboxLayout;
 pub const computeLeafLayout = leaf.computeLeafLayout;
 pub const computeOofLayout = oof.computeOofLayout;

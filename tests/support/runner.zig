@@ -38,7 +38,7 @@ const tolerance: f32 = 0.1;
 /// `src/tree/taffy_tree.zig`).
 pub const ported = struct {
     pub const flex = true;
-    pub const block = false;
+    pub const block = true;
     pub const grid = false;
 };
 

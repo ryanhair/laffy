@@ -97,6 +97,8 @@ pub const maybeResolve = util.maybeResolve;
 pub const resolveOrZero = util.resolveOrZero;
 
 // compute (upstream `pub use crate::compute::{...}`)
+pub const computeBlockAlignContentOffset = compute.computeBlockAlignContentOffset;
+pub const computeBlockLayout = compute.computeBlockLayout;
 pub const computeCachedLayout = compute.computeCachedLayout;
 pub const computeFlexboxLayout = compute.computeFlexboxLayout;
 pub const computeHiddenLayout = compute.computeHiddenLayout;
@@ -107,6 +109,13 @@ pub const computeRootLayout = compute.computeRootLayout;
 pub const resolveStaticOffset = compute.resolveStaticOffset;
 pub const roundLayout = compute.roundLayout;
 pub const OofLayoutResult = compute.OofLayoutResult;
+pub const BlockContext = compute.BlockContext;
+pub const BlockFormattingContext = compute.BlockFormattingContext;
+pub const FloatMark = compute.FloatMark;
+pub const BfcSlot = compute.BfcSlot;
+pub const ContentSlot = compute.ContentSlot;
+pub const FloatContext = compute.FloatContext;
+pub const FloatIntrinsicWidthCalculator = compute.FloatIntrinsicWidthCalculator;
 pub const detailed_info = compute.detailed_info;
 
 // tree (upstream `pub use crate::tree::*` and `pub use crate::tree::traits::*`)

@@ -165,8 +165,9 @@
 //!     in the container's axes.
 //!   - `computeBlockChildLayout(self, node_id: NodeId, inputs: LayoutInput, block_ctx: ?*BlockContext) LayoutError!LayoutOutput`:
 //!     default (`LayoutBlockContainerDefaults.computeBlockChildLayout`, ignores `block_ctx` and
-//!     calls `computeChildLayout`). `BlockContext` is defined by the block milestone
-//!     (`compute/block.zig`); until then the default takes `block_ctx: anytype`.
+//!     calls `computeChildLayout`). `BlockContext` is defined in `compute/block.zig`. The block
+//!     algorithm calls this for children that participate in the parent's block formatting
+//!     context, so that floats are positioned in the shared context; the caller owns the output.
 //!
 //! ## Provided methods (upstream `LayoutPartialTreeExt`)
 //!
@@ -186,6 +187,7 @@ const LayoutOutput = layout.LayoutOutput;
 const SizingMode = layout.SizingMode;
 const RequestedAxis = layout.RequestedAxis;
 const NodeId = @import("node.zig").NodeId;
+const BlockContext = @import("../compute/block.zig").BlockContext;
 
 // --- Default method bodies
 
@@ -228,7 +230,7 @@ pub const LayoutGridContainerDefaults = struct {
 pub const LayoutBlockContainerDefaults = struct {
     /// Compute the specified node's size or full layout given the specified constraints
     /// (default: ignore `block_ctx` and call `computeChildLayout`)
-    pub fn computeBlockChildLayout(self: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: anytype) LayoutError!LayoutOutput {
+    pub fn computeBlockChildLayout(self: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: ?*BlockContext) LayoutError!LayoutOutput {
         _ = block_ctx;
         return self.computeChildLayout(node_id, inputs);
     }

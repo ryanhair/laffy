@@ -71,6 +71,8 @@ decisions behind the port and the milestone roadmap.
 ### 3. Block and float
 
 - Gate: `block` 1,124, `float` 192, `blockflex` 52.
+- Status: algorithms done. `block` 1,116, `float` 184, `blockflex` 52/52, `contain` 32/32, 0 fail.
+  The 16 skipped block and float fixtures contain grid containers.
 
 ### 4. Grid
 

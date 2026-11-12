@@ -9,7 +9,7 @@ pub const runner = @import("support/runner.zig");
 /// Fixture groups that are expected to pass completely. `zig build fixtures` fails unless every
 /// fixture in these groups passes. Add a group here when its algorithm is ported.
 /// (`zig build conformance -- <group>` runs any group, enabled or not.)
-pub const enabled_groups = [_][]const u8{ "leaf", "flex" };
+pub const enabled_groups = [_][]const u8{ "leaf", "flex", "block", "float", "blockflex", "contain" };
 
 test {
     std.testing.refAllDecls(@This());

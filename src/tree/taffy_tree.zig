@@ -33,6 +33,7 @@ const cache_mod = @import("cache.zig");
 const Cache = cache_mod.Cache;
 const NodeId = @import("node.zig").NodeId;
 const compute_mod = @import("../compute.zig");
+const BlockContext = compute_mod.BlockContext;
 const SlotMap = @import("../util/slot_map.zig").SlotMap;
 const print = @import("../util/print.zig");
 
@@ -593,7 +594,7 @@ pub fn TaffyTree(comptime NodeContext: type) type {
 
                 /// Unified implementation that both `computeChildLayout` and
                 /// `computeBlockChildLayout` delegate to.
-                fn computeChildLayoutImpl(self: *ViewSelf, node_id: NodeId, inputs: LayoutInput, block_ctx: anytype) LayoutError!LayoutOutput {
+                fn computeChildLayoutImpl(self: *ViewSelf, node_id: NodeId, inputs: LayoutInput, block_ctx: ?*BlockContext) LayoutError!LayoutOutput {
                     // If RunMode is perform_hidden_layout then this indicates that an ancestor node is `Display.none`
                     // and thus that we should lay out this node using hidden layout regardless of it's own display style.
                     if (inputs.run_mode == .perform_hidden_layout) {
@@ -609,59 +610,48 @@ pub fn TaffyTree(comptime NodeContext: type) type {
                     //   - Else call `Uncached.compute` (below) to compute the result
                     //
                     // If there was no cache match and a new result needs to be computed then that result will be added to the cache
-                    return compute_mod.computeCachedLayout(self, node_id, inputs, Uncached(@TypeOf(block_ctx)){ .block_ctx = block_ctx });
+                    return compute_mod.computeCachedLayout(self, node_id, inputs, Uncached{ .block_ctx = block_ctx });
                 }
 
-                fn Uncached(comptime BlockCtx: type) type {
-                    return struct {
-                        block_ctx: BlockCtx,
+                const Uncached = struct {
+                    block_ctx: ?*BlockContext,
 
-                        pub fn compute(uncached: @This(), tree: *ViewSelf, node_id: NodeId, inputs: LayoutInput) LayoutError!LayoutOutput {
-                            const node = tree.taffy.nodeData(node_id);
-                            const display_mode = node.style.display;
-                            const has_children = tree.childCount(node_id) > 0;
+                    pub fn compute(uncached: @This(), tree: *ViewSelf, node_id: NodeId, inputs: LayoutInput) LayoutError!LayoutOutput {
+                        const node = tree.taffy.nodeData(node_id);
+                        const display_mode = node.style.display;
+                        const has_children = tree.childCount(node_id) > 0;
 
-                            // Dispatch to a layout algorithm based on the node's display style and whether the node has children or not.
-                            var output: LayoutOutput = if (display_mode == .none)
-                                try compute_mod.computeHiddenLayout(tree, node_id)
-                            else if (has_children) switch (display_mode) {
-                                .block => {
-                                    // TODO(milestone-3): replace this block with `try compute_mod.computeBlockLayout(tree, node_id, inputs, uncached.block_ctx)`
-                                    // (upstream `compute_block_layout(tree, node_id, inputs, block_ctx)`)
-                                    _ = uncached.block_ctx;
-                                    @panic("block layout is not ported yet");
-                                },
-                                .flow_root => {
-                                    // TODO(milestone-3): replace this block with `try compute_mod.computeBlockLayout(tree, node_id, inputs, null)`
-                                    // (upstream `compute_block_layout(tree, node_id, inputs, None)`)
-                                    @panic("block layout is not ported yet");
-                                },
-                                .flex => try compute_mod.computeFlexboxLayout(tree, node_id, inputs),
-                                .grid => {
-                                    // TODO(milestone-4): replace this block with `try compute_mod.computeGridLayout(tree, node_id, inputs)`
-                                    // (upstream `compute_grid_layout(tree, node_id, inputs)`)
-                                    @panic("grid layout is not ported yet");
-                                },
-                                .none => unreachable,
-                            } else blk: {
-                                const node_context: ?*NodeContext = if (node.context) |*context| context else null;
-                                break :blk tree.measurer.measure(inputs, node_id, node_context, &node.style);
-                            };
-                            errdefer output.deinit(tree.taffy.gpa);
+                        // Dispatch to a layout algorithm based on the node's display style and whether the node has children or not.
+                        var output: LayoutOutput = if (display_mode == .none)
+                            try compute_mod.computeHiddenLayout(tree, node_id)
+                        else if (has_children) switch (display_mode) {
+                            .block => try compute_mod.computeBlockLayout(tree, node_id, inputs, uncached.block_ctx),
+                            .flow_root => try compute_mod.computeBlockLayout(tree, node_id, inputs, null),
+                            .flex => try compute_mod.computeFlexboxLayout(tree, node_id, inputs),
+                            .grid => {
+                                // TODO(milestone-4): replace this block with `try compute_mod.computeGridLayout(tree, node_id, inputs)`
+                                // (upstream `compute_grid_layout(tree, node_id, inputs)`)
+                                @panic("grid layout is not ported yet");
+                            },
+                            .none => unreachable,
+                        } else blk: {
+                            const node_context: ?*NodeContext = if (node.context) |*context| context else null;
+                            break :blk tree.measurer.measure(inputs, node_id, node_context, &node.style);
+                        };
+                        errdefer output.deinit(tree.taffy.gpa);
 
-                            // Lay out any out-of-flow candidates for which this node is the containing block.
-                            // The rest bubble up via `output.oof_candidates`. This runs inside the cache-miss
-                            // function so that cached outputs already contain the processed candidate list.
-                            // Only full layout passes run it: measure passes must not write hoisted box layouts
-                            // (which would not be rewritten if the final layout pass is a cache hit).
-                            if (inputs.run_mode == .perform_layout) {
-                                try compute_mod.computeOofLayout(tree, node_id, &output);
-                            }
-
-                            return output;
+                        // Lay out any out-of-flow candidates for which this node is the containing block.
+                        // The rest bubble up via `output.oof_candidates`. This runs inside the cache-miss
+                        // function so that cached outputs already contain the processed candidate list.
+                        // Only full layout passes run it: measure passes must not write hoisted box layouts
+                        // (which would not be rewritten if the final layout pass is a cache hit).
+                        if (inputs.run_mode == .perform_layout) {
+                            try compute_mod.computeOofLayout(tree, node_id, &output);
                         }
-                    };
-                }
+
+                        return output;
+                    }
+                };
 
                 // TraversePartialTree / TraverseTree
 
@@ -744,8 +734,7 @@ pub fn TaffyTree(comptime NodeContext: type) type {
                     return self.getCoreContainerStyle(child_node_id);
                 }
 
-                // TODO(milestone-3): change `block_ctx` to `?*BlockContext` once `compute/block.zig` exists.
-                pub fn computeBlockChildLayout(self: *ViewSelf, node_id: NodeId, inputs: LayoutInput, block_ctx: anytype) LayoutError!LayoutOutput {
+                pub fn computeBlockChildLayout(self: *ViewSelf, node_id: NodeId, inputs: LayoutInput, block_ctx: ?*BlockContext) LayoutError!LayoutOutput {
                     return self.computeChildLayoutImpl(node_id, inputs, block_ctx);
                 }
 
@@ -1436,7 +1425,7 @@ test "the layout view implements every interface method" {
     try testing.expectEqual(@as(f32, 0.0), traits.calc(&view, @ptrCast(&view), 1.0));
     try testing.expect(!view.isOutOfFlow(child));
 
-    // Laying out the leaf child directly (the block container itself would need block layout)
+    // Lay out the leaf child directly through the block-child entry point, without a block context
     var output = try view.computeBlockChildLayout(child, .{
         .run_mode = .perform_layout,
         .sizing_mode = .inherent_size,
