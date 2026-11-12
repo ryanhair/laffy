@@ -136,6 +136,15 @@
 //!     containing block's hoisted child list. Return `true` for box-generating nodes whose
 //!     position style is `absolute` or `fixed`, and `false` otherwise (including for
 //!     `display: none` nodes).
+//!   - `isRoundingCurrent(self, node_id: NodeId, parent_x: f32, parent_y: f32) bool`,
+//!     `markRounded(self, node_id: NodeId, parent_x: f32, parent_y: f32) void` and
+//!     `finishRounding(self) void`: optional (laffy addition), all three or none. They let
+//!     `roundLayout` skip subtrees that have not changed since they were last rounded.
+//!     `markRounded` is called after `setFinalLayout` for every node that is rounded, with the
+//!     cumulative offset of the node's parent. `isRoundingCurrent` is called before a node is
+//!     rounded and must return true only if rounding the node and everything below it against
+//!     that offset would reproduce the final layouts they already hold. `finishRounding` is
+//!     called once when `roundLayout` returns. See `TaffyTree` for an implementation.
 //!   - `hoistedChildCount(self, node_id: NodeId) usize`: required. The number of out-of-flow
 //!     boxes whose containing block is `node_id` (as recorded by `addHoistedChildren`).
 //!   - `getHoistedChildId(self, node_id: NodeId, index: usize) NodeId`: required.

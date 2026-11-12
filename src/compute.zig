@@ -400,10 +400,15 @@ pub fn computeCachedLayout(
 pub fn roundLayout(tree: anytype, node_id: NodeId) void {
     traits.assertImplements(@TypeOf(tree), &.{.round_tree});
     roundLayoutInner(tree, node_id, 0.0, 0.0);
+    if (comptime @hasDecl(traits.TreeType(@TypeOf(tree)), "finishRounding")) tree.finishRounding();
 }
 
 /// Recursive function to apply rounding to all descendents
 fn roundLayoutInner(tree: anytype, node_id: NodeId, parent_cumulative_x: f32, parent_cumulative_y: f32) void {
+    // A tree that tracks changes can tell that a whole subtree would round to what it already holds
+    const tracks_changes = comptime @hasDecl(traits.TreeType(@TypeOf(tree)), "isRoundingCurrent");
+    if (tracks_changes and tree.isRoundingCurrent(node_id, parent_cumulative_x, parent_cumulative_y)) return;
+
     const round = sys.round;
     const unrounded_layout = tree.getUnroundedLayout(node_id);
     var rounded = unrounded_layout;
@@ -435,6 +440,7 @@ fn roundLayoutInner(tree: anytype, node_id: NodeId, parent_cumulative_x: f32, pa
     roundScrollableOverflowRect(&rounded, unrounded_layout.scrollable_overflow_rect, cumulative_x, cumulative_y);
 
     tree.setFinalLayout(node_id, &rounded);
+    if (tracks_changes) tree.markRounded(node_id, parent_cumulative_x, parent_cumulative_y);
 
     // Recurse into in-flow children. Out-of-flow (absolute/fixed) children are skipped here:
     // they are instead visited via their containing block's hoisted child list below, which

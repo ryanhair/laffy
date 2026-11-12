@@ -99,7 +99,9 @@ being replaced:
   constructor helpers; no forced inlining; a scratch allocator with mark and release for the
   temporary lists of the algorithms (full layout is now about level with taffy); one constructor
   name per length type (`fromLength`, not also `length`); `LayoutOutput` is a plain value, with
-  out-of-flow candidates stored per node on the tree instead of in an owned list on the output.
+  out-of-flow candidates stored per node on the tree instead of in an owned list on the output;
+  detailed grid info refilled in place; rounding skips subtrees that did not change since they
+  were last rounded (relayout of a deep tree is now 3 to 50 times faster than taffy).
 - Candidates: direct field access instead of style accessors; a tagged union instead of the
   packed `CompactLength`.
 

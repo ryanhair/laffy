@@ -131,6 +131,15 @@ pub fn TaffyTree(comptime NodeContext: type) type {
             cache: Cache = .{},
             /// The computation result from layout algorithm
             detailed_layout_info: DetailedLayoutInfo = .none,
+            /// The layout pass (see `TaffyTree.layout_pass`) in which the unrounded layout or
+            /// the hoisted child list of this node, or of any of its descendants, last changed
+            layout_stamp: u64 = 1,
+            /// The layout pass in which this node's final layout was last rounded, or 0 if its
+            /// final layout does not come from rounding
+            rounded_pass: u64 = 0,
+            /// The bits of the cumulative offset of the node's parent that the node was last
+            /// rounded against
+            rounded_origin: [2]u32 = .{ 0, 0 },
 
             fn deinit(self: *NodeData, gpa: Allocator) void {
                 self.children.deinit(gpa);
@@ -148,6 +157,10 @@ pub fn TaffyTree(comptime NodeContext: type) type {
         config: TaffyConfig = .{},
         /// Temporary memory for layout algorithms, reused between layout passes
         scratch_allocator: Scratch,
+        /// A counter that advances every time the tree's layouts are rounded. Changes to a node's
+        /// layout are stamped with it, which lets rounding skip subtrees that have not changed
+        /// since they were last rounded.
+        layout_pass: u64 = 1,
 
         /// Creates a new `TaffyTree`
         ///
@@ -170,6 +183,17 @@ pub fn TaffyTree(comptime NodeContext: type) type {
         }
 
         /// The data of a node; panics if the id is not in the tree
+        /// Record that the unrounded layout or the hoisted child list of `node_id` changed, on
+        /// the node and its ancestors. Stops at the first ancestor that already has the stamp of
+        /// the current pass, so stamping costs one step per node per pass on average.
+        fn stampLayoutChange(self: *const Self, node_id: NodeId) void {
+            var data = self.nodeData(node_id);
+            while (data.layout_stamp != self.layout_pass) {
+                data.layout_stamp = self.layout_pass;
+                data = self.nodeData(data.parent orelse return);
+            }
+        }
+
         fn nodeData(self: *const Self, node_id: NodeId) *NodeData {
             return self.nodes.get(node_id.inner) orelse
                 std.debug.panic("invalid {f}: the node is not in this TaffyTree (it was removed, or belongs to another tree)", .{node_id});
@@ -622,7 +646,9 @@ pub fn TaffyTree(comptime NodeContext: type) type {
                         // `roundLayout` reaches out-of-flow boxes only through their containing block's
                         // hoisted child list, and a box inside a hidden subtree is in no such list. Write the
                         // final layout here so that it does not keep the layout from an earlier visible pass.
-                        self.taffy.nodeData(node_id).final_layout = Layout.withOrder(0);
+                        const hidden_node = self.taffy.nodeData(node_id);
+                        hidden_node.final_layout = Layout.withOrder(0);
+                        hidden_node.rounded_pass = 0;
                         return compute_mod.computeHiddenLayout(self, node_id);
                     }
 
@@ -716,7 +742,12 @@ pub fn TaffyTree(comptime NodeContext: type) type {
                 }
 
                 pub fn setUnroundedLayout(self: *ViewSelf, node_id: NodeId, l: *const Layout) void {
-                    self.taffy.nodeData(node_id).unrounded_layout = l.*;
+                    // Relaying out a parent rewrites the layouts of all of its children, mostly with
+                    // the values they already have. Only a real change needs rounding again.
+                    const node = self.taffy.nodeData(node_id);
+                    if (std.mem.eql(u8, std.mem.asBytes(&node.unrounded_layout), std.mem.asBytes(l))) return;
+                    node.unrounded_layout = l.*;
+                    self.taffy.stampLayoutChange(node_id);
                 }
 
                 pub fn resolveCalcValue(self: *const ViewSelf, val: *const anyopaque, basis: f32) f32 {
@@ -738,10 +769,12 @@ pub fn TaffyTree(comptime NodeContext: type) type {
 
                 pub fn clearHoistedChildren(self: *ViewSelf, node_id: NodeId) void {
                     self.taffy.nodeData(node_id).hoisted_children.clearRetainingCapacity();
+                    self.taffy.stampLayoutChange(node_id);
                 }
 
                 pub fn addHoistedChildren(self: *ViewSelf, node_id: NodeId, hoisted: []const NodeId) LayoutError!void {
                     try self.taffy.nodeData(node_id).hoisted_children.appendSlice(self.taffy.gpa, hoisted);
+                    self.taffy.stampLayoutChange(node_id);
                 }
 
                 pub fn getDetailedLayoutInfo(self: *const ViewSelf, node_id: NodeId) *const DetailedLayoutInfo {
@@ -819,7 +852,32 @@ pub fn TaffyTree(comptime NodeContext: type) type {
                 }
 
                 pub fn setFinalLayout(self: *ViewSelf, node_id: NodeId, l: *const Layout) void {
-                    self.taffy.nodeData(node_id).final_layout = l.*;
+                    const node = self.taffy.nodeData(node_id);
+                    node.final_layout = l.*;
+                    node.rounded_pass = 0;
+                }
+
+                /// Whether the final layouts of the node and of everything below it are what
+                /// rounding against the passed parent offset would produce again: nothing in
+                /// the subtree changed since it was last rounded, against the same offset.
+                pub fn isRoundingCurrent(self: *const ViewSelf, node_id: NodeId, parent_x: f32, parent_y: f32) bool {
+                    const node = self.taffy.nodeData(node_id);
+                    return node.layout_stamp <= node.rounded_pass and
+                        node.rounded_origin[0] == @as(u32, @bitCast(parent_x)) and
+                        node.rounded_origin[1] == @as(u32, @bitCast(parent_y));
+                }
+
+                /// Record that the node's final layout was rounded against the passed parent
+                /// offset. Called after `setFinalLayout`.
+                pub fn markRounded(self: *ViewSelf, node_id: NodeId, parent_x: f32, parent_y: f32) void {
+                    const node = self.taffy.nodeData(node_id);
+                    node.rounded_pass = self.taffy.layout_pass;
+                    node.rounded_origin = .{ @bitCast(parent_x), @bitCast(parent_y) };
+                }
+
+                /// Called when a rounding pass ends. Later layout changes get a newer stamp.
+                pub fn finishRounding(self: *ViewSelf) void {
+                    self.taffy.layout_pass += 1;
                 }
 
                 pub fn isOutOfFlow(self: *const ViewSelf, node_id: NodeId) bool {
@@ -844,6 +902,8 @@ pub fn TaffyTree(comptime NodeContext: type) type {
 
 const testing = std.testing;
 const Dimension = style_mod.Dimension;
+const LengthPercentage = style_mod.LengthPercentage;
+const LengthPercentageAuto = style_mod.LengthPercentageAuto;
 const Rect = geometry.Rect;
 const traits = @import("traits.zig");
 
@@ -1510,4 +1570,209 @@ test "the layout view implements every interface method" {
     var print_it = false;
     _ = &print_it;
     if (print_it) taffy.printTree(root);
+}
+
+/// A tree with fractional sizes and offsets (so that rounding depends on cumulative positions),
+/// nested flex and block containers, an absolutely positioned box and a hidden node
+const RoundingFixture = struct {
+    taffy: TaffyTree(void),
+    nodes: [10]NodeId,
+
+    const root = 0;
+    const row = 1;
+    const column = 2;
+    const leaf_a = 3;
+    const leaf_b = 4;
+    const leaf_c = 5;
+    const abs = 6;
+    const hidden = 7;
+    const block = 8;
+    const leaf_d = 9;
+
+    fn leafStyle(width: f32, height: f32) Style {
+        return .{ .size = .{ .width = .fromLength(width), .height = .fromLength(height) } };
+    }
+
+    fn init() !RoundingFixture {
+        var taffy = try TaffyTree(void).init(testing.allocator);
+        errdefer taffy.deinit();
+        var nodes: [10]NodeId = undefined;
+        nodes[leaf_a] = try taffy.newLeaf(leafStyle(10.3, 7.4));
+        nodes[leaf_b] = try taffy.newLeaf(leafStyle(20.6, 5.5));
+        nodes[leaf_c] = try taffy.newLeaf(leafStyle(3.7, 9.2));
+        nodes[leaf_d] = try taffy.newLeaf(leafStyle(8.4, 2.6));
+        var abs_style = leafStyle(4.5, 4.5);
+        abs_style.position = .absolute;
+        abs_style.inset = .{ .left = .fromLength(1.3), .top = .fromLength(2.7), .right = .auto, .bottom = .auto };
+        nodes[abs] = try taffy.newLeaf(abs_style);
+        var hidden_style = leafStyle(5.0, 5.0);
+        hidden_style.display = .none;
+        nodes[hidden] = try taffy.newLeaf(hidden_style);
+        nodes[block] = try taffy.newWithChildren(.{
+            .display = .block,
+            .padding = Rect(LengthPercentage).fromLength(0.6),
+        }, &.{ nodes[leaf_d], nodes[abs] });
+        nodes[column] = try taffy.newWithChildren(.{
+            .display = .flex,
+            .flex_direction = .column,
+            .position = .relative,
+            .margin = Rect(LengthPercentageAuto).fromLength(1.4),
+        }, &.{ nodes[leaf_c], nodes[block], nodes[hidden] });
+        nodes[row] = try taffy.newWithChildren(.{
+            .display = .flex,
+            .gap = .{ .width = .fromLength(0.7), .height = .zero },
+        }, &.{ nodes[leaf_a], nodes[column], nodes[leaf_b] });
+        nodes[root] = try taffy.newWithChildren(.{
+            .display = .block,
+            .padding = Rect(LengthPercentage).fromLength(2.3),
+        }, &.{nodes[row]});
+        return .{ .taffy = taffy, .nodes = nodes };
+    }
+
+    fn deinit(self: *RoundingFixture) void {
+        self.taffy.deinit();
+    }
+
+    const Step = union(enum) {
+        /// Resize a leaf
+        resize: struct { node: usize, width: f32, height: f32 },
+        /// Change the padding of the root, which moves everything below it
+        root_padding: f32,
+        /// Show or hide a node
+        display: struct { node: usize, value: style_mod.Display },
+        /// Remove a node from its parent
+        remove: struct { parent: usize, child: usize },
+        /// Append a node to a parent
+        append: struct { parent: usize, child: usize },
+        /// Mark a node dirty without changing anything
+        dirty: usize,
+        /// Lay out a subtree as if it were the root
+        layout_subtree: usize,
+        /// Lay out the tree with rounding turned off
+        layout_unrounded,
+        /// Lay out the tree with a different available width
+        layout_width: f32,
+    };
+
+    const available: Size(AvailableSpace) = .{ .width = .{ .definite = 97.3 }, .height = .max_content };
+
+    fn apply(self: *RoundingFixture, step: Step) !void {
+        const taffy = &self.taffy;
+        switch (step) {
+            .resize => |r| {
+                var s = taffy.style(self.nodes[r.node]).*;
+                s.size = .{ .width = .fromLength(r.width), .height = .fromLength(r.height) };
+                taffy.setStyle(self.nodes[r.node], s);
+            },
+            .root_padding => |padding| {
+                var s = taffy.style(self.nodes[root]).*;
+                s.padding = Rect(LengthPercentage).fromLength(padding);
+                taffy.setStyle(self.nodes[root], s);
+            },
+            .display => |d| {
+                var s = taffy.style(self.nodes[d.node]).*;
+                s.display = d.value;
+                taffy.setStyle(self.nodes[d.node], s);
+            },
+            .remove => |r| _ = taffy.removeChild(self.nodes[r.parent], self.nodes[r.child]),
+            .append => |a| try taffy.addChild(self.nodes[a.parent], self.nodes[a.child]),
+            .dirty => |node| taffy.markDirty(self.nodes[node]),
+            .layout_subtree => |node| try taffy.computeLayout(self.nodes[node], available),
+            .layout_unrounded => {
+                taffy.disableRounding();
+                try taffy.computeLayout(self.nodes[root], available);
+                taffy.enableRounding();
+            },
+            .layout_width => |width| try taffy.computeLayout(self.nodes[root], .{ .width = .{ .definite = width }, .height = .max_content }),
+        }
+    }
+};
+
+/// Apply `steps` to a tree, laying it out after every step, and check each time that the final
+/// layouts it holds equal those produced by rounding the whole tree again without skipping
+fn expectIncrementalRoundingMatches(steps: []const RoundingFixture.Step) !void {
+    var fixture = try RoundingFixture.init();
+    defer fixture.deinit();
+    const taffy = &fixture.taffy;
+    const root_node = fixture.nodes[RoundingFixture.root];
+
+    try taffy.computeLayout(root_node, RoundingFixture.available);
+    for (steps, 0..) |step, step_index| {
+        try fixture.apply(step);
+        try taffy.computeLayout(root_node, RoundingFixture.available);
+
+        var incremental: [fixture.nodes.len]Layout = undefined;
+        for (&incremental, fixture.nodes) |*l, node| l.* = taffy.layout(node).*;
+
+        // Forget what was rounded, so that the next rounding pass visits every node
+        for (fixture.nodes) |node| taffy.nodeData(node).rounded_pass = 0;
+        var view = taffy.asLayoutTree();
+        compute_mod.roundLayout(&view, root_node);
+
+        for (incremental, fixture.nodes, 0..) |got, node, index| {
+            // A detached node is not reached by rounding and keeps whatever layout it had
+            if (index != RoundingFixture.root and taffy.parent(node) == null) continue;
+            const want = taffy.layout(node).*;
+            if (!got.eql(want)) {
+                std.debug.print("step {d}, node {d}: got {any}\nwant {any}\n", .{ step_index, index, got, want });
+                return error.TestExpectedEqual;
+            }
+        }
+    }
+}
+
+test "rounding after a relayout matches rounding the whole tree" {
+    const F = RoundingFixture;
+    const scenarios = [_][]const F.Step{
+        &.{.{ .dirty = F.leaf_d }},
+        &.{.{ .resize = .{ .node = F.leaf_a, .width = 11.8, .height = 7.4 } }},
+        &.{.{ .resize = .{ .node = F.leaf_d, .width = 8.4, .height = 6.1 } }},
+        &.{ .{ .resize = .{ .node = F.leaf_c, .width = 3.7, .height = 0.6 } }, .{ .resize = .{ .node = F.leaf_c, .width = 3.7, .height = 9.2 } } },
+        &.{.{ .root_padding = 3.1 }},
+        &.{ .{ .root_padding = 0.5 }, .{ .resize = .{ .node = F.leaf_b, .width = 1.2, .height = 30.9 } } },
+        &.{.{ .display = .{ .node = F.column, .value = .none } }},
+        &.{ .{ .display = .{ .node = F.column, .value = .none } }, .{ .display = .{ .node = F.column, .value = .flex } } },
+        &.{.{ .display = .{ .node = F.hidden, .value = .block } }},
+        &.{.{ .remove = .{ .parent = F.row, .child = F.leaf_a } }},
+        &.{ .{ .remove = .{ .parent = F.row, .child = F.leaf_a } }, .{ .append = .{ .parent = F.block, .child = F.leaf_a } } },
+        &.{ .{ .remove = .{ .parent = F.block, .child = F.abs } }, .{ .append = .{ .parent = F.row, .child = F.abs } } },
+        &.{.{ .layout_subtree = F.column }},
+        &.{ .{ .layout_subtree = F.block }, .{ .resize = .{ .node = F.leaf_d, .width = 2.2, .height = 2.6 } }, .{ .layout_subtree = F.row } },
+        &.{ .layout_unrounded, .{ .resize = .{ .node = F.leaf_d, .width = 9.9, .height = 2.6 } }, .layout_unrounded },
+        &.{ .{ .resize = .{ .node = F.leaf_a, .width = 0.4, .height = 7.4 } }, .layout_unrounded },
+        &.{ .{ .layout_width = 51.9 }, .{ .dirty = F.leaf_b } },
+        &.{ .{ .layout_width = 13.1 }, .{ .layout_width = 200.6 } },
+    };
+    for (scenarios, 0..) |steps, index| {
+        expectIncrementalRoundingMatches(steps) catch |err| {
+            std.debug.print("scenario {d}\n", .{index});
+            return err;
+        };
+    }
+}
+
+test "rounding skips unchanged subtrees" {
+    var fixture = try RoundingFixture.init();
+    defer fixture.deinit();
+    const F = RoundingFixture;
+    const taffy = &fixture.taffy;
+    try taffy.computeLayout(fixture.nodes[F.root], F.available);
+    const first_pass = taffy.nodeData(fixture.nodes[F.leaf_a]).rounded_pass;
+    try testing.expect(first_pass != 0);
+
+    // Changing one leaf's height re-rounds the leaf and its ancestors, but not its neighbours
+    var s = taffy.style(fixture.nodes[F.leaf_d]).*;
+    s.size.height = .fromLength(2.6);
+    taffy.setStyle(fixture.nodes[F.leaf_d], s);
+    taffy.markDirty(fixture.nodes[F.leaf_d]);
+    try taffy.computeLayout(fixture.nodes[F.root], F.available);
+    try testing.expectEqual(first_pass, taffy.nodeData(fixture.nodes[F.leaf_a]).rounded_pass);
+    try testing.expectEqual(first_pass, taffy.nodeData(fixture.nodes[F.leaf_d]).rounded_pass);
+
+    s.size.height = .fromLength(14.9);
+    taffy.setStyle(fixture.nodes[F.leaf_d], s);
+    try taffy.computeLayout(fixture.nodes[F.root], F.available);
+    try testing.expect(taffy.nodeData(fixture.nodes[F.leaf_d]).rounded_pass > first_pass);
+    try testing.expect(taffy.nodeData(fixture.nodes[F.block]).rounded_pass > first_pass);
+    try testing.expectEqual(first_pass, taffy.nodeData(fixture.nodes[F.leaf_c]).rounded_pass);
 }
