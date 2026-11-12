@@ -111,7 +111,7 @@ pub fn GenericGridTemplateComponent(comptime Repetition: type) type {
 
         /// Upstream `GridTemplateComponent::as_component_ref`. laffy's `GridTemplateComponent`
         /// already is the "ref" form (its repetition borrows its track list), so this is the identity.
-        pub inline fn asComponentRef(self: Self) Self {
+        pub fn asComponentRef(self: Self) Self {
             return self;
         }
 
@@ -125,23 +125,23 @@ pub fn GenericGridTemplateComponent(comptime Repetition: type) type {
         pub const zero: Self = .{ .single = TrackSizingFunction.zero };
 
         /// Upstream `TaffyFitContent`
-        pub inline fn fitContent(argument: LengthPercentage) Self {
+        pub fn fitContent(argument: LengthPercentage) Self {
             return .{ .single = TrackSizingFunction.fitContent(argument) };
         }
         /// Upstream `FromLength`
-        pub inline fn fromLength(value: anytype) Self {
+        pub fn fromLength(value: anytype) Self {
             return .{ .single = TrackSizingFunction.fromLength(value) };
         }
         /// Upstream `FromPercent`
-        pub inline fn fromPercent(value: anytype) Self {
+        pub fn fromPercent(value: anytype) Self {
             return .{ .single = TrackSizingFunction.fromPercent(value) };
         }
         /// Upstream `FromFr`
-        pub inline fn fromFr(value: anytype) Self {
+        pub fn fromFr(value: anytype) Self {
             return .{ .single = TrackSizingFunction.fromFr(value) };
         }
         /// Upstream `From<MinMax<MinTrackSizingFunction, MaxTrackSizingFunction>>`
-        pub inline fn fromMinMax(input: TrackSizingFunction) Self {
+        pub fn fromMinMax(input: TrackSizingFunction) Self {
             return .{ .single = input };
         }
     };
@@ -175,7 +175,7 @@ pub const GridAutoFlow = enum(u8) {
 
     /// Whether grid auto placement uses the sparse placement algorithm or the dense placement algorithm
     /// See: <https://developer.mozilla.org/en-US/docs/Web/CSS/grid-auto-flow#values>
-    pub inline fn isDense(self: GridAutoFlow) bool {
+    pub fn isDense(self: GridAutoFlow) bool {
         return switch (self) {
             .row, .column => false,
             .row_dense, .column_dense => true,
@@ -184,7 +184,7 @@ pub const GridAutoFlow = enum(u8) {
 
     /// Whether grid auto placement fills areas row-wise or column-wise
     /// See: <https://developer.mozilla.org/en-US/docs/Web/CSS/grid-auto-flow#values>
-    pub inline fn primaryAxis(self: GridAutoFlow) AbsoluteAxis {
+    pub fn primaryAxis(self: GridAutoFlow) AbsoluteAxis {
         return switch (self) {
             .row, .row_dense => .horizontal,
             .column, .column_dense => .vertical,
@@ -415,12 +415,12 @@ pub const GridPlacement = union(enum) {
     pub const default: GridPlacement = .auto;
 
     /// Upstream `TaffyGridLine::from_line_index`
-    pub inline fn fromLineIndex(index: i16) GridPlacement {
+    pub fn fromLineIndex(index: i16) GridPlacement {
         return .{ .line = GridLine.from(index) };
     }
 
     /// Upstream `TaffyGridSpan::from_span`
-    pub inline fn fromSpan(span_value: u16) GridPlacement {
+    pub fn fromSpan(span_value: u16) GridPlacement {
         return .{ .span = span_value };
     }
 
@@ -497,27 +497,27 @@ pub const MaxTrackSizingFunction = packed struct(u64) {
     pub const max_content: MaxTrackSizingFunction = .{ .inner = CompactLength.max_content };
 
     /// Upstream `FromLength`
-    pub inline fn fromLength(value: anytype) MaxTrackSizingFunction {
+    pub fn fromLength(value: anytype) MaxTrackSizingFunction {
         return length(toF32(value));
     }
     /// Upstream `FromPercent`
-    pub inline fn fromPercent(value: anytype) MaxTrackSizingFunction {
+    pub fn fromPercent(value: anytype) MaxTrackSizingFunction {
         return percent(toF32(value));
     }
     /// Upstream `FromFr`
-    pub inline fn fromFr(value: anytype) MaxTrackSizingFunction {
+    pub fn fromFr(value: anytype) MaxTrackSizingFunction {
         return fr(toF32(value));
     }
     /// Upstream `TaffyFitContent`
-    pub inline fn fitContent(argument: LengthPercentage) MaxTrackSizingFunction {
+    pub fn fitContent(argument: LengthPercentage) MaxTrackSizingFunction {
         return .{ .inner = CompactLength.fitContent(argument) };
     }
     /// Upstream `From<LengthPercentage>`
-    pub inline fn fromLengthPercentage(input: LengthPercentage) MaxTrackSizingFunction {
+    pub fn fromLengthPercentage(input: LengthPercentage) MaxTrackSizingFunction {
         return .{ .inner = input.inner };
     }
     /// Upstream `From<LengthPercentageAuto>`
-    pub inline fn fromLengthPercentageAuto(input: LengthPercentageAuto) MaxTrackSizingFunction {
+    pub fn fromLengthPercentageAuto(input: LengthPercentageAuto) MaxTrackSizingFunction {
         return .{ .inner = input.inner };
     }
     /// Upstream `From<Dimension>`
@@ -530,41 +530,41 @@ pub const MaxTrackSizingFunction = packed struct(u64) {
         };
     }
     /// Upstream `From<MinTrackSizingFunction>`
-    pub inline fn fromMin(input: MinTrackSizingFunction) MaxTrackSizingFunction {
+    pub fn fromMin(input: MinTrackSizingFunction) MaxTrackSizingFunction {
         return .{ .inner = input.inner };
     }
 
     /// An absolute length in some abstract units. Users of laffy may define what they correspond
     /// to in their application (pixels, logical pixels, mm, etc) as they see fit.
-    pub inline fn length(val: f32) MaxTrackSizingFunction {
+    pub fn length(val: f32) MaxTrackSizingFunction {
         return .{ .inner = CompactLength.length(val) };
     }
 
     /// A percentage length relative to the size of the containing block.
     ///
     /// **NOTE: percentages are represented as a f32 value in the range [0.0, 1.0] NOT the range [0.0, 100.0]**
-    pub inline fn percent(val: f32) MaxTrackSizingFunction {
+    pub fn percent(val: f32) MaxTrackSizingFunction {
         return .{ .inner = CompactLength.percent(val) };
     }
 
     /// The size should be computed according to the "fit content" formula:
     ///    `max(min_content, min(max_content, limit))`
     /// where `limit` is a LENGTH value.
-    pub inline fn fitContentPx(limit: f32) MaxTrackSizingFunction {
+    pub fn fitContentPx(limit: f32) MaxTrackSizingFunction {
         return .{ .inner = CompactLength.fitContentPx(limit) };
     }
 
     /// The size should be computed according to the "fit content" formula:
     ///    `max(min_content, min(max_content, limit))`
     /// where `limit` is a PERCENTAGE value.
-    pub inline fn fitContentPercent(limit: f32) MaxTrackSizingFunction {
+    pub fn fitContentPercent(limit: f32) MaxTrackSizingFunction {
         return .{ .inner = CompactLength.fitContentPercent(limit) };
     }
 
     /// The dimension as a fraction of the total available grid space (`fr` units in CSS)
     /// Specified value is the numerator of the fraction. Denominator is the sum of all fraction specified in that grid dimension
     /// Spec: <https://www.w3.org/TR/css3-grid-layout/#fr-unit>
-    pub inline fn fr(val: f32) MaxTrackSizingFunction {
+    pub fn fr(val: f32) MaxTrackSizingFunction {
         return .{ .inner = CompactLength.fr(val) };
     }
 
@@ -572,7 +572,7 @@ pub const MaxTrackSizingFunction = packed struct(u64) {
     /// the actual calc representation and may be a pointer, index, etc.
     ///
     /// The low 3 bits are used as a tag value and will be returned as 0.
-    pub inline fn calc(ptr: *const anyopaque) MaxTrackSizingFunction {
+    pub fn calc(ptr: *const anyopaque) MaxTrackSizingFunction {
         return .{ .inner = CompactLength.calc(ptr) };
     }
 
@@ -580,65 +580,65 @@ pub const MaxTrackSizingFunction = packed struct(u64) {
     /// as an opaque handle to the actual calc representation and may be a pointer, index, etc.
     ///
     /// The low 3 bits are used as a tag value and will be returned as 0.
-    pub inline fn fitContentCalc(ptr: *const anyopaque) MaxTrackSizingFunction {
+    pub fn fitContentCalc(ptr: *const anyopaque) MaxTrackSizingFunction {
         return .{ .inner = CompactLength.fitContentCalc(ptr) };
     }
 
     /// Create a MaxTrackSizingFunction from a raw `CompactLength`.
     /// The `CompactLength` must represent a valid variant for MaxTrackSizingFunction.
-    pub inline fn fromRaw(val: CompactLength) MaxTrackSizingFunction {
+    pub fn fromRaw(val: CompactLength) MaxTrackSizingFunction {
         return .{ .inner = val };
     }
 
     /// Get the underlying `CompactLength` representation of the value
-    pub inline fn intoRaw(self: MaxTrackSizingFunction) CompactLength {
+    pub fn intoRaw(self: MaxTrackSizingFunction) CompactLength {
         return self.inner;
     }
 
     /// Returns true if the max track sizing function is `MinContent`, `MaxContent`, `FitContent` or `Auto`, else false.
-    pub inline fn isIntrinsic(self: MaxTrackSizingFunction) bool {
+    pub fn isIntrinsic(self: MaxTrackSizingFunction) bool {
         return self.inner.isIntrinsic();
     }
 
     /// Returns true if the max track sizing function is `MaxContent`, `FitContent` or `Auto` else false.
     /// "In all cases, treat auto and fit-content() as max-content, except where specified otherwise for fit-content()."
     /// See: <https://www.w3.org/TR/css-grid-1/#algo-terms>
-    pub inline fn isMaxContentAlike(self: MaxTrackSizingFunction) bool {
+    pub fn isMaxContentAlike(self: MaxTrackSizingFunction) bool {
         return self.inner.isMaxContentAlike();
     }
 
     /// Returns true if the an Fr value, else false.
-    pub inline fn isFr(self: MaxTrackSizingFunction) bool {
+    pub fn isFr(self: MaxTrackSizingFunction) bool {
         return self.inner.isFr();
     }
 
     /// Returns true if the is `Auto`, else false.
-    pub inline fn isAuto(self: MaxTrackSizingFunction) bool {
+    pub fn isAuto(self: MaxTrackSizingFunction) bool {
         return self.inner.isAuto();
     }
 
     /// Returns true if value is MinContent
-    pub inline fn isMinContent(self: MaxTrackSizingFunction) bool {
+    pub fn isMinContent(self: MaxTrackSizingFunction) bool {
         return self.inner.isMinContent();
     }
 
     /// Returns true if value is MaxContent
-    pub inline fn isMaxContent(self: MaxTrackSizingFunction) bool {
+    pub fn isMaxContent(self: MaxTrackSizingFunction) bool {
         return self.inner.isMaxContent();
     }
 
     /// Returns true if value is FitContent(...)
-    pub inline fn isFitContent(self: MaxTrackSizingFunction) bool {
+    pub fn isFitContent(self: MaxTrackSizingFunction) bool {
         return self.inner.isFitContent();
     }
 
     /// Returns true if value is MaxContent or FitContent(...)
-    pub inline fn isMaxOrFitContent(self: MaxTrackSizingFunction) bool {
+    pub fn isMaxOrFitContent(self: MaxTrackSizingFunction) bool {
         return self.inner.isMaxOrFitContent();
     }
 
     /// Returns whether the value can be resolved using `definiteValue`
-    pub inline fn hasDefiniteValue(self: MaxTrackSizingFunction, parent_size: ?f32) bool {
+    pub fn hasDefiniteValue(self: MaxTrackSizingFunction, parent_size: ?f32) bool {
         return switch (self.inner.tag()) {
             CompactLength.length_tag => true,
             CompactLength.percent_tag => parent_size != null,
@@ -649,7 +649,7 @@ pub const MaxTrackSizingFunction = packed struct(u64) {
     /// Returns fixed point values directly. Attempts to resolve percentage values against
     /// the passed available_space and returns if this results in a concrete value (which it
     /// will if the available_space is non-null). Otherwise returns null.
-    pub inline fn definiteValue(self: MaxTrackSizingFunction, parent_size: ?f32, calc_resolver: anytype) ?f32 {
+    pub fn definiteValue(self: MaxTrackSizingFunction, parent_size: ?f32, calc_resolver: anytype) ?f32 {
         return switch (self.inner.tag()) {
             CompactLength.length_tag => self.inner.value(),
             CompactLength.percent_tag => if (parent_size) |size| self.inner.value() * size else null,
@@ -663,7 +663,7 @@ pub const MaxTrackSizingFunction = packed struct(u64) {
     /// Resolve the `fit-content()` limit of this track sizing function against the passed `parent_size`.
     /// Returns null if this is not a `fit-content()` function, or if it has a percentage or `calc()`
     /// argument and `parent_size` is indefinite.
-    pub inline fn fitContentLimit(self: MaxTrackSizingFunction, parent_size: ?f32, calc_resolver: anytype) ?f32 {
+    pub fn fitContentLimit(self: MaxTrackSizingFunction, parent_size: ?f32, calc_resolver: anytype) ?f32 {
         return switch (self.inner.tag()) {
             CompactLength.fit_content_px_tag => self.inner.value(),
             CompactLength.fit_content_percent_tag => if (parent_size) |size| self.inner.value() * size else null,
@@ -680,7 +680,7 @@ pub const MaxTrackSizingFunction = packed struct(u64) {
     ///     - A fit-content sizing function with fixed argument
     ///     - A fit-content sizing function with percentage argument (with definite available space)
     /// All other kinds of track sizing function return null.
-    pub inline fn definiteLimit(self: MaxTrackSizingFunction, parent_size: ?f32, calc_resolver: anytype) ?f32 {
+    pub fn definiteLimit(self: MaxTrackSizingFunction, parent_size: ?f32, calc_resolver: anytype) ?f32 {
         return switch (self.inner.tag()) {
             CompactLength.fit_content_px_tag => self.inner.value(),
             CompactLength.fit_content_percent_tag => if (parent_size) |size| self.inner.value() * size else null,
@@ -693,12 +693,12 @@ pub const MaxTrackSizingFunction = packed struct(u64) {
 
     /// Resolve percentage values against the passed parent_size, returning the value.
     /// Non-percentage values always return null.
-    pub inline fn resolvedPercentageSize(self: MaxTrackSizingFunction, parent_size: f32, calc_resolver: anytype) ?f32 {
+    pub fn resolvedPercentageSize(self: MaxTrackSizingFunction, parent_size: f32, calc_resolver: anytype) ?f32 {
         return self.inner.resolvedPercentageSize(parent_size, calc_resolver);
     }
 
     /// Whether the track sizing functions depends on the size of the parent node
-    pub inline fn usesPercentage(self: MaxTrackSizingFunction) bool {
+    pub fn usesPercentage(self: MaxTrackSizingFunction) bool {
         return self.inner.usesPercentage();
     }
 
@@ -787,19 +787,19 @@ pub const MinTrackSizingFunction = packed struct(u64) {
     pub const max_content: MinTrackSizingFunction = .{ .inner = CompactLength.max_content };
 
     /// Upstream `FromLength`
-    pub inline fn fromLength(value: anytype) MinTrackSizingFunction {
+    pub fn fromLength(value: anytype) MinTrackSizingFunction {
         return length(toF32(value));
     }
     /// Upstream `FromPercent`
-    pub inline fn fromPercent(value: anytype) MinTrackSizingFunction {
+    pub fn fromPercent(value: anytype) MinTrackSizingFunction {
         return percent(toF32(value));
     }
     /// Upstream `From<LengthPercentage>`
-    pub inline fn fromLengthPercentage(input: LengthPercentage) MinTrackSizingFunction {
+    pub fn fromLengthPercentage(input: LengthPercentage) MinTrackSizingFunction {
         return .{ .inner = input.inner };
     }
     /// Upstream `From<LengthPercentageAuto>`
-    pub inline fn fromLengthPercentageAuto(input: LengthPercentageAuto) MinTrackSizingFunction {
+    pub fn fromLengthPercentageAuto(input: LengthPercentageAuto) MinTrackSizingFunction {
         return .{ .inner = input.inner };
     }
     /// Upstream `From<Dimension>`
@@ -826,14 +826,14 @@ pub const MinTrackSizingFunction = packed struct(u64) {
 
     /// An absolute length in some abstract units. Users of laffy may define what they correspond
     /// to in their application (pixels, logical pixels, mm, etc) as they see fit.
-    pub inline fn length(val: f32) MinTrackSizingFunction {
+    pub fn length(val: f32) MinTrackSizingFunction {
         return .{ .inner = CompactLength.length(val) };
     }
 
     /// A percentage length relative to the size of the containing block.
     ///
     /// **NOTE: percentages are represented as a f32 value in the range [0.0, 1.0] NOT the range [0.0, 100.0]**
-    pub inline fn percent(val: f32) MinTrackSizingFunction {
+    pub fn percent(val: f32) MinTrackSizingFunction {
         return .{ .inner = CompactLength.percent(val) };
     }
 
@@ -841,60 +841,60 @@ pub const MinTrackSizingFunction = packed struct(u64) {
     /// the actual calc representation and may be a pointer, index, etc.
     ///
     /// The low 3 bits are used as a tag value and will be returned as 0.
-    pub inline fn calc(ptr: *const anyopaque) MinTrackSizingFunction {
+    pub fn calc(ptr: *const anyopaque) MinTrackSizingFunction {
         return .{ .inner = CompactLength.calc(ptr) };
     }
 
     /// Create a MinTrackSizingFunction from a raw `CompactLength`.
     /// The `CompactLength` must represent a valid variant for MinTrackSizingFunction.
-    pub inline fn fromRaw(val: CompactLength) MinTrackSizingFunction {
+    pub fn fromRaw(val: CompactLength) MinTrackSizingFunction {
         return .{ .inner = val };
     }
 
     /// Get the underlying `CompactLength` representation of the value
-    pub inline fn intoRaw(self: MinTrackSizingFunction) CompactLength {
+    pub fn intoRaw(self: MinTrackSizingFunction) CompactLength {
         return self.inner;
     }
 
     /// Returns true if the min track sizing function is `MinContent`, `MaxContent` or `Auto`, else false.
-    pub inline fn isIntrinsic(self: MinTrackSizingFunction) bool {
+    pub fn isIntrinsic(self: MinTrackSizingFunction) bool {
         return self.inner.isIntrinsic();
     }
 
     /// Returns true if the min track sizing function is `MinContent` or `MaxContent`, else false.
-    pub inline fn isMinOrMaxContent(self: MinTrackSizingFunction) bool {
+    pub fn isMinOrMaxContent(self: MinTrackSizingFunction) bool {
         return self.inner.isMinOrMaxContent();
     }
 
     /// Returns true if the value is an fr value
-    pub inline fn isFr(self: MinTrackSizingFunction) bool {
+    pub fn isFr(self: MinTrackSizingFunction) bool {
         return self.inner.isFr();
     }
 
     /// Returns true if the is `Auto`, else false.
-    pub inline fn isAuto(self: MinTrackSizingFunction) bool {
+    pub fn isAuto(self: MinTrackSizingFunction) bool {
         return self.inner.isAuto();
     }
 
     /// Returns true if the value is `Auto`, or is a percentage and `parent_size` is null
-    pub inline fn behavesAsAuto(self: MinTrackSizingFunction, parent_size: ?f32) bool {
+    pub fn behavesAsAuto(self: MinTrackSizingFunction, parent_size: ?f32) bool {
         return self.inner.isAuto() or (parent_size == null and self.inner.usesPercentage());
     }
 
     /// Returns true if value is MinContent
-    pub inline fn isMinContent(self: MinTrackSizingFunction) bool {
+    pub fn isMinContent(self: MinTrackSizingFunction) bool {
         return self.inner.isMinContent();
     }
 
     /// Returns true if value is MaxContent
-    pub inline fn isMaxContent(self: MinTrackSizingFunction) bool {
+    pub fn isMaxContent(self: MinTrackSizingFunction) bool {
         return self.inner.isMaxContent();
     }
 
     /// Returns fixed point values directly. Attempts to resolve percentage values against
     /// the passed available_space and returns if this results in a concrete value (which it
     /// will if the available_space is non-null). Otherwise returns null.
-    pub inline fn definiteValue(self: MinTrackSizingFunction, parent_size: ?f32, calc_resolver: anytype) ?f32 {
+    pub fn definiteValue(self: MinTrackSizingFunction, parent_size: ?f32, calc_resolver: anytype) ?f32 {
         return switch (self.inner.tag()) {
             CompactLength.length_tag => self.inner.value(),
             CompactLength.percent_tag => if (parent_size) |size| self.inner.value() * size else null,
@@ -907,12 +907,12 @@ pub const MinTrackSizingFunction = packed struct(u64) {
 
     /// Resolve percentage values against the passed parent_size, returning the value.
     /// Non-percentage values always return null.
-    pub inline fn resolvedPercentageSize(self: MinTrackSizingFunction, parent_size: f32, calc_resolver: anytype) ?f32 {
+    pub fn resolvedPercentageSize(self: MinTrackSizingFunction, parent_size: f32, calc_resolver: anytype) ?f32 {
         return self.inner.resolvedPercentageSize(parent_size, calc_resolver);
     }
 
     /// Whether the track sizing functions depends on the size of the parent node
-    pub inline fn usesPercentage(self: MinTrackSizingFunction) bool {
+    pub fn usesPercentage(self: MinTrackSizingFunction) bool {
         return self.inner.usesPercentage();
     }
 
@@ -976,11 +976,11 @@ pub const TrackSizingFunction = struct {
     max: MaxTrackSizingFunction,
 
     /// Extract the min track sizing function
-    pub inline fn minSizingFunction(self: TrackSizingFunction) MinTrackSizingFunction {
+    pub fn minSizingFunction(self: TrackSizingFunction) MinTrackSizingFunction {
         return self.min;
     }
     /// Extract the max track sizing function
-    pub inline fn maxSizingFunction(self: TrackSizingFunction) MaxTrackSizingFunction {
+    pub fn maxSizingFunction(self: TrackSizingFunction) MaxTrackSizingFunction {
         return self.max;
     }
     /// Determine whether at least one of the components ("min" and "max") are fixed sizing function
@@ -988,7 +988,7 @@ pub const TrackSizingFunction = struct {
     /// A fixed sizing function is a `<length-percentage>`, which includes `calc()` values (and so
     /// `min()`, `max()` and `clamp()`) such as `minmax(min(100%, 300px), 1fr)`.
     /// <https://www.w3.org/TR/css-grid-1/#fixed-sizing-function>
-    pub inline fn hasFixedComponent(self: TrackSizingFunction) bool {
+    pub fn hasFixedComponent(self: TrackSizingFunction) bool {
         return self.min.inner.isLengthPercentageOrCalc() or self.max.inner.isLengthPercentageOrCalc();
     }
 
@@ -1002,39 +1002,39 @@ pub const TrackSizingFunction = struct {
     pub const zero: TrackSizingFunction = .{ .min = MinTrackSizingFunction.zero, .max = MaxTrackSizingFunction.zero };
 
     /// Upstream `TaffyFitContent`
-    pub inline fn fitContent(argument: LengthPercentage) TrackSizingFunction {
+    pub fn fitContent(argument: LengthPercentage) TrackSizingFunction {
         return .{ .min = MinTrackSizingFunction.auto, .max = MaxTrackSizingFunction.fitContent(argument) };
     }
     /// Upstream `FromLength`
-    pub inline fn fromLength(value: anytype) TrackSizingFunction {
+    pub fn fromLength(value: anytype) TrackSizingFunction {
         return .{ .min = MinTrackSizingFunction.fromLength(value), .max = MaxTrackSizingFunction.fromLength(value) };
     }
     /// Upstream `FromPercent`
-    pub inline fn fromPercent(value: anytype) TrackSizingFunction {
+    pub fn fromPercent(value: anytype) TrackSizingFunction {
         return .{ .min = MinTrackSizingFunction.fromPercent(value), .max = MaxTrackSizingFunction.fromPercent(value) };
     }
     /// Upstream `FromFr`
-    pub inline fn fromFr(value: anytype) TrackSizingFunction {
+    pub fn fromFr(value: anytype) TrackSizingFunction {
         return .{ .min = MinTrackSizingFunction.auto, .max = MaxTrackSizingFunction.fromFr(value) };
     }
     /// Upstream `From<LengthPercentage>`
-    pub inline fn fromLengthPercentage(input: LengthPercentage) TrackSizingFunction {
+    pub fn fromLengthPercentage(input: LengthPercentage) TrackSizingFunction {
         return .{ .min = MinTrackSizingFunction.fromLengthPercentage(input), .max = MaxTrackSizingFunction.fromLengthPercentage(input) };
     }
     /// Upstream `From<LengthPercentageAuto>`
-    pub inline fn fromLengthPercentageAuto(input: LengthPercentageAuto) TrackSizingFunction {
+    pub fn fromLengthPercentageAuto(input: LengthPercentageAuto) TrackSizingFunction {
         return .{ .min = MinTrackSizingFunction.fromLengthPercentageAuto(input), .max = MaxTrackSizingFunction.fromLengthPercentageAuto(input) };
     }
     /// Upstream `From<Dimension>`
-    pub inline fn fromDimension(input: Dimension) TrackSizingFunction {
+    pub fn fromDimension(input: Dimension) TrackSizingFunction {
         return .{ .min = MinTrackSizingFunction.fromDimension(input), .max = MaxTrackSizingFunction.fromDimension(input) };
     }
     /// Upstream `From<MinMax<..>>` (identity in Rust): build from a `geometry.MinMax`
-    pub inline fn fromMinMax(input: geometry.MinMax(MinTrackSizingFunction, MaxTrackSizingFunction)) TrackSizingFunction {
+    pub fn fromMinMax(input: geometry.MinMax(MinTrackSizingFunction, MaxTrackSizingFunction)) TrackSizingFunction {
         return .{ .min = input.min, .max = input.max };
     }
     /// Equality (upstream derived `PartialEq`, bitwise on the compact representations)
-    pub inline fn eql(self: TrackSizingFunction, other: TrackSizingFunction) bool {
+    pub fn eql(self: TrackSizingFunction, other: TrackSizingFunction) bool {
         return self.min == other.min and self.max == other.max;
     }
 };
@@ -1054,7 +1054,7 @@ pub const RepetitionCount = union(enum) {
     count: u16,
 
     /// Upstream `From<u16>`
-    pub inline fn fromU16(value: u16) RepetitionCount {
+    pub fn fromU16(value: u16) RepetitionCount {
         return .{ .count = value };
     }
 
@@ -1084,19 +1084,19 @@ pub const GridTemplateRepetition = struct {
     // `GenericRepetition` interface
 
     /// The repetition count (integer, auto-fill, or auto-fit)
-    pub inline fn getCount(self: GridTemplateRepetition) RepetitionCount {
+    pub fn getCount(self: GridTemplateRepetition) RepetitionCount {
         return self.count;
     }
     /// Returns the number of repeated tracks
-    pub inline fn getTrackCount(self: GridTemplateRepetition) u16 {
+    pub fn getTrackCount(self: GridTemplateRepetition) u16 {
         return @intCast(@min(self.tracks.len, std.math.maxInt(u16)));
     }
     /// Get the repeated tracks
-    pub inline fn getTracks(self: GridTemplateRepetition) []const TrackSizingFunction {
+    pub fn getTracks(self: GridTemplateRepetition) []const TrackSizingFunction {
         return self.tracks;
     }
     /// Returns the line name sets
-    pub inline fn getLinesNames(self: GridTemplateRepetition) []const []const []const u8 {
+    pub fn getLinesNames(self: GridTemplateRepetition) []const []const []const u8 {
         return self.line_names;
     }
 };

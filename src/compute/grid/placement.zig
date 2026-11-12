@@ -19,18 +19,18 @@ const max_oz_line = types.max_oz_line;
 const min_oz_line = types.min_oz_line;
 
 /// Advances the cursor by one track.
-inline fn advancePosition(position: OriginZeroLine) OriginZeroLine {
+fn advancePosition(position: OriginZeroLine) OriginZeroLine {
     return OriginZeroLine.from(position.inner +| 1);
 }
 
 /// Resolves an indefinite span starting at `position`.
-inline fn resolveIndefiniteGridSpan(position: OriginZeroLine, span: u16) Line(OriginZeroLine) {
+fn resolveIndefiniteGridSpan(position: OriginZeroLine, span: u16) Line(OriginZeroLine) {
     const start: i32 = position.inner;
     const span_i32: i32 = span;
     return .{ .start = clampedLine(start), .end = clampedLine(start + span_i32) };
 }
 
-inline fn clampedLine(value: i32) OriginZeroLine {
+fn clampedLine(value: i32) OriginZeroLine {
     return OriginZeroLine.from(@intCast(std.math.clamp(value, std.math.minInt(i16), std.math.maxInt(i16))));
 }
 

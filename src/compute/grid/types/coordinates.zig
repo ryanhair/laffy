@@ -34,12 +34,12 @@ pub const GridLine = packed struct(i16) {
     inner: i16,
 
     /// Upstream `From<i16>`
-    pub inline fn from(value: i16) GridLine {
+    pub fn from(value: i16) GridLine {
         return .{ .inner = value };
     }
 
     /// Returns the underlying i16
-    pub inline fn asI16(self: GridLine) i16 {
+    pub fn asI16(self: GridLine) i16 {
         return self.inner;
     }
 
@@ -68,27 +68,27 @@ pub const OriginZeroLine = packed struct(i16) {
     inner: i16,
 
     /// Create from a raw i16 (upstream tuple constructor `OriginZeroLine(x)`)
-    pub inline fn from(value: i16) OriginZeroLine {
+    pub fn from(value: i16) OriginZeroLine {
         return .{ .inner = value };
     }
 
     /// Upstream `Add<OriginZeroLine>` and `Add<u16>`. `rhs` may be an `OriginZeroLine` or a
     /// `u16` (which is reinterpreted as `i16`, like upstream's `as i16`).
-    pub inline fn add(self: OriginZeroLine, rhs: anytype) OriginZeroLine {
+    pub fn add(self: OriginZeroLine, rhs: anytype) OriginZeroLine {
         return .{ .inner = self.inner + rhsToI16(rhs) };
     }
 
     /// Upstream `Sub<OriginZeroLine>` and `Sub<u16>`. `rhs` may be an `OriginZeroLine` or a `u16`.
-    pub inline fn sub(self: OriginZeroLine, rhs: anytype) OriginZeroLine {
+    pub fn sub(self: OriginZeroLine, rhs: anytype) OriginZeroLine {
         return .{ .inner = self.inner - rhsToI16(rhs) };
     }
 
     /// Upstream `AddAssign<u16>`
-    pub inline fn addAssign(self: *OriginZeroLine, rhs: u16) void {
+    pub fn addAssign(self: *OriginZeroLine, rhs: u16) void {
         self.inner += @as(i16, @bitCast(rhs));
     }
 
-    inline fn rhsToI16(rhs: anytype) i16 {
+    fn rhsToI16(rhs: anytype) i16 {
         const T = @TypeOf(rhs);
         if (T == OriginZeroLine) {
             return rhs.inner;
@@ -102,31 +102,31 @@ pub const OriginZeroLine = packed struct(i16) {
     }
 
     /// Ordering helpers (upstream derives `Ord`)
-    pub inline fn lessThan(self: OriginZeroLine, other: OriginZeroLine) bool {
+    pub fn lessThan(self: OriginZeroLine, other: OriginZeroLine) bool {
         return self.inner < other.inner;
     }
 
     /// Upstream `core::cmp::min` for `OriginZeroLine`
-    pub inline fn min(a: OriginZeroLine, b: OriginZeroLine) OriginZeroLine {
+    pub fn min(a: OriginZeroLine, b: OriginZeroLine) OriginZeroLine {
         // `Ord::min` returns the first argument when the two are equal
         return if (b.inner < a.inner) b else a;
     }
 
     /// Upstream `core::cmp::max` for `OriginZeroLine`
-    pub inline fn max(a: OriginZeroLine, b: OriginZeroLine) OriginZeroLine {
+    pub fn max(a: OriginZeroLine, b: OriginZeroLine) OriginZeroLine {
         // `Ord::max` returns the second argument when the two are equal
         return if (b.inner >= a.inner) b else a;
     }
 
     /// Create an `OriginZeroLine`, clamping the line into the limited grid `[-MAX_GRID_TRACKS, MAX_GRID_TRACKS]`
-    pub inline fn clamped(line: i32) OriginZeroLine {
+    pub fn clamped(line: i32) OriginZeroLine {
         return .{ .inner = @intCast(std.math.clamp(line, @as(i32, min_oz_line), @as(i32, max_oz_line))) };
     }
 
     /// Convert into "CSS Grid Line" coordinates using the specified explicit track count.
     ///
     /// The inverse of `GridLine.intoOriginZeroLine`
-    pub inline fn intoGridLine(self: OriginZeroLine, explicit_track_count: u16) GridLine {
+    pub fn intoGridLine(self: OriginZeroLine, explicit_track_count: u16) GridLine {
         const explicit_line_count = explicit_track_count + 1;
         if (self.inner >= 0) {
             return .{ .inner = self.inner + 1 };
@@ -173,7 +173,7 @@ pub const OriginZeroLine = packed struct(i16) {
     }
 
     /// The minimum number of negative implicit track there must be if a grid item starts at this line.
-    pub inline fn impliedNegativeImplicitTracks(self: OriginZeroLine) u16 {
+    pub fn impliedNegativeImplicitTracks(self: OriginZeroLine) u16 {
         if (self.inner < 0) {
             return @abs(self.inner);
         } else {
@@ -182,7 +182,7 @@ pub const OriginZeroLine = packed struct(i16) {
     }
 
     /// The minimum number of positive implicit track there must be if a grid item end at this line.
-    pub inline fn impliedPositiveImplicitTracks(self: OriginZeroLine, explicit_track_count: u16) u16 {
+    pub fn impliedPositiveImplicitTracks(self: OriginZeroLine, explicit_track_count: u16) u16 {
         if (self.inner > @as(i16, @bitCast(explicit_track_count))) {
             return @as(u16, @bitCast(self.inner)) - explicit_track_count;
         } else {
@@ -192,7 +192,7 @@ pub const OriginZeroLine = packed struct(i16) {
 
     /// The number of tracks between the start and end lines (upstream `Line<OriginZeroLine>::span`).
     /// Called via `Line(OriginZeroLine).span`.
-    pub inline fn lineSpan(line: Line(OriginZeroLine)) u16 {
+    pub fn lineSpan(line: Line(OriginZeroLine)) u16 {
         return @intCast(@max(line.end.inner - line.start.inner, 0));
     }
 };

@@ -5,12 +5,12 @@ const std = @import("std");
 ///
 /// This is `floor(value + 0.5)`, exactly as upstream (with `std` enabled). It is NOT the same as
 /// `@round`, which rounds halfway cases away from zero.
-pub inline fn round(value: f32) f32 {
+pub fn round(value: f32) f32 {
     return @floor(value + 0.5);
 }
 
 /// Copies the sign of another value
-pub inline fn copysign(value: f32, sign: f32) f32 {
+pub fn copysign(value: f32, sign: f32) f32 {
     const value_bits: u32 = @bitCast(value);
     const sign_bits: u32 = @bitCast(sign);
     return @bitCast((value_bits & 0x7fff_ffff) | (sign_bits & 0x8000_0000));

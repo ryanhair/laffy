@@ -17,12 +17,12 @@ pub const Float = enum(u8) {
     pub const default: Float = .none;
 
     /// Whether the box is floated
-    pub inline fn isFloated(self: Float) bool {
+    pub fn isFloated(self: Float) bool {
         return self == .left or self == .right;
     }
 
     /// Converts `Float` into `?FloatDirection`
-    pub inline fn floatDirection(self: Float) ?FloatDirection {
+    pub fn floatDirection(self: Float) ?FloatDirection {
         return switch (self) {
             .left => .left,
             .right => .right,
@@ -42,7 +42,7 @@ pub const FloatDirection = enum(u8) {
     right = 1,
 
     /// The opposite side: `right` for `left` and `left` for `right`
-    pub inline fn opposite(self: FloatDirection) FloatDirection {
+    pub fn opposite(self: FloatDirection) FloatDirection {
         return switch (self) {
             .left => .right,
             .right => .left,

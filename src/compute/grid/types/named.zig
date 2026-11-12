@@ -523,17 +523,17 @@ pub const NamedLineResolver = struct {
     }
 
     /// Resolve named lines for both the `start` and `end` of a row-axis grid placement
-    pub inline fn resolveRowNames(self: *const NamedLineResolver, line: Line(GridPlacement)) Line(NonNamedGridPlacement) {
+    pub fn resolveRowNames(self: *const NamedLineResolver, line: Line(GridPlacement)) Line(NonNamedGridPlacement) {
         return self.resolveLineNames(line, .row);
     }
 
     /// Resolve named lines for both the `start` and `end` of a column-axis grid placement
-    pub inline fn resolveColumnNames(self: *const NamedLineResolver, line: Line(GridPlacement)) Line(NonNamedGridPlacement) {
+    pub fn resolveColumnNames(self: *const NamedLineResolver, line: Line(GridPlacement)) Line(NonNamedGridPlacement) {
         return self.resolveLineNames(line, .column);
     }
 
     /// Resolve named lines for both the `start` and `end` of a grid placement
-    pub inline fn resolveLineNames(self: *const NamedLineResolver, line: Line(GridPlacement), axis: GridAreaAxis) Line(NonNamedGridPlacement) {
+    pub fn resolveLineNames(self: *const NamedLineResolver, line: Line(GridPlacement), axis: GridAreaAxis) Line(NonNamedGridPlacement) {
         const lines: *const NamedGridLinesMap, const explicit_track_count: u16 = switch (axis) {
             .row => .{ &self.row_lines, self.explicit_row_count },
             .column => .{ &self.column_lines, self.explicit_column_count },
@@ -557,22 +557,22 @@ pub const NamedLineResolver = struct {
     }
 
     /// Get the number of columns defined by the grid areas
-    pub inline fn areaColumnCount(self: *const NamedLineResolver) u16 {
+    pub fn areaColumnCount(self: *const NamedLineResolver) u16 {
         return self.area_column_count;
     }
 
     /// Get the number of rows defined by the grid areas
-    pub inline fn areaRowCount(self: *const NamedLineResolver) u16 {
+    pub fn areaRowCount(self: *const NamedLineResolver) u16 {
         return self.area_row_count;
     }
 
     /// Set the number of columns in the explicit grid
-    pub inline fn setExplicitColumnCount(self: *NamedLineResolver, count: u16) void {
+    pub fn setExplicitColumnCount(self: *NamedLineResolver, count: u16) void {
         self.explicit_column_count = count;
     }
 
     /// Set the number of rows in the explicit grid
-    pub inline fn setExplicitRowCount(self: *NamedLineResolver, count: u16) void {
+    pub fn setExplicitRowCount(self: *NamedLineResolver, count: u16) void {
         self.explicit_row_count = count;
     }
 

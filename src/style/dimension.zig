@@ -22,25 +22,25 @@ pub const LengthPercentage = packed struct(u64) {
     pub const zero: LengthPercentage = .{ .inner = CompactLength.zero };
 
     /// Upstream `FromLength::from_length`
-    pub inline fn fromLength(value_: anytype) LengthPercentage {
+    pub fn fromLength(value_: anytype) LengthPercentage {
         return length(toF32(value_));
     }
 
     /// Upstream `FromPercent::from_percent`
-    pub inline fn fromPercent(value_: anytype) LengthPercentage {
+    pub fn fromPercent(value_: anytype) LengthPercentage {
         return percent(toF32(value_));
     }
 
     /// An absolute length in some abstract units. Users of laffy may define what they correspond
     /// to in their application (pixels, logical pixels, mm, etc) as they see fit.
-    pub inline fn length(val: f32) LengthPercentage {
+    pub fn length(val: f32) LengthPercentage {
         return .{ .inner = CompactLength.length(val) };
     }
 
     /// A percentage length relative to the size of the containing block.
     ///
     /// **NOTE: percentages are represented as a f32 value in the range [0.0, 1.0] NOT the range [0.0, 100.0]**
-    pub inline fn percent(val: f32) LengthPercentage {
+    pub fn percent(val: f32) LengthPercentage {
         return .{ .inner = CompactLength.percent(val) };
     }
 
@@ -48,18 +48,18 @@ pub const LengthPercentage = packed struct(u64) {
     /// the actual calc representation and may be a pointer, index, etc.
     ///
     /// The low 3 bits are used as a tag value and will be returned as 0.
-    pub inline fn calc(ptr: *const anyopaque) LengthPercentage {
+    pub fn calc(ptr: *const anyopaque) LengthPercentage {
         return .{ .inner = CompactLength.calc(ptr) };
     }
 
     /// Create a LengthPercentage from a raw `CompactLength`.
     /// The `CompactLength` must represent a valid variant for LengthPercentage.
-    pub inline fn fromRaw(val: CompactLength) LengthPercentage {
+    pub fn fromRaw(val: CompactLength) LengthPercentage {
         return .{ .inner = val };
     }
 
     /// Get the underlying `CompactLength` representation of the value
-    pub inline fn intoRaw(self: LengthPercentage) CompactLength {
+    pub fn intoRaw(self: LengthPercentage) CompactLength {
         return self.inner;
     }
 
@@ -112,30 +112,30 @@ pub const LengthPercentageAuto = packed struct(u64) {
     pub const auto: LengthPercentageAuto = .{ .inner = CompactLength.auto };
 
     /// Upstream `FromLength::from_length`
-    pub inline fn fromLength(value_: anytype) LengthPercentageAuto {
+    pub fn fromLength(value_: anytype) LengthPercentageAuto {
         return length(toF32(value_));
     }
 
     /// Upstream `FromPercent::from_percent`
-    pub inline fn fromPercent(value_: anytype) LengthPercentageAuto {
+    pub fn fromPercent(value_: anytype) LengthPercentageAuto {
         return percent(toF32(value_));
     }
 
     /// Upstream `From<LengthPercentage>`
-    pub inline fn fromLengthPercentage(input: LengthPercentage) LengthPercentageAuto {
+    pub fn fromLengthPercentage(input: LengthPercentage) LengthPercentageAuto {
         return .{ .inner = input.inner };
     }
 
     /// An absolute length in some abstract units. Users of laffy may define what they correspond
     /// to in their application (pixels, logical pixels, mm, etc) as they see fit.
-    pub inline fn length(val: f32) LengthPercentageAuto {
+    pub fn length(val: f32) LengthPercentageAuto {
         return .{ .inner = CompactLength.length(val) };
     }
 
     /// A percentage length relative to the size of the containing block.
     ///
     /// **NOTE: percentages are represented as a f32 value in the range [0.0, 1.0] NOT the range [0.0, 100.0]**
-    pub inline fn percent(val: f32) LengthPercentageAuto {
+    pub fn percent(val: f32) LengthPercentageAuto {
         return .{ .inner = CompactLength.percent(val) };
     }
 
@@ -143,18 +143,18 @@ pub const LengthPercentageAuto = packed struct(u64) {
     /// the actual calc representation and may be a pointer, index, etc.
     ///
     /// The low 3 bits are used as a tag value and will be returned as 0.
-    pub inline fn calc(ptr: *const anyopaque) LengthPercentageAuto {
+    pub fn calc(ptr: *const anyopaque) LengthPercentageAuto {
         return .{ .inner = CompactLength.calc(ptr) };
     }
 
     /// Create a LengthPercentageAuto from a raw `CompactLength`.
     /// The `CompactLength` must represent a valid variant for LengthPercentageAuto.
-    pub inline fn fromRaw(val: CompactLength) LengthPercentageAuto {
+    pub fn fromRaw(val: CompactLength) LengthPercentageAuto {
         return .{ .inner = val };
     }
 
     /// Get the underlying `CompactLength` representation of the value
-    pub inline fn intoRaw(self: LengthPercentageAuto) CompactLength {
+    pub fn intoRaw(self: LengthPercentageAuto) CompactLength {
         return self.inner;
     }
 
@@ -162,7 +162,7 @@ pub const LengthPercentageAuto = packed struct(u64) {
     ///   - the length for Length variants
     ///   - the resolved value using the provided context for Percent (and calc) variants
     ///   - null for Auto variants
-    pub inline fn resolveToOption(self: LengthPercentageAuto, context: f32, calc_resolver: anytype) ?f32 {
+    pub fn resolveToOption(self: LengthPercentageAuto, context: f32, calc_resolver: anytype) ?f32 {
         return switch (self.inner.tag()) {
             CompactLength.length_tag => self.inner.value(),
             CompactLength.percent_tag => context * self.inner.value(),
@@ -175,7 +175,7 @@ pub const LengthPercentageAuto = packed struct(u64) {
     }
 
     /// Returns true if value is LengthPercentageAuto::Auto
-    pub inline fn isAuto(self: LengthPercentageAuto) bool {
+    pub fn isAuto(self: LengthPercentageAuto) bool {
         return self.inner.isAuto();
     }
 
@@ -255,49 +255,49 @@ pub const Dimension = packed struct(u64) {
     pub const content: Dimension = .{ .inner = CompactLength.content };
 
     /// Upstream `FromLength::from_length`
-    pub inline fn fromLength(value_: anytype) Dimension {
+    pub fn fromLength(value_: anytype) Dimension {
         return length(toF32(value_));
     }
 
     /// Upstream `FromPercent::from_percent`
-    pub inline fn fromPercent(value_: anytype) Dimension {
+    pub fn fromPercent(value_: anytype) Dimension {
         return percent(toF32(value_));
     }
 
     /// Upstream `From<LengthPercentage>`
-    pub inline fn fromLengthPercentage(input: LengthPercentage) Dimension {
+    pub fn fromLengthPercentage(input: LengthPercentage) Dimension {
         return .{ .inner = input.inner };
     }
 
     /// Upstream `From<LengthPercentageAuto>`
-    pub inline fn fromLengthPercentageAuto(input: LengthPercentageAuto) Dimension {
+    pub fn fromLengthPercentageAuto(input: LengthPercentageAuto) Dimension {
         return .{ .inner = input.inner };
     }
 
     /// An absolute length in some abstract units. Users of laffy may define what they correspond
     /// to in their application (pixels, logical pixels, mm, etc) as they see fit.
-    pub inline fn length(val: f32) Dimension {
+    pub fn length(val: f32) Dimension {
         return .{ .inner = CompactLength.length(val) };
     }
 
     /// A percentage length relative to the size of the containing block.
     ///
     /// **NOTE: percentages are represented as a f32 value in the range [0.0, 1.0] NOT the range [0.0, 100.0]**
-    pub inline fn percent(val: f32) Dimension {
+    pub fn percent(val: f32) Dimension {
         return .{ .inner = CompactLength.percent(val) };
     }
 
     /// The size should be computed according to the "fit content" formula:
     ///    `max(min_content, min(max_content, limit))`
     /// where `limit` is a LENGTH value
-    pub inline fn fitContentPx(limit: f32) Dimension {
+    pub fn fitContentPx(limit: f32) Dimension {
         return .{ .inner = CompactLength.fitContentPx(limit) };
     }
 
     /// The size should be computed according to the "fit content" formula:
     ///    `max(min_content, min(max_content, limit))`
     /// where `limit` is a PERCENTAGE value
-    pub inline fn fitContentPercent(limit: f32) Dimension {
+    pub fn fitContentPercent(limit: f32) Dimension {
         return .{ .inner = CompactLength.fitContentPercent(limit) };
     }
 
@@ -305,7 +305,7 @@ pub const Dimension = packed struct(u64) {
     /// the actual calc representation and may be a pointer, index, etc.
     ///
     /// The low 3 bits are used as a tag value and will be returned as 0.
-    pub inline fn calc(ptr: *const anyopaque) Dimension {
+    pub fn calc(ptr: *const anyopaque) Dimension {
         return .{ .inner = CompactLength.calc(ptr) };
     }
 
@@ -313,33 +313,33 @@ pub const Dimension = packed struct(u64) {
     /// handle to the actual calc representation and may be a pointer, index, etc.
     ///
     /// The low 3 bits are used as a tag value and will be returned as 0.
-    pub inline fn fitContentCalc(ptr: *const anyopaque) Dimension {
+    pub fn fitContentCalc(ptr: *const anyopaque) Dimension {
         return .{ .inner = CompactLength.fitContentCalc(ptr) };
     }
 
     /// Returns true if the value is a `fit-content()` value with a `calc()` limit
-    pub inline fn isFitContentCalc(self: Dimension) bool {
+    pub fn isFitContentCalc(self: Dimension) bool {
         return self.inner.isFitContentCalc();
     }
 
     /// Get the calc() pointer (valid for `calc()` and `fit-content(calc())` values)
-    pub inline fn calcValue(self: Dimension) *const anyopaque {
+    pub fn calcValue(self: Dimension) *const anyopaque {
         return self.inner.calcValue();
     }
 
     /// Create a Dimension from a raw `CompactLength`.
     /// The `CompactLength` must represent a valid variant for Dimension.
-    pub inline fn fromRaw(val: CompactLength) Dimension {
+    pub fn fromRaw(val: CompactLength) Dimension {
         return .{ .inner = val };
     }
 
     /// Get the underlying `CompactLength` representation of the value
-    pub inline fn intoRaw(self: Dimension) CompactLength {
+    pub fn intoRaw(self: Dimension) CompactLength {
         return self.inner;
     }
 
     /// Get Length value if value is Length variant
-    pub inline fn intoOption(self: Dimension) ?f32 {
+    pub fn intoOption(self: Dimension) ?f32 {
         return switch (self.inner.tag()) {
             CompactLength.length_tag => self.inner.value(),
             else => null,
@@ -347,32 +347,32 @@ pub const Dimension = packed struct(u64) {
     }
 
     /// Returns true if value is Auto
-    pub inline fn isAuto(self: Dimension) bool {
+    pub fn isAuto(self: Dimension) bool {
         return self.inner.isAuto();
     }
 
     /// Returns true if value is min-content, max-content, fit-content, fit-content(...), or stretch
-    pub inline fn isSizingKeyword(self: Dimension) bool {
+    pub fn isSizingKeyword(self: Dimension) bool {
         return self.inner.isSizingKeyword();
     }
 
     /// Returns true if value is the stretch keyword
-    pub inline fn isStretch(self: Dimension) bool {
+    pub fn isStretch(self: Dimension) bool {
         return self.inner.tag() == CompactLength.stretch_tag;
     }
 
     /// Returns true if value is the content keyword
-    pub inline fn isContent(self: Dimension) bool {
+    pub fn isContent(self: Dimension) bool {
         return self.inner.isContent();
     }
 
     /// Get the raw `CompactLength` tag
-    pub inline fn tag(self: Dimension) usize {
+    pub fn tag(self: Dimension) usize {
         return self.inner.tag();
     }
 
     /// Get the raw `CompactLength` value for non-calc variants that have a numeric parameter
-    pub inline fn value(self: Dimension) f32 {
+    pub fn value(self: Dimension) f32 {
         return self.inner.value();
     }
 

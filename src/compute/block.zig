@@ -184,12 +184,12 @@ pub const BlockContext = struct {
     }
 
     /// Whether the float context contains any floats
-    pub inline fn hasFloats(self: *const BlockContext) bool {
+    pub fn hasFloats(self: *const BlockContext) bool {
         return self.bfc.float_context.hasFloats();
     }
 
     /// Whether the float context contains any floats that extend to or below min_y
-    pub inline fn hasActiveFloats(self: *const BlockContext, min_y: f32) bool {
+    pub fn hasActiveFloats(self: *const BlockContext, min_y: f32) bool {
         return self.bfc.float_context.hasActiveFloats(min_y + self.y_offset);
     }
 
@@ -450,7 +450,7 @@ fn freeBlockItems(gpa: Allocator, items: []BlockItem) void {
 }
 
 /// `Some(min)` if both `min` and `max` are set and `max <= min`
-inline fn minMaxDefinite(min: ?f32, max: ?f32) ?f32 {
+fn minMaxDefinite(min: ?f32, max: ?f32) ?f32 {
     if (min) |min_v| {
         if (max) |max_v| {
             if (max_v <= min_v) return min_v;
@@ -1036,7 +1036,7 @@ fn generateItemList(tree: anytype, node: NodeId, node_inner_size: Size(?f32)) La
 /// border nor padding on that side and does not establish a new BFC) is treated as zero.
 /// <https://github.com/w3c/csswg-drafts/issues/11044#issuecomment-2599101601>
 /// <https://github.com/w3c/csswg-drafts/issues/13260>
-inline fn resolveStretchHeight(
+fn resolveStretchHeight(
     height_style: Dimension,
     container_inner_height: ?f32,
     item_margin: Rect(f32),
@@ -1060,7 +1060,7 @@ inline fn resolveStretchHeight(
 /// Percentages resolve against the containing block's content box (`parent_size`); a percentage
 /// that cannot be resolved behaves as `auto`. If both insets in an axis are non-auto, `top` wins
 /// over `bottom`, and `left` wins over `right` in LTR (`right` over `left` in RTL).
-inline fn resolveRelativeOffset(item: *const BlockItem, parent_size: Size(?f32), direction: Direction, tree: anytype) Point(f32) {
+fn resolveRelativeOffset(item: *const BlockItem, parent_size: Size(?f32), direction: Direction, tree: anytype) Point(f32) {
     if (item.position != .relative) {
         return Point(f32).zero;
     }

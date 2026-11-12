@@ -17,7 +17,7 @@ const TrackSizingFunction = grid.TrackSizingFunction;
 ///
 /// `Output` is `TrackSizingFunction` or `GridTemplateComponent` (upstream: any type that
 /// implements `From<MinMax<MinTrackSizingFunction, MaxTrackSizingFunction>>`).
-pub inline fn minmax(comptime Output: type, min: MinTrackSizingFunction, max: MaxTrackSizingFunction) Output {
+pub fn minmax(comptime Output: type, min: MinTrackSizingFunction, max: MaxTrackSizingFunction) Output {
     const track: TrackSizingFunction = .{ .min = min, .max = max };
     if (Output == TrackSizingFunction) {
         return track;
@@ -27,7 +27,7 @@ pub inline fn minmax(comptime Output: type, min: MinTrackSizingFunction, max: Ma
 }
 
 /// Shorthand for minmax(0, Nfr). Probably what you want if you want exactly evenly sized tracks.
-pub inline fn flex(comptime Output: type, flex_fraction: anytype) Output {
+pub fn flex(comptime Output: type, flex_fraction: anytype) Output {
     return minmax(Output, .zero, .fromFr(flex_fraction));
 }
 

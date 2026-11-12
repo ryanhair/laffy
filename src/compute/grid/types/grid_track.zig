@@ -109,39 +109,39 @@ pub const GridTrack = struct {
     }
 
     /// Returns true if the track is flexible (has a Flex MaxTrackSizingFunction), else false.
-    pub inline fn isFlexible(self: *const GridTrack) bool {
+    pub fn isFlexible(self: *const GridTrack) bool {
         return self.max_track_sizing_function.isFr();
     }
 
     /// Returns true if the track uses a percentage track sizing function
-    pub inline fn usesPercentage(self: *const GridTrack) bool {
+    pub fn usesPercentage(self: *const GridTrack) bool {
         return self.min_track_sizing_function.usesPercentage() or self.max_track_sizing_function.usesPercentage();
     }
 
     /// Returns true if the track has an intrinsic min and or max sizing function
-    pub inline fn hasIntrinsicSizingFunction(self: *const GridTrack) bool {
+    pub fn hasIntrinsicSizingFunction(self: *const GridTrack) bool {
         return self.min_track_sizing_function.isIntrinsic() or self.max_track_sizing_function.isIntrinsic();
     }
 
     /// Cache the `fit-content()` limit of the max track sizing function (if any), resolved against the
     /// container's inner size in this axis. Percentage and calc() limits resolve to infinity if that size is
     /// indefinite, as do tracks which are not `fit-content()`.
-    pub inline fn resolveFitContentLimit(self: *GridTrack, axis_inner_node_size: ?f32, calc_resolver: anytype) void {
+    pub fn resolveFitContentLimit(self: *GridTrack, axis_inner_node_size: ?f32, calc_resolver: anytype) void {
         self.fit_content_limit = self.max_track_sizing_function.fitContentLimit(axis_inner_node_size, calc_resolver) orelse std.math.inf(f32);
     }
 
     /// Returns the resolved `fit-content()` limit of the track (infinity if the track is not `fit-content()`)
-    pub inline fn fitContentLimit(self: *const GridTrack) f32 {
+    pub fn fitContentLimit(self: *const GridTrack) f32 {
         return self.fit_content_limit;
     }
 
     /// Returns the track's growth limit, capped by its `fit-content()` limit (if any)
-    pub inline fn fitContentLimitedGrowthLimit(self: *const GridTrack) f32 {
+    pub fn fitContentLimitedGrowthLimit(self: *const GridTrack) f32 {
         return @min(self.growth_limit, self.fit_content_limit);
     }
 
     /// Returns the track's flex factor if it is a flex track, else 0.
-    pub inline fn flexFactor(self: *const GridTrack) f32 {
+    pub fn flexFactor(self: *const GridTrack) f32 {
         if (self.max_track_sizing_function.isFr()) {
             return self.max_track_sizing_function.inner.value();
         } else {

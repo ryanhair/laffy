@@ -50,7 +50,7 @@ pub fn SlotMap(comptime T: type) type {
             return self.len;
         }
 
-        inline fn makeKey(index: u32, generation: u32) u64 {
+        fn makeKey(index: u32, generation: u32) u64 {
             return @as(u64, generation) << 32 | index;
         }
 
@@ -73,7 +73,7 @@ pub fn SlotMap(comptime T: type) type {
         }
 
         /// The slot of a live key, or null if the key is invalid or stale
-        inline fn slotOf(self: *const Self, key: u64) ?*Slot {
+        fn slotOf(self: *const Self, key: u64) ?*Slot {
             const index: u32 = @truncate(key);
             const generation: u32 = @truncate(key >> 32);
             if (index >= self.slots.items.len) return null;

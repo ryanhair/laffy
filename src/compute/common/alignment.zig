@@ -14,7 +14,7 @@ const Overflow = style.Overflow;
 /// Scroll containers' baselines are determined from their content as if scrolled to the initial position, but are
 /// additionally clamped to their border box. A scroll container with no baseline synthesizes one from its border-box
 /// bottom edge. See <https://github.com/w3c/csswg-drafts/issues/7660>
-pub inline fn childFirstBaseline(first_baseline: ?f32, height: f32, overflow_y: Overflow) ?f32 {
+pub fn childFirstBaseline(first_baseline: ?f32, height: f32, overflow_y: Overflow) ?f32 {
     if (overflow_y.isScrollContainer()) {
         return @max(@min(first_baseline orelse height, height), 0.0);
     } else {
@@ -28,7 +28,7 @@ pub inline fn childFirstBaseline(first_baseline: ?f32, height: f32, overflow_y: 
 /// alignment is `safe`, fall back to logical `start` per CSS Box Alignment
 /// <https://www.w3.org/TR/css-align-3/#overflow-values>. Otherwise drop the safety modifier
 /// and return the bare keyword.
-pub inline fn resolveSelfAlignmentSafety(alignment: AlignItems, overflows: bool) AlignItemsKeyword {
+pub fn resolveSelfAlignmentSafety(alignment: AlignItems, overflows: bool) AlignItemsKeyword {
     if (alignment.safety == .safe and overflows) {
         return .start;
     } else {

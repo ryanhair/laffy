@@ -35,7 +35,7 @@ pub const SizingKeywordResolution = union(enum) {
 ///
 /// Returns `null` if the size style is not a sizing keyword, or if it cannot
 /// be resolved in the current context (in which case it behaves as `auto`).
-pub inline fn resolveSizingKeyword(
+pub fn resolveSizingKeyword(
     size_style: Dimension,
     stretch_size: ?f32,
     percent_resolution_basis: ?f32,

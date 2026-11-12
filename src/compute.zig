@@ -230,7 +230,7 @@ const RootCacheCheck = struct {
 
 /// Lay out an in-flow (or `position: relative`) root node against the available space, store its layout
 /// and return it along with the out-of-flow candidates bubbled up from its subtree.
-inline fn computeInFlowRootLayout(
+fn computeInFlowRootLayout(
     tree: anytype,
     root: NodeId,
     available_space: Size(AvailableSpace),
@@ -353,7 +353,7 @@ inline fn computeInFlowRootLayout(
 }
 
 /// `Some(min)` if both `min` and `max` are set and `max <= min`
-inline fn minMaxDefinite(min: ?f32, max: ?f32) ?f32 {
+fn minMaxDefinite(min: ?f32, max: ?f32) ?f32 {
     if (min) |min_v| {
         if (max) |max_v| {
             if (max_v <= min_v) return min_v;
@@ -369,7 +369,7 @@ inline fn minMaxDefinite(min: ?f32, max: ?f32) ?f32 {
 /// `compute(self, tree: @TypeOf(tree), node_id: NodeId, inputs: LayoutInput) LayoutError!LayoutOutput`.
 ///
 /// `tree` implements `CacheTree` (and `allocator()`). The caller owns the returned output.
-pub inline fn computeCachedLayout(
+pub fn computeCachedLayout(
     tree: anytype,
     node: NodeId,
     inputs: LayoutInput,
@@ -463,7 +463,7 @@ fn roundLayoutInner(tree: anytype, node_id: NodeId, parent_cumulative_x: f32, pa
 }
 
 /// Round the scrollable overflow rect.
-inline fn roundScrollableOverflowRect(
+fn roundScrollableOverflowRect(
     rounded: *Layout,
     unrounded_overflow: ScrollableOverflow,
     cumulative_x: f32,
@@ -481,7 +481,7 @@ inline fn roundScrollableOverflowRect(
     );
 }
 
-inline fn roundEdge(offset: f32, edge: f32) f32 {
+fn roundEdge(offset: f32, edge: f32) f32 {
     const rounded = sys.round(offset + edge) - sys.round(offset);
     if (rounded == 0.0) {
         // Keep left/top -0.0; ScrollableOverflow.new only re-packs right/bottom signs from reversed.

@@ -208,7 +208,7 @@ pub fn computeLeafLayout(
 }
 
 /// `size.map(Some)`
-inline fn someSize(size: Size(f32)) Size(?f32) {
+fn someSize(size: Size(f32)) Size(?f32) {
     return .{ .width = size.width, .height = size.height };
 }
 

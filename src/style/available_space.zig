@@ -20,28 +20,28 @@ pub const AvailableSpace = union(enum) {
     // Zig, so `style_helpers.minContent(AvailableSpace)` works without extra declarations.
 
     /// Upstream `FromLength::from_length`
-    pub inline fn fromLength(value: anytype) AvailableSpace {
+    pub fn fromLength(value: anytype) AvailableSpace {
         return .{ .definite = toF32(value) };
     }
 
     /// Upstream `From<f32>`
-    pub inline fn fromF32(value: f32) AvailableSpace {
+    pub fn fromF32(value: f32) AvailableSpace {
         return .{ .definite = value };
     }
 
     /// Upstream `From<Option<f32>>`: `null` becomes `max_content`
-    pub inline fn fromOption(option: ?f32) AvailableSpace {
+    pub fn fromOption(option: ?f32) AvailableSpace {
         return if (option) |value| .{ .definite = value } else .max_content;
     }
 
     /// Returns true for definite values, else false
-    pub inline fn isDefinite(self: AvailableSpace) bool {
+    pub fn isDefinite(self: AvailableSpace) bool {
         return self == .definite;
     }
 
     /// Convert to Option
     /// Definite values become the value. Constraints become null.
-    pub inline fn intoOption(self: AvailableSpace) ?f32 {
+    pub fn intoOption(self: AvailableSpace) ?f32 {
         return switch (self) {
             .definite => |value| value,
             else => null,
@@ -49,17 +49,17 @@ pub const AvailableSpace = union(enum) {
     }
 
     /// Return the definite value or a default value
-    pub inline fn unwrapOr(self: AvailableSpace, default: f32) f32 {
+    pub fn unwrapOr(self: AvailableSpace, default: f32) f32 {
         return self.intoOption() orelse default;
     }
 
     /// Return the definite value. Panics if the value is not definite.
-    pub inline fn unwrap(self: AvailableSpace) f32 {
+    pub fn unwrap(self: AvailableSpace) f32 {
         return self.intoOption().?;
     }
 
     /// Return self if definite or a default value
-    pub inline fn @"or"(self: AvailableSpace, default: AvailableSpace) AvailableSpace {
+    pub fn @"or"(self: AvailableSpace, default: AvailableSpace) AvailableSpace {
         return switch (self) {
             .definite => self,
             else => default,
@@ -67,12 +67,12 @@ pub const AvailableSpace = union(enum) {
     }
 
     /// If passed value is non-null then return `.definite` containing that value, else return self
-    pub inline fn maybeSet(self: AvailableSpace, value: ?f32) AvailableSpace {
+    pub fn maybeSet(self: AvailableSpace, value: ?f32) AvailableSpace {
         return if (value) |v| .{ .definite = v } else self;
     }
 
     /// Compute free_space given the passed used_space
-    pub inline fn computeFreeSpace(self: AvailableSpace, used_space: f32) f32 {
+    pub fn computeFreeSpace(self: AvailableSpace, used_space: f32) f32 {
         return switch (self) {
             .max_content => std.math.inf(f32),
             .min_content => 0.0,
@@ -94,7 +94,7 @@ pub const AvailableSpace = union(enum) {
     }
 
     /// Exact equality (upstream derived `PartialEq`)
-    pub inline fn eql(self: AvailableSpace, other: AvailableSpace) bool {
+    pub fn eql(self: AvailableSpace, other: AvailableSpace) bool {
         return switch (self) {
             .definite => |a| switch (other) {
                 .definite => |b| a == b,

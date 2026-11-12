@@ -190,18 +190,18 @@ pub const AlignItems = packed struct(u16) {
     pub const safe_self_end: AlignItems = .{ .keyword = .self_end, .safety = .safe };
 
     /// Returns `true` iff this carries the `safe` overflow-position modifier.
-    pub inline fn isSafe(self: AlignItems) bool {
+    pub fn isSafe(self: AlignItems) bool {
         return self.safety == .safe;
     }
 
     /// Returns this alignment with the given overflow-position modifier.
-    pub inline fn withSafety(self: AlignItems, safety: AlignmentSafety) AlignItems {
+    pub fn withSafety(self: AlignItems, safety: AlignmentSafety) AlignItems {
         return .{ .keyword = self.keyword, .safety = safety };
     }
 
     /// Returns true if the keyword is `stretch` or `normal` (ignoring any overflow-position
     /// modifier).
-    pub inline fn isStretchOrNormal(self: AlignItems) bool {
+    pub fn isStretchOrNormal(self: AlignItems) bool {
         return self.keyword == .stretch or self.keyword == .normal;
     }
 
@@ -305,12 +305,12 @@ pub const AlignContent = packed struct(u16) {
     pub const safe_center: AlignContent = .{ .keyword = .center, .safety = .safe };
 
     /// Returns `true` iff this carries the `safe` overflow-position modifier.
-    pub inline fn isSafe(self: AlignContent) bool {
+    pub fn isSafe(self: AlignContent) bool {
         return self.safety == .safe;
     }
 
     /// Returns this alignment with the given overflow-position modifier.
-    pub inline fn withSafety(self: AlignContent, safety: AlignmentSafety) AlignContent {
+    pub fn withSafety(self: AlignContent, safety: AlignmentSafety) AlignContent {
         return .{ .keyword = self.keyword, .safety = safety };
     }
 };

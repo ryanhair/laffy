@@ -58,7 +58,7 @@ pub const ScrollableOverflow = struct {
     pub const zero: ScrollableOverflow = .{ .inner = Rect(f32).zero };
 
     /// Pack an origin-containing rectangle and its physical scroll-origin directions.
-    pub inline fn new(rect_: Rect(f32), reversed: Point(bool)) ScrollableOverflow {
+    pub fn new(rect_: Rect(f32), reversed: Point(bool)) ScrollableOverflow {
         std.debug.assert(rect_.left <= 0.0 and rect_.top <= 0.0 and rect_.right >= 0.0 and rect_.bottom >= 0.0);
         return .{ .inner = .{
             .left = rect_.left,
@@ -69,7 +69,7 @@ pub const ScrollableOverflow = struct {
     }
 
     /// The physical overflow rectangle, with the packed signs restored.
-    pub inline fn rect(self: ScrollableOverflow) Rect(f32) {
+    pub fn rect(self: ScrollableOverflow) Rect(f32) {
         return .{
             .left = self.inner.left,
             .right = @abs(self.inner.right),
@@ -79,32 +79,32 @@ pub const ScrollableOverflow = struct {
     }
 
     /// The physical left overflow edge.
-    pub inline fn left(self: ScrollableOverflow) f32 {
+    pub fn left(self: ScrollableOverflow) f32 {
         return self.inner.left;
     }
 
     /// The physical right overflow edge, with its sign restored.
-    pub inline fn right(self: ScrollableOverflow) f32 {
+    pub fn right(self: ScrollableOverflow) f32 {
         return @abs(self.inner.right);
     }
 
     /// The physical top overflow edge.
-    pub inline fn top(self: ScrollableOverflow) f32 {
+    pub fn top(self: ScrollableOverflow) f32 {
         return self.inner.top;
     }
 
     /// The physical bottom overflow edge, with its sign restored.
-    pub inline fn bottom(self: ScrollableOverflow) f32 {
+    pub fn bottom(self: ScrollableOverflow) f32 {
         return @abs(self.inner.bottom);
     }
 
     /// Whether the physical x/y scroll origins are at the right/bottom edges.
-    pub inline fn isReversed(self: ScrollableOverflow) Point(bool) {
+    pub fn isReversed(self: ScrollableOverflow) Point(bool) {
         return .{ .x = std.math.signbit(self.inner.right), .y = std.math.signbit(self.inner.bottom) };
     }
 
     /// Swap the physical axes, preserving origin directions and signed zeroes.
-    pub inline fn transpose(self: ScrollableOverflow) ScrollableOverflow {
+    pub fn transpose(self: ScrollableOverflow) ScrollableOverflow {
         return .{ .inner = self.inner.transpose() };
     }
 
@@ -183,7 +183,7 @@ pub const CollapsibleMarginSet = struct {
     }
 
     /// Equality (upstream derived `PartialEq`)
-    pub inline fn eql(self: CollapsibleMarginSet, other: CollapsibleMarginSet) bool {
+    pub fn eql(self: CollapsibleMarginSet, other: CollapsibleMarginSet) bool {
         return self.positive == other.positive and self.negative == other.negative;
     }
 };
@@ -198,7 +198,7 @@ pub const RequestedAxis = enum(u8) {
     both,
 
     /// Swap the horizontal and vertical axes (`both` is unchanged)
-    pub inline fn transpose(self: RequestedAxis) RequestedAxis {
+    pub fn transpose(self: RequestedAxis) RequestedAxis {
         return switch (self) {
             .horizontal => .vertical,
             .vertical => .horizontal,
@@ -207,7 +207,7 @@ pub const RequestedAxis = enum(u8) {
     }
 
     /// Upstream `From<AbsoluteAxis> for RequestedAxis`
-    pub inline fn fromAbsoluteAxis(value: AbsoluteAxis) RequestedAxis {
+    pub fn fromAbsoluteAxis(value: AbsoluteAxis) RequestedAxis {
         return switch (value) {
             .horizontal => .horizontal,
             .vertical => .vertical,
@@ -215,7 +215,7 @@ pub const RequestedAxis = enum(u8) {
     }
 
     /// Upstream `TryFrom<RequestedAxis> for AbsoluteAxis`: `null` for `both`
-    pub inline fn toAbsoluteAxis(self: RequestedAxis) ?AbsoluteAxis {
+    pub fn toAbsoluteAxis(self: RequestedAxis) ?AbsoluteAxis {
         return switch (self) {
             .horizontal => .horizontal,
             .vertical => .vertical,
@@ -327,7 +327,7 @@ pub const Baselines = struct {
     pub const none: Baselines = .{ .first = null, .last = null };
 
     /// Create a `Baselines` from just a first baseline
-    pub inline fn fromFirst(first: ?f32) Baselines {
+    pub fn fromFirst(first: ?f32) Baselines {
         return .{ .first = first, .last = null };
     }
 };
@@ -366,7 +366,7 @@ pub const AxisStaticAlign = struct {
     fallback: AxisStaticEdge,
 
     /// Create a `AxisStaticAlign` from a keyword with no safe fallback
-    pub inline fn fromKeyword(keyword: AxisStaticEdge) AxisStaticAlign {
+    pub fn fromKeyword(keyword: AxisStaticEdge) AxisStaticAlign {
         return .{ .keyword = keyword, .safety = .default, .fallback = keyword };
     }
 };
@@ -388,7 +388,7 @@ pub const AxisStaticPosition = struct {
 
     /// Create a `AxisStaticPosition` with a degenerate (zero-extent) area at `anchor` and no
     /// safe fallback
-    pub inline fn fromEdge(anchor: f32, edge: AxisStaticEdge) AxisStaticPosition {
+    pub fn fromEdge(anchor: f32, edge: AxisStaticEdge) AxisStaticPosition {
         return .{ .area = .{ .start = anchor, .end = anchor }, .@"align" = AxisStaticAlign.fromKeyword(edge) };
     }
 
@@ -463,17 +463,17 @@ pub const OofCandidates = struct {
     }
 
     /// Whether the list contains no candidates
-    pub inline fn isEmpty(self: *const OofCandidates) bool {
+    pub fn isEmpty(self: *const OofCandidates) bool {
         return self.inner.items.len == 0;
     }
 
     /// The candidates as a slice
-    pub inline fn asSlice(self: *const OofCandidates) []const OofCandidate {
+    pub fn asSlice(self: *const OofCandidates) []const OofCandidate {
         return self.inner.items;
     }
 
     /// The candidates as a mutable slice
-    pub inline fn asMutSlice(self: *OofCandidates) []OofCandidate {
+    pub fn asMutSlice(self: *OofCandidates) []OofCandidate {
         return self.inner.items;
     }
 
@@ -495,14 +495,14 @@ pub const OofCandidates = struct {
     }
 
     /// Take the candidates out of this list, leaving it empty
-    pub inline fn take(self: *OofCandidates) OofCandidates {
+    pub fn take(self: *OofCandidates) OofCandidates {
         const result = self.*;
         self.* = none;
         return result;
     }
 
     /// Remove all candidates from the list (and free its memory)
-    pub inline fn clear(self: *OofCandidates, gpa: Allocator) void {
+    pub fn clear(self: *OofCandidates, gpa: Allocator) void {
         self.deinit(gpa);
     }
 
@@ -710,22 +710,22 @@ pub const Layout = struct {
     ///
     /// Nodes with a higher order should be rendered on top of those with a lower order.
     /// The Zero-layout has size and location set to ZERO.
-    pub inline fn withOrder(order: u32) Layout {
+    pub fn withOrder(order: u32) Layout {
         return .{ .order = order };
     }
 
     /// Get the width of the node's content box
-    pub inline fn contentBoxWidth(self: Layout) f32 {
+    pub fn contentBoxWidth(self: Layout) f32 {
         return self.size.width - self.padding.left - self.padding.right - self.border.left - self.border.right;
     }
 
     /// Get the height of the node's content box
-    pub inline fn contentBoxHeight(self: Layout) f32 {
+    pub fn contentBoxHeight(self: Layout) f32 {
         return self.size.height - self.padding.top - self.padding.bottom - self.border.top - self.border.bottom;
     }
 
     /// Get the size of the node's content box
-    pub inline fn contentBoxSize(self: Layout) Size(f32) {
+    pub fn contentBoxSize(self: Layout) Size(f32) {
         return .{ .width = self.contentBoxWidth(), .height = self.contentBoxHeight() };
     }
 

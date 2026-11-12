@@ -42,17 +42,17 @@ const non_sign_bits_mask: u64 = ~both_sign_bits_mask;
 const x_axis_value_mask: u64 = @as(u64, std.math.maxInt(u32)) << 32;
 
 /// Pack `?f32` into `u32`
-inline fn optionCacheKey(input: ?f32) u32 {
+fn optionCacheKey(input: ?f32) u32 {
     return if (input) |value| @bitCast(value) else infinity_bits;
 }
 
 /// Pack `Size(?f32)` into `u64`
-inline fn sizeOptionCacheKey(input: Size(?f32)) u64 {
+fn sizeOptionCacheKey(input: Size(?f32)) u64 {
     return @as(u64, optionCacheKey(input.width)) << 32 | @as(u64, optionCacheKey(input.height));
 }
 
 /// Pack `AvailableSpace` into `u32`
-inline fn availableSpaceCacheKey(input: AvailableSpace) u32 {
+fn availableSpaceCacheKey(input: AvailableSpace) u32 {
     return switch (input) {
         .definite => |value| @bitCast(-value),
         .min_content => neg_infinity_bits,
@@ -62,13 +62,13 @@ inline fn availableSpaceCacheKey(input: AvailableSpace) u32 {
 
 /// Encodes combination of a `known_dimension` (`?f32`) and `AvailableSpace` in
 /// a single dimension into a cache key in a single dimension.
-inline fn mixedCacheKey(kd: ?f32, avs: AvailableSpace) u32 {
+fn mixedCacheKey(kd: ?f32, avs: AvailableSpace) u32 {
     return if (kd) |value| @bitCast(value) else availableSpaceCacheKey(avs);
 }
 
 /// Encodes combination of a `known_dimension` (`?f32`) and `AvailableSpace` in
 /// two dimensions into a cache key in a single dimension.
-inline fn sizeMixedCacheKey(kd: Size(?f32), avs: Size(AvailableSpace)) u64 {
+fn sizeMixedCacheKey(kd: Size(?f32), avs: Size(AvailableSpace)) u64 {
     return @as(u64, mixedCacheKey(kd.width, avs.width)) << 32 | @as(u64, mixedCacheKey(kd.height, avs.height));
 }
 
@@ -153,7 +153,7 @@ const CacheMode = struct {
     const initial: CacheMode = .{ .inner = 0 };
 
     /// Upstream `From<&LayoutInput> for CacheMode`
-    inline fn fromInput(input: *const LayoutInput) CacheMode {
+    fn fromInput(input: *const LayoutInput) CacheMode {
         const inherent_size: u8 = @intFromBool(input.sizing_mode == .inherent_size);
         const collapsible = input.vertical_margins_are_collapsible;
         return .{ .inner = (inherent_size * inherent_size_bit) |

@@ -44,7 +44,7 @@ pub const ScrollableOverflowContainer = struct {
 ///
 /// End padding extends the in-flow child's margin edge, not its propagated overflow.
 /// Union with the border/overflow contribution prevents negative margins from shrinking it.
-pub inline fn computeScrollableOverflowContribution(
+pub fn computeScrollableOverflowContribution(
     location: Point(f32),
     size: Size(f32),
     child_scrollable_overflow_rect: Rect(f32),

@@ -1480,7 +1480,7 @@ pub const DetailedGridItemsInfo = struct {
     column_end: u16,
 
     /// Conversion from the indexes of the track list into 1-indexed grid line numbers. See `GridItem.row_indexes` or `GridItem.column_indexes`
-    inline fn toOneIndexedGridLine(grid_track_index: u16) u16 {
+    fn toOneIndexedGridLine(grid_track_index: u16) u16 {
         return grid_track_index / 2 + 1;
     }
 

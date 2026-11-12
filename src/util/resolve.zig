@@ -114,7 +114,7 @@ pub fn resolveOrZero(value: anytype, context: anytype, calc: anytype) ResolveOrZ
 }
 
 /// `maybe_resolve` for `LengthPercentage`, `LengthPercentageAuto` and `Dimension`
-inline fn resolveLeaf(comptime V: type, inner: CompactLength, context: ?f32, calc: anytype) ?f32 {
+fn resolveLeaf(comptime V: type, inner: CompactLength, context: ?f32, calc: anytype) ?f32 {
     const tag = inner.tag();
     if ((V == LengthPercentageAuto or V == Dimension) and tag == CompactLength.auto_tag) return null;
     // The content keyword is only valid for flex-basis. In any other context it behaves as auto.

@@ -187,7 +187,7 @@ fn floatFitsHorizontally(
 
 /// The inset on the side that a box floated in `direction` is floated towards
 /// (upstream `Index<FloatDirection> for FloatInsets`)
-pub inline fn inset(insets: FloatInsets, direction: FloatDirection) f32 {
+pub fn inset(insets: FloatInsets, direction: FloatDirection) f32 {
     return switch (direction) {
         .left => insets.left,
         .right => insets.right,
@@ -196,7 +196,7 @@ pub inline fn inset(insets: FloatInsets, direction: FloatDirection) f32 {
 
 /// Mutable access to the inset on the side that a box floated in `direction` is floated towards
 /// (upstream `IndexMut<FloatDirection> for FloatInsets`)
-pub inline fn insetPtr(insets: *FloatInsets, direction: FloatDirection) *f32 {
+pub fn insetPtr(insets: *FloatInsets, direction: FloatDirection) *f32 {
     return switch (direction) {
         .left => &insets.left,
         .right => &insets.right,
@@ -306,12 +306,12 @@ pub const FloatContext = struct {
     }
 
     /// Whether the float context contains any floats
-    pub inline fn hasFloats(self: *const FloatContext) bool {
+    pub fn hasFloats(self: *const FloatContext) bool {
         return self.has_floats;
     }
 
     /// Whether the float context contains any floats that extend to or below min_y
-    pub inline fn hasActiveFloats(self: *const FloatContext, min_y: f32) bool {
+    pub fn hasActiveFloats(self: *const FloatContext, min_y: f32) bool {
         const segments = self.segments.items;
         return self.has_floats and segments.len > 0 and segments[segments.len - 1].y.end > min_y;
     }

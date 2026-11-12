@@ -265,13 +265,13 @@ pub const Position = enum(u8) {
     pub const default: Position = .static;
 
     /// Returns true if this position takes the item out of normal flow (`absolute` or `fixed`)
-    pub inline fn isOutOfFlow(self: Position) bool {
+    pub fn isOutOfFlow(self: Position) bool {
         return self == .absolute or self == .fixed;
     }
 
     /// Returns true if this position causes the item to act as a containing block
     /// for absolutely positioned descendants (any value other than `static`)
-    pub inline fn isPositioned(self: Position) bool {
+    pub fn isPositioned(self: Position) bool {
         return self != .static;
     }
 };
@@ -291,7 +291,7 @@ pub const ContainingBlockClaims = struct {
     pub const all: ContainingBlockClaims = .{ .absolute = true, .fixed = true };
 
     /// Whether the node is the containing block for a box with the given `position`
-    pub inline fn forPosition(self: ContainingBlockClaims, position: Position) bool {
+    pub fn forPosition(self: ContainingBlockClaims, position: Position) bool {
         return switch (position) {
             .absolute => self.absolute,
             .fixed => self.fixed,
@@ -356,7 +356,7 @@ pub const Overflow = enum(u8) {
 
     /// Returns true for overflow modes that contain their contents (`hidden`, `scroll`)
     /// or else false for overflow modes that allow their contains to spill (`visible`, `clip`).
-    pub inline fn isScrollContainer(self: Overflow) bool {
+    pub fn isScrollContainer(self: Overflow) bool {
         return switch (self) {
             .visible, .clip => false,
             .hidden, .scroll => true,
@@ -365,7 +365,7 @@ pub const Overflow = enum(u8) {
 
     /// Returns `0.0` if the overflow mode would cause the automatic minimum size of a Flexbox or CSS Grid item
     /// to be `0`. Else returns null.
-    pub inline fn maybeIntoAutomaticMinSize(self: Overflow) ?f32 {
+    pub fn maybeIntoAutomaticMinSize(self: Overflow) ?f32 {
         return if (self.isScrollContainer()) 0.0 else null;
     }
 };
@@ -405,36 +405,36 @@ pub const Contain = packed struct(u8) {
     pub const default: Contain = none;
 
     /// Returns whether `self` contains all of the containment types in `other`
-    pub inline fn contains(self: Contain, other: Contain) bool {
+    pub fn contains(self: Contain, other: Contain) bool {
         return self.inner & other.inner == other.inner;
     }
 
     /// Returns whether `self` contains any of the containment types in `other`
-    pub inline fn intersects(self: Contain, other: Contain) bool {
+    pub fn intersects(self: Contain, other: Contain) bool {
         return self.inner & other.inner != 0;
     }
 
     /// Returns the union of the containment types in `self` and `other` (also upstream `BitOr`)
-    pub inline fn @"union"(self: Contain, other: Contain) Contain {
+    pub fn @"union"(self: Contain, other: Contain) Contain {
         return .{ .inner = self.inner | other.inner };
     }
 
     /// Whether this containment causes the box to establish an independent formatting context
     /// (both layout and paint containment do)
-    pub inline fn establishesIndependentFormattingContext(self: Contain) bool {
+    pub fn establishesIndependentFormattingContext(self: Contain) bool {
         return self.intersects(layout.@"union"(paint));
     }
 
     /// Whether this containment suppresses the box's baseline for baseline-alignment purposes
     /// (layout containment does, paint containment does not)
-    pub inline fn suppressesBaseline(self: Contain) bool {
+    pub fn suppressesBaseline(self: Contain) bool {
         return self.contains(layout);
     }
 
     /// Whether this containment prevents the box's overflowing content from contributing to an
     /// ancestor's scrollable overflow region (layout containment treats such overflow as ink
     /// overflow; paint containment clips it)
-    pub inline fn containsScrollableOverflow(self: Contain) bool {
+    pub fn containsScrollableOverflow(self: Contain) bool {
         return self.intersects(layout.@"union"(paint));
     }
 };
@@ -451,7 +451,7 @@ pub const Direction = enum(u8) {
     pub const default: Direction = .ltr;
 
     /// Returns true if the direction is right-to-left
-    pub inline fn isRtl(self: Direction) bool {
+    pub fn isRtl(self: Direction) bool {
         return self == .rtl;
     }
 };
@@ -611,299 +611,299 @@ pub const Style = struct {
 
     // CoreStyle
 
-    pub inline fn getBoxGenerationMode(self: *const Style) BoxGenerationMode {
+    pub fn getBoxGenerationMode(self: *const Style) BoxGenerationMode {
         return switch (self.display) {
             .none => .none,
             else => .normal,
         };
     }
-    pub inline fn isBlock(self: *const Style) bool {
+    pub fn isBlock(self: *const Style) bool {
         return self.display == .block;
     }
-    pub inline fn isCompressibleReplaced(self: *const Style) bool {
+    pub fn isCompressibleReplaced(self: *const Style) bool {
         return self.item_is_replaced or self.item_is_compressible_replaced;
     }
-    pub inline fn isReplaced(self: *const Style) bool {
+    pub fn isReplaced(self: *const Style) bool {
         return self.item_is_replaced;
     }
-    pub inline fn getBoxSizing(self: *const Style) BoxSizing {
+    pub fn getBoxSizing(self: *const Style) BoxSizing {
         return self.box_sizing;
     }
-    pub inline fn getDirection(self: *const Style) Direction {
+    pub fn getDirection(self: *const Style) Direction {
         return self.direction;
     }
-    pub inline fn getOverflow(self: *const Style) Point(Overflow) {
+    pub fn getOverflow(self: *const Style) Point(Overflow) {
         return self.overflow;
     }
-    pub inline fn getScrollbarWidth(self: *const Style) f32 {
+    pub fn getScrollbarWidth(self: *const Style) f32 {
         return self.scrollbar_width;
     }
-    pub inline fn getPosition(self: *const Style) Position {
+    pub fn getPosition(self: *const Style) Position {
         return self.position;
     }
-    pub inline fn getInset(self: *const Style) Rect(LengthPercentageAuto) {
+    pub fn getInset(self: *const Style) Rect(LengthPercentageAuto) {
         return self.inset;
     }
-    pub inline fn isContainingBlock(self: *const Style) ContainingBlockClaims {
+    pub fn isContainingBlock(self: *const Style) ContainingBlockClaims {
         return CoreStyleDefaults.isContainingBlock(self);
     }
-    pub inline fn getSize(self: *const Style) Size(Dimension) {
+    pub fn getSize(self: *const Style) Size(Dimension) {
         return self.size;
     }
-    pub inline fn getMinSize(self: *const Style) Size(LengthPercentageAuto) {
+    pub fn getMinSize(self: *const Style) Size(LengthPercentageAuto) {
         return self.min_size;
     }
-    pub inline fn getMaxSize(self: *const Style) Size(LengthPercentageAuto) {
+    pub fn getMaxSize(self: *const Style) Size(LengthPercentageAuto) {
         return self.max_size;
     }
-    pub inline fn getAspectRatio(self: *const Style) ?f32 {
+    pub fn getAspectRatio(self: *const Style) ?f32 {
         return self.aspect_ratio;
     }
-    pub inline fn getMargin(self: *const Style) Rect(LengthPercentageAuto) {
+    pub fn getMargin(self: *const Style) Rect(LengthPercentageAuto) {
         return self.margin;
     }
-    pub inline fn getPadding(self: *const Style) Rect(LengthPercentage) {
+    pub fn getPadding(self: *const Style) Rect(LengthPercentage) {
         return self.padding;
     }
-    pub inline fn getBorder(self: *const Style) Rect(LengthPercentage) {
+    pub fn getBorder(self: *const Style) Rect(LengthPercentage) {
         return self.border;
     }
-    pub inline fn getContain(self: *const Style) Contain {
+    pub fn getContain(self: *const Style) Contain {
         return self.contain;
     }
 
     // OofItemStyle / BlockItemStyle / FlexboxItemStyle / GridItemStyle
 
-    pub inline fn getAlignSelf(self: *const Style) ?AlignSelf {
+    pub fn getAlignSelf(self: *const Style) ?AlignSelf {
         return self.align_self;
     }
-    pub inline fn getJustifySelf(self: *const Style) ?AlignSelf {
+    pub fn getJustifySelf(self: *const Style) ?AlignSelf {
         return self.justify_self;
     }
-    pub inline fn isTable(self: *const Style) bool {
+    pub fn isTable(self: *const Style) bool {
         return self.item_is_table;
     }
-    pub inline fn getGridRow(self: *const Style) Line(GridPlacement) {
+    pub fn getGridRow(self: *const Style) Line(GridPlacement) {
         return self.grid_row;
     }
-    pub inline fn getGridColumn(self: *const Style) Line(GridPlacement) {
+    pub fn getGridColumn(self: *const Style) Line(GridPlacement) {
         return self.grid_column;
     }
-    pub inline fn getGridPlacement(self: *const Style, axis: AbsoluteAxis) Line(GridPlacement) {
+    pub fn getGridPlacement(self: *const Style, axis: AbsoluteAxis) Line(GridPlacement) {
         return GridItemStyleDefaults.getGridPlacement(self, axis);
     }
-    pub inline fn getFloat(self: *const Style) Float {
+    pub fn getFloat(self: *const Style) Float {
         return self.float;
     }
-    pub inline fn getClear(self: *const Style) Clear {
+    pub fn getClear(self: *const Style) Clear {
         return self.clear;
     }
 
     // BlockContainerStyle
 
-    pub inline fn getTextAlign(self: *const Style) TextAlign {
+    pub fn getTextAlign(self: *const Style) TextAlign {
         return self.text_align;
     }
 
     // Shared by the container interfaces
 
-    pub inline fn getAlignContent(self: *const Style) AlignContent {
+    pub fn getAlignContent(self: *const Style) AlignContent {
         return self.align_content;
     }
-    pub inline fn getJustifyItems(self: *const Style) AlignItems {
+    pub fn getJustifyItems(self: *const Style) AlignItems {
         return self.justify_items;
     }
-    pub inline fn getAlignItems(self: *const Style) AlignItems {
+    pub fn getAlignItems(self: *const Style) AlignItems {
         return self.align_items;
     }
-    pub inline fn getJustifyContent(self: *const Style) JustifyContent {
+    pub fn getJustifyContent(self: *const Style) JustifyContent {
         return self.justify_content;
     }
-    pub inline fn getGap(self: *const Style) Size(LengthPercentage) {
+    pub fn getGap(self: *const Style) Size(LengthPercentage) {
         return self.gap;
     }
 
     // FlexboxContainerStyle
 
-    pub inline fn getFlexDirection(self: *const Style) FlexDirection {
+    pub fn getFlexDirection(self: *const Style) FlexDirection {
         return self.flex_direction;
     }
-    pub inline fn getFlexWrap(self: *const Style) FlexWrap {
+    pub fn getFlexWrap(self: *const Style) FlexWrap {
         return self.flex_wrap;
     }
-    pub inline fn getFlexLineCount(self: *const Style) u16 {
+    pub fn getFlexLineCount(self: *const Style) u16 {
         return self.flex_line_count;
     }
 
     // FlexboxItemStyle
 
-    pub inline fn getFlexBasis(self: *const Style) Dimension {
+    pub fn getFlexBasis(self: *const Style) Dimension {
         return self.flex_basis;
     }
-    pub inline fn getFlexGrow(self: *const Style) f32 {
+    pub fn getFlexGrow(self: *const Style) f32 {
         return self.flex_grow;
     }
-    pub inline fn getFlexShrink(self: *const Style) f32 {
+    pub fn getFlexShrink(self: *const Style) f32 {
         return self.flex_shrink;
     }
 
     // GridContainerStyle
 
-    pub inline fn getGridTemplateRows(self: *const Style) ?[]const GridTemplateComponent {
+    pub fn getGridTemplateRows(self: *const Style) ?[]const GridTemplateComponent {
         return self.grid_template_rows;
     }
-    pub inline fn getGridTemplateColumns(self: *const Style) ?[]const GridTemplateComponent {
+    pub fn getGridTemplateColumns(self: *const Style) ?[]const GridTemplateComponent {
         return self.grid_template_columns;
     }
-    pub inline fn getGridAutoRows(self: *const Style) []const TrackSizingFunction {
+    pub fn getGridAutoRows(self: *const Style) []const TrackSizingFunction {
         return self.grid_auto_rows;
     }
-    pub inline fn getGridAutoColumns(self: *const Style) []const TrackSizingFunction {
+    pub fn getGridAutoColumns(self: *const Style) []const TrackSizingFunction {
         return self.grid_auto_columns;
     }
-    pub inline fn getGridAutoFlow(self: *const Style) GridAutoFlow {
+    pub fn getGridAutoFlow(self: *const Style) GridAutoFlow {
         return self.grid_auto_flow;
     }
-    pub inline fn getGridTemplateAreas(self: *const Style) ?[]const GridTemplateArea {
+    pub fn getGridTemplateAreas(self: *const Style) ?[]const GridTemplateArea {
         return if (self.grid_template_areas) |template| template.areas else null;
     }
-    pub inline fn getGridTemplateAreaRowCount(self: *const Style) u16 {
+    pub fn getGridTemplateAreaRowCount(self: *const Style) u16 {
         return if (self.grid_template_areas) |template| template.row_count else 0;
     }
-    pub inline fn getGridTemplateAreaColumnCount(self: *const Style) u16 {
+    pub fn getGridTemplateAreaColumnCount(self: *const Style) u16 {
         return if (self.grid_template_areas) |template| template.column_count else 0;
     }
-    pub inline fn getGridTemplateColumnNames(self: *const Style) ?[]const []const []const u8 {
+    pub fn getGridTemplateColumnNames(self: *const Style) ?[]const []const []const u8 {
         return self.grid_template_column_names;
     }
-    pub inline fn getGridTemplateRowNames(self: *const Style) ?[]const []const []const u8 {
+    pub fn getGridTemplateRowNames(self: *const Style) ?[]const []const []const u8 {
         return self.grid_template_row_names;
     }
-    pub inline fn getGridTemplateTracks(self: *const Style, axis: AbsoluteAxis) ?[]const GridTemplateComponent {
+    pub fn getGridTemplateTracks(self: *const Style, axis: AbsoluteAxis) ?[]const GridTemplateComponent {
         return GridContainerStyleDefaults.getGridTemplateTracks(self, axis);
     }
-    pub inline fn getGridAlignContent(self: *const Style, axis: AbstractAxis) AlignContent {
+    pub fn getGridAlignContent(self: *const Style, axis: AbstractAxis) AlignContent {
         return GridContainerStyleDefaults.getGridAlignContent(self, axis);
     }
 };
 
 /// Upstream default implementations of the `CoreStyle` methods (see the file documentation)
 pub const CoreStyleDefaults = struct {
-    pub inline fn getBoxGenerationMode(_: anytype) BoxGenerationMode {
+    pub fn getBoxGenerationMode(_: anytype) BoxGenerationMode {
         return BoxGenerationMode.default;
     }
-    pub inline fn isBlock(_: anytype) bool {
+    pub fn isBlock(_: anytype) bool {
         return false;
     }
-    pub inline fn isCompressibleReplaced(_: anytype) bool {
+    pub fn isCompressibleReplaced(_: anytype) bool {
         return false;
     }
-    pub inline fn isReplaced(_: anytype) bool {
+    pub fn isReplaced(_: anytype) bool {
         return false;
     }
-    pub inline fn getBoxSizing(_: anytype) BoxSizing {
+    pub fn getBoxSizing(_: anytype) BoxSizing {
         return .border_box;
     }
-    pub inline fn getDirection(_: anytype) Direction {
+    pub fn getDirection(_: anytype) Direction {
         return .ltr;
     }
-    pub inline fn getOverflow(_: anytype) Point(Overflow) {
+    pub fn getOverflow(_: anytype) Point(Overflow) {
         return Style.default.overflow;
     }
-    pub inline fn getScrollbarWidth(_: anytype) f32 {
+    pub fn getScrollbarWidth(_: anytype) f32 {
         return 0.0;
     }
-    pub inline fn getPosition(_: anytype) Position {
+    pub fn getPosition(_: anytype) Position {
         return Style.default.position;
     }
-    pub inline fn getInset(_: anytype) Rect(LengthPercentageAuto) {
+    pub fn getInset(_: anytype) Rect(LengthPercentageAuto) {
         return Style.default.inset;
     }
-    pub inline fn isContainingBlock(self: anytype) ContainingBlockClaims {
+    pub fn isContainingBlock(self: anytype) ContainingBlockClaims {
         return .{ .absolute = self.getPosition().isPositioned(), .fixed = false };
     }
-    pub inline fn getSize(_: anytype) Size(Dimension) {
+    pub fn getSize(_: anytype) Size(Dimension) {
         return Style.default.size;
     }
-    pub inline fn getMinSize(_: anytype) Size(LengthPercentageAuto) {
+    pub fn getMinSize(_: anytype) Size(LengthPercentageAuto) {
         return Style.default.min_size;
     }
-    pub inline fn getMaxSize(_: anytype) Size(LengthPercentageAuto) {
+    pub fn getMaxSize(_: anytype) Size(LengthPercentageAuto) {
         return Style.default.max_size;
     }
-    pub inline fn getAspectRatio(_: anytype) ?f32 {
+    pub fn getAspectRatio(_: anytype) ?f32 {
         return Style.default.aspect_ratio;
     }
-    pub inline fn getMargin(_: anytype) Rect(LengthPercentageAuto) {
+    pub fn getMargin(_: anytype) Rect(LengthPercentageAuto) {
         return Style.default.margin;
     }
-    pub inline fn getPadding(_: anytype) Rect(LengthPercentage) {
+    pub fn getPadding(_: anytype) Rect(LengthPercentage) {
         return Style.default.padding;
     }
-    pub inline fn getBorder(_: anytype) Rect(LengthPercentage) {
+    pub fn getBorder(_: anytype) Rect(LengthPercentage) {
         return Style.default.border;
     }
-    pub inline fn getContain(_: anytype) Contain {
+    pub fn getContain(_: anytype) Contain {
         return Contain.none;
     }
 };
 
 /// Upstream default implementations of the `OofItemStyle` methods
 pub const OofItemStyleDefaults = struct {
-    pub inline fn getAlignSelf(_: anytype) ?AlignSelf {
+    pub fn getAlignSelf(_: anytype) ?AlignSelf {
         return null;
     }
-    pub inline fn getJustifySelf(_: anytype) ?AlignSelf {
+    pub fn getJustifySelf(_: anytype) ?AlignSelf {
         return null;
     }
-    pub inline fn isTable(_: anytype) bool {
+    pub fn isTable(_: anytype) bool {
         return false;
     }
-    pub inline fn getGridRow(_: anytype) Line(GridPlacement) {
+    pub fn getGridRow(_: anytype) Line(GridPlacement) {
         return Line(GridPlacement).auto;
     }
-    pub inline fn getGridColumn(_: anytype) Line(GridPlacement) {
+    pub fn getGridColumn(_: anytype) Line(GridPlacement) {
         return Line(GridPlacement).auto;
     }
 };
 
 /// Upstream default implementations of the `FlexboxContainerStyle` methods
 pub const FlexboxContainerStyleDefaults = struct {
-    pub inline fn getFlexDirection(_: anytype) FlexDirection {
+    pub fn getFlexDirection(_: anytype) FlexDirection {
         return Style.default.flex_direction;
     }
-    pub inline fn getFlexWrap(_: anytype) FlexWrap {
+    pub fn getFlexWrap(_: anytype) FlexWrap {
         return Style.default.flex_wrap;
     }
-    pub inline fn getFlexLineCount(_: anytype) u16 {
+    pub fn getFlexLineCount(_: anytype) u16 {
         return Style.default.flex_line_count;
     }
-    pub inline fn getGap(_: anytype) Size(LengthPercentage) {
+    pub fn getGap(_: anytype) Size(LengthPercentage) {
         return Style.default.gap;
     }
-    pub inline fn getAlignContent(_: anytype) AlignContent {
+    pub fn getAlignContent(_: anytype) AlignContent {
         return Style.default.align_content;
     }
-    pub inline fn getAlignItems(_: anytype) AlignItems {
+    pub fn getAlignItems(_: anytype) AlignItems {
         return Style.default.align_items;
     }
-    pub inline fn getJustifyContent(_: anytype) JustifyContent {
+    pub fn getJustifyContent(_: anytype) JustifyContent {
         return Style.default.justify_content;
     }
 };
 
 /// Upstream default implementations of the `FlexboxItemStyle` methods
 pub const FlexboxItemStyleDefaults = struct {
-    pub inline fn getFlexBasis(_: anytype) Dimension {
+    pub fn getFlexBasis(_: anytype) Dimension {
         return Style.default.flex_basis;
     }
-    pub inline fn getFlexGrow(_: anytype) f32 {
+    pub fn getFlexGrow(_: anytype) f32 {
         return Style.default.flex_grow;
     }
-    pub inline fn getFlexShrink(_: anytype) f32 {
+    pub fn getFlexShrink(_: anytype) f32 {
         return Style.default.flex_shrink;
     }
-    pub inline fn getAlignSelf(_: anytype) ?AlignSelf {
+    pub fn getAlignSelf(_: anytype) ?AlignSelf {
         return Style.default.align_self;
     }
 };
@@ -929,26 +929,26 @@ pub const GridContainerStyleDefaults = struct {
         }
         return result orelse 0;
     }
-    pub inline fn getGridAutoFlow(_: anytype) GridAutoFlow {
+    pub fn getGridAutoFlow(_: anytype) GridAutoFlow {
         return Style.default.grid_auto_flow;
     }
-    pub inline fn getGap(_: anytype) Size(LengthPercentage) {
+    pub fn getGap(_: anytype) Size(LengthPercentage) {
         return Style.default.gap;
     }
-    pub inline fn getAlignContent(_: anytype) AlignContent {
+    pub fn getAlignContent(_: anytype) AlignContent {
         return Style.default.align_content;
     }
-    pub inline fn getJustifyContent(_: anytype) JustifyContent {
+    pub fn getJustifyContent(_: anytype) JustifyContent {
         return Style.default.justify_content;
     }
-    pub inline fn getAlignItems(_: anytype) AlignItems {
+    pub fn getAlignItems(_: anytype) AlignItems {
         return Style.default.align_items;
     }
-    pub inline fn getJustifyItems(_: anytype) AlignItems {
+    pub fn getJustifyItems(_: anytype) AlignItems {
         return Style.default.justify_items;
     }
     /// Get a grid container's template tracks for the axis passed
-    pub inline fn getGridTemplateTracks(self: anytype, axis: AbsoluteAxis) ?[]const GridTemplateComponent {
+    pub fn getGridTemplateTracks(self: anytype, axis: AbsoluteAxis) ?[]const GridTemplateComponent {
         return switch (axis) {
             .horizontal => self.getGridTemplateColumns(),
             .vertical => self.getGridTemplateRows(),
@@ -956,7 +956,7 @@ pub const GridContainerStyleDefaults = struct {
     }
     /// Get a grid container's align-content or justify-content alignment depending on the axis passed
     /// (with `normal` resolved to `stretch`)
-    pub inline fn getGridAlignContent(self: anytype, axis: AbstractAxis) AlignContent {
+    pub fn getGridAlignContent(self: anytype, axis: AbstractAxis) AlignContent {
         const align_value = switch (axis) {
             .@"inline" => self.getJustifyContent(),
             .block => self.getAlignContent(),
@@ -970,20 +970,20 @@ pub const GridContainerStyleDefaults = struct {
 
 /// Upstream default implementations of the `GridItemStyle` methods
 pub const GridItemStyleDefaults = struct {
-    pub inline fn getGridRow(_: anytype) Line(GridPlacement) {
+    pub fn getGridRow(_: anytype) Line(GridPlacement) {
         return Line(GridPlacement).auto;
     }
-    pub inline fn getGridColumn(_: anytype) Line(GridPlacement) {
+    pub fn getGridColumn(_: anytype) Line(GridPlacement) {
         return Line(GridPlacement).auto;
     }
-    pub inline fn getAlignSelf(_: anytype) ?AlignSelf {
+    pub fn getAlignSelf(_: anytype) ?AlignSelf {
         return Style.default.align_self;
     }
-    pub inline fn getJustifySelf(_: anytype) ?AlignSelf {
+    pub fn getJustifySelf(_: anytype) ?AlignSelf {
         return Style.default.justify_self;
     }
     /// Get a grid item's row or column placement depending on the axis passed
-    pub inline fn getGridPlacement(self: anytype, axis: AbsoluteAxis) Line(GridPlacement) {
+    pub fn getGridPlacement(self: anytype, axis: AbsoluteAxis) Line(GridPlacement) {
         return switch (axis) {
             .horizontal => self.getGridColumn(),
             .vertical => self.getGridRow(),
@@ -993,35 +993,35 @@ pub const GridItemStyleDefaults = struct {
 
 /// Upstream default implementations of the `BlockContainerStyle` methods
 pub const BlockContainerStyleDefaults = struct {
-    pub inline fn getTextAlign(_: anytype) TextAlign {
+    pub fn getTextAlign(_: anytype) TextAlign {
         return Style.default.text_align;
     }
-    pub inline fn getAlignContent(_: anytype) AlignContent {
+    pub fn getAlignContent(_: anytype) AlignContent {
         return Style.default.align_content;
     }
-    pub inline fn getJustifyItems(_: anytype) AlignItems {
+    pub fn getJustifyItems(_: anytype) AlignItems {
         return Style.default.justify_items;
     }
 };
 
 /// Upstream default implementations of the `BlockItemStyle` methods
 pub const BlockItemStyleDefaults = struct {
-    pub inline fn isTable(_: anytype) bool {
+    pub fn isTable(_: anytype) bool {
         return false;
     }
-    pub inline fn getAlignSelf(_: anytype) ?AlignSelf {
+    pub fn getAlignSelf(_: anytype) ?AlignSelf {
         return null;
     }
-    pub inline fn getJustifySelf(_: anytype) ?AlignSelf {
+    pub fn getJustifySelf(_: anytype) ?AlignSelf {
         return null;
     }
-    pub inline fn getAlignContent(_: anytype) AlignContent {
+    pub fn getAlignContent(_: anytype) AlignContent {
         return AlignContent.normal;
     }
-    pub inline fn getFloat(_: anytype) Float {
+    pub fn getFloat(_: anytype) Float {
         return .none;
     }
-    pub inline fn getClear(_: anytype) Clear {
+    pub fn getClear(_: anytype) Clear {
         return .none;
     }
 };

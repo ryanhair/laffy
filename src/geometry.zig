@@ -25,7 +25,7 @@ pub const AbsoluteAxis = enum {
     vertical,
 
     /// Returns the other variant of the enum
-    pub inline fn otherAxis(self: AbsoluteAxis) AbsoluteAxis {
+    pub fn otherAxis(self: AbsoluteAxis) AbsoluteAxis {
         return switch (self) {
             .horizontal => .vertical,
             .vertical => .horizontal,
@@ -42,7 +42,7 @@ pub const AbstractAxis = enum {
     block,
 
     /// Returns the other variant of the enum
-    pub inline fn other(self: AbstractAxis) AbstractAxis {
+    pub fn other(self: AbstractAxis) AbstractAxis {
         return switch (self) {
             .@"inline" => .block,
             .block => .@"inline",
@@ -51,7 +51,7 @@ pub const AbstractAxis = enum {
 
     /// Convert an `AbstractAxis` into an `AbsoluteAxis` naively assuming that the Inline axis is Horizontal
     /// This is currently always true, but will change if laffy ever implements the `writing_mode` property
-    pub inline fn asAbsNaive(self: AbstractAxis) AbsoluteAxis {
+    pub fn asAbsNaive(self: AbstractAxis) AbsoluteAxis {
         return switch (self) {
             .@"inline" => .horizontal,
             .block => .vertical,
@@ -71,7 +71,7 @@ pub fn InBothAbsAxis(comptime T: type) type {
         vertical: T,
 
         /// Get the contained item based on the AbsoluteAxis passed
-        pub inline fn get(self: Self, axis: AbsoluteAxis) T {
+        pub fn get(self: Self, axis: AbsoluteAxis) T {
             return switch (axis) {
                 .horizontal => self.horizontal,
                 .vertical => self.vertical,
@@ -107,7 +107,7 @@ pub fn Rect(comptime T: type) type {
         bottom: T,
 
         /// Component-wise addition (upstream `Add` impl; numeric `T` only)
-        pub inline fn add(self: Self, rhs: Self) Self {
+        pub fn add(self: Self, rhs: Self) Self {
             return .{
                 .left = self.left + rhs.left,
                 .right = self.right + rhs.right,
@@ -117,7 +117,7 @@ pub fn Rect(comptime T: type) type {
         }
 
         /// Get either the width or height depending on the AbsoluteAxis passed in
-        pub inline fn gridAxisSum(self: Self, axis: AbsoluteAxis) T {
+        pub fn gridAxisSum(self: Self, axis: AbsoluteAxis) T {
             return switch (axis) {
                 .horizontal => self.left + self.right,
                 .vertical => self.top + self.bottom,
@@ -125,7 +125,7 @@ pub fn Rect(comptime T: type) type {
         }
 
         /// Swap the horizontal and vertical sides (`left <-> top`, `right <-> bottom`)
-        pub inline fn transpose(self: Self) Self {
+        pub fn transpose(self: Self) Self {
             return .{ .left = self.top, .right = self.bottom, .top = self.left, .bottom = self.right };
         }
 
@@ -134,7 +134,7 @@ pub fn Rect(comptime T: type) type {
         /// When applied to the left and right sides, the width is used
         /// as the second parameter of `f`.
         /// When applied to the top or bottom sides, the height is used instead.
-        pub inline fn zipSize(
+        pub fn zipSize(
             self: Self,
             comptime U: type,
             size: Size(U),
@@ -152,17 +152,17 @@ pub fn Rect(comptime T: type) type {
         /// Applies the function `f` to the left, right, top, and bottom properties
         ///
         /// This is used to transform a `Rect(T)` into a `Rect(R)`.
-        pub inline fn map(self: Self, comptime R: type, comptime f: fn (T) R) Rect(R) {
+        pub fn map(self: Self, comptime R: type, comptime f: fn (T) R) Rect(R) {
             return .{ .left = f(self.left), .right = f(self.right), .top = f(self.top), .bottom = f(self.bottom) };
         }
 
         /// Returns a `Line(T)` representing the left and right properties of the Rect
-        pub inline fn horizontalComponents(self: Self) Line(T) {
+        pub fn horizontalComponents(self: Self) Line(T) {
             return .{ .start = self.left, .end = self.right };
         }
 
         /// Returns a `Line(T)` containing the top and bottom properties of the Rect
-        pub inline fn verticalComponents(self: Self) Line(T) {
+        pub fn verticalComponents(self: Self) Line(T) {
             return .{ .start = self.top, .end = self.bottom };
         }
 
@@ -171,7 +171,7 @@ pub fn Rect(comptime T: type) type {
         /// This is typically used when computing total padding.
         ///
         /// **NOTE:** this is *not* the width of the rectangle.
-        pub inline fn horizontalAxisSum(self: Self) T {
+        pub fn horizontalAxisSum(self: Self) T {
             return self.left + self.right;
         }
 
@@ -180,14 +180,14 @@ pub fn Rect(comptime T: type) type {
         /// This is typically used when computing total padding.
         ///
         /// **NOTE:** this is *not* the height of the rectangle.
-        pub inline fn verticalAxisSum(self: Self) T {
+        pub fn verticalAxisSum(self: Self) T {
             return self.top + self.bottom;
         }
 
         /// Both horizontalAxisSum and verticalAxisSum as a `Size(T)`
         ///
         /// **NOTE:** this is *not* the width/height of the rectangle.
-        pub inline fn sumAxes(self: Self) Size(T) {
+        pub fn sumAxes(self: Self) Size(T) {
             return .{ .width = self.horizontalAxisSum(), .height = self.verticalAxisSum() };
         }
 
@@ -197,7 +197,7 @@ pub fn Rect(comptime T: type) type {
         ///
         /// If the `FlexDirection` is `row` or `row_reverse`, this is `horizontalAxisSum`.
         /// Otherwise, this is `verticalAxisSum`.
-        pub inline fn mainAxisSum(self: Self, direction: FlexDirection) T {
+        pub fn mainAxisSum(self: Self, direction: FlexDirection) T {
             if (direction.isRow()) {
                 return self.horizontalAxisSum();
             } else {
@@ -209,7 +209,7 @@ pub fn Rect(comptime T: type) type {
         ///
         /// If the `FlexDirection` is `row` or `row_reverse`, this is `verticalAxisSum`.
         /// Otherwise, this is `horizontalAxisSum`.
-        pub inline fn crossAxisSum(self: Self, direction: FlexDirection) T {
+        pub fn crossAxisSum(self: Self, direction: FlexDirection) T {
             if (direction.isRow()) {
                 return self.verticalAxisSum();
             } else {
@@ -218,22 +218,22 @@ pub fn Rect(comptime T: type) type {
         }
 
         /// The `start` or `top` value of the `Rect`, from the perspective of the main layout axis
-        pub inline fn mainStart(self: Self, direction: FlexDirection) T {
+        pub fn mainStart(self: Self, direction: FlexDirection) T {
             return if (direction.isRow()) self.left else self.top;
         }
 
         /// The `end` or `bottom` value of the `Rect`, from the perspective of the main layout axis
-        pub inline fn mainEnd(self: Self, direction: FlexDirection) T {
+        pub fn mainEnd(self: Self, direction: FlexDirection) T {
             return if (direction.isRow()) self.right else self.bottom;
         }
 
         /// The `start` or `top` value of the `Rect`, from the perspective of the cross layout axis
-        pub inline fn crossStart(self: Self, direction: FlexDirection) T {
+        pub fn crossStart(self: Self, direction: FlexDirection) T {
             return if (direction.isRow()) self.top else self.left;
         }
 
         /// The `end` or `bottom` value of the `Rect`, from the perspective of the cross layout axis
-        pub inline fn crossEnd(self: Self, direction: FlexDirection) T {
+        pub fn crossEnd(self: Self, direction: FlexDirection) T {
             return if (direction.isRow()) self.bottom else self.right;
         }
 
@@ -241,14 +241,14 @@ pub fn Rect(comptime T: type) type {
         pub const none: Self = .{ .left = null, .right = null, .top = null, .bottom = null };
 
         /// Creates a new Rect (`Rect(f32)` only)
-        pub inline fn new(start: f32, end: f32, top: f32, bottom: f32) Self {
+        pub fn new(start: f32, end: f32, top: f32, bottom: f32) Self {
             return .{ .left = start, .right = end, .top = top, .bottom = bottom };
         }
 
         /// Returns the smallest rectangle that contains both `self` and `other`, where the fields
         /// of each `Rect` are interpreted as edge coordinates (`left`/`top` being the minimum
         /// coordinates and `right`/`bottom` the maximum coordinates of the rectangle) (`Rect(f32)` only)
-        pub inline fn @"union"(self: Self, other_rect: Self) Self {
+        pub fn @"union"(self: Self, other_rect: Self) Self {
             return .{
                 .left = @min(self.left, other_rect.left),
                 .right = @max(self.right, other_rect.right),
@@ -258,12 +258,12 @@ pub fn Rect(comptime T: type) type {
         }
 
         /// Create a new Rect with length values (`Rect(Dimension)`; upstream `Rect::<Dimension>::from_length`)
-        pub inline fn fromLengths(start: f32, end: f32, top: f32, bottom: f32) Self {
+        pub fn fromLengths(start: f32, end: f32, top: f32, bottom: f32) Self {
             return .{ .left = T.length(start), .right = T.length(end), .top = T.length(top), .bottom = T.length(bottom) };
         }
 
         /// Create a new Rect with percentage values (`Rect(Dimension)`; upstream `Rect::<Dimension>::from_percent`)
-        pub inline fn fromPercents(start: f32, end: f32, top: f32, bottom: f32) Self {
+        pub fn fromPercents(start: f32, end: f32, top: f32, bottom: f32) Self {
             return .{ .left = T.percent(start), .right = T.percent(end), .top = T.percent(top), .bottom = T.percent(bottom) };
         }
 
@@ -280,27 +280,27 @@ pub fn Rect(comptime T: type) type {
         pub const max_content: Self = all(elementMaxContent(T));
 
         /// A Rect where all sides are the same `fit-content(…)` value with the given argument
-        pub inline fn fitContent(argument: LengthPercentage) Self {
+        pub fn fitContent(argument: LengthPercentage) Self {
             return all(elementFitContent(T, argument));
         }
         /// A Rect where all sides are the same given absolute length (upstream `FromLength`)
-        pub inline fn fromLength(value: anytype) Self {
+        pub fn fromLength(value: anytype) Self {
             return all(elementLength(T, value));
         }
         /// A Rect where all sides are the same given absolute length (upstream `Rect::length`)
-        pub inline fn length(value: anytype) Self {
+        pub fn length(value: anytype) Self {
             return fromLength(value);
         }
         /// A Rect where all sides are the same given percentage (upstream `FromPercent`)
-        pub inline fn fromPercent(value: anytype) Self {
+        pub fn fromPercent(value: anytype) Self {
             return all(elementPercent(T, value));
         }
         /// A Rect where all sides are the same given percentage (upstream `Rect::percent`)
-        pub inline fn percent(value: anytype) Self {
+        pub fn percent(value: anytype) Self {
             return fromPercent(value);
         }
 
-        inline fn all(value: T) Self {
+        fn all(value: T) Self {
             return .{ .left = value, .right = value, .top = value, .bottom = value };
         }
     };
@@ -321,7 +321,7 @@ pub fn Line(comptime T: type) type {
         /// Applies the function `f` to both the start and end
         ///
         /// This is used to transform a `Line(T)` into a `Line(R)`.
-        pub inline fn map(self: Self, comptime R: type, comptime f: fn (T) R) Line(R) {
+        pub fn map(self: Self, comptime R: type, comptime f: fn (T) R) Line(R) {
             return .{ .start = f(self.start), .end = f(self.end) };
         }
 
@@ -331,7 +331,7 @@ pub fn Line(comptime T: type) type {
         pub const @"false": Self = .{ .start = false, .end = false };
 
         /// Adds the start and end values together and returns the result (numeric `T` only)
-        pub inline fn sum(self: Self) T {
+        pub fn sum(self: Self) T {
             return self.start + self.end;
         }
 
@@ -347,37 +347,37 @@ pub fn Line(comptime T: type) type {
         pub const max_content: Self = both(elementMaxContent(T));
 
         /// A Line with start and end set to the same `fit-content(…)` value with the given argument
-        pub inline fn fitContent(argument: LengthPercentage) Self {
+        pub fn fitContent(argument: LengthPercentage) Self {
             return both(elementFitContent(T, argument));
         }
         /// A Line where both start and end are the same given absolute length (upstream `FromLength`)
-        pub inline fn fromLength(value: anytype) Self {
+        pub fn fromLength(value: anytype) Self {
             return both(elementLength(T, value));
         }
         /// A Line where both start and end are the same given absolute length (upstream `Line::length`)
-        pub inline fn length(value: anytype) Self {
+        pub fn length(value: anytype) Self {
             return fromLength(value);
         }
         /// A Line where both start and end are the same given percentage (upstream `FromPercent`)
-        pub inline fn fromPercent(value: anytype) Self {
+        pub fn fromPercent(value: anytype) Self {
             return both(elementPercent(T, value));
         }
         /// A Line where both start and end are the same given percentage (upstream `Line::percent`)
-        pub inline fn percent(value: anytype) Self {
+        pub fn percent(value: anytype) Self {
             return fromPercent(value);
         }
 
         /// Upstream `TaffyGridLine for Line<GridPlacement>`: starts at the given line, ends `auto`
-        pub inline fn fromLineIndex(index: i16) Self {
+        pub fn fromLineIndex(index: i16) Self {
             return .{ .start = T.fromLineIndex(index), .end = T.auto };
         }
 
         /// Upstream `TaffyGridSpan for Line<GridPlacement>`: spans the given number of tracks, ends `auto`
-        pub inline fn fromSpan(span_value: u16) Self {
+        pub fn fromSpan(span_value: u16) Self {
             return .{ .start = T.fromSpan(span_value), .end = T.auto };
         }
 
-        inline fn both(value: T) Self {
+        fn both(value: T) Self {
             return .{ .start = value, .end = value };
         }
 
@@ -387,48 +387,48 @@ pub fn Line(comptime T: type) type {
 
         /// Whether the track position is definite in this axis (or the item will need auto placement).
         /// Valid for `Line(GridPlacement)`, `Line(NonNamedGridPlacement)` and `Line(OriginZeroGridPlacement)`.
-        pub inline fn isDefinite(self: Self) bool {
+        pub fn isDefinite(self: Self) bool {
             return T.lineIsDefinite(self);
         }
 
         /// Resolves the span for an indefinite placement (a placement that does not consist of two `Track`s).
         /// Panics if called on a definite placement. Valid for `Line(GenericGridPlacement(_))`.
-        pub inline fn indefiniteSpan(self: Self) u16 {
+        pub fn indefiniteSpan(self: Self) u16 {
             return T.lineIndefiniteSpan(self);
         }
 
         /// Convert into origin-zero placements, treating named lines and spans as `auto`.
         /// Valid for `Line(GridPlacement)`.
-        pub inline fn intoOriginZeroIgnoringNamed(self: Self, explicit_track_count: u16) Line(T.OriginZeroPlacement) {
+        pub fn intoOriginZeroIgnoringNamed(self: Self, explicit_track_count: u16) Line(T.OriginZeroPlacement) {
             return T.lineIntoOriginZeroIgnoringNamed(self, explicit_track_count);
         }
 
         /// Convert into origin-zero placements. Valid for `Line(NonNamedGridPlacement)`.
-        pub inline fn intoOriginZero(self: Self, explicit_track_count: u16) Line(T.OriginZeroPlacement) {
+        pub fn intoOriginZero(self: Self, explicit_track_count: u16) Line(T.OriginZeroPlacement) {
             return T.lineIntoOriginZero(self, explicit_track_count);
         }
 
         /// If at least one of the of the start and end positions is a track index then the other end can be resolved
         /// into a track index purely based on the information contained with the placement specification.
         /// Valid for `Line(OriginZeroGridPlacement)`.
-        pub inline fn resolveDefiniteGridLines(self: Self) Line(T.LineType) {
+        pub fn resolveDefiniteGridLines(self: Self) Line(T.LineType) {
             return T.lineResolveDefiniteGridLines(self);
         }
 
         /// Resolve the grid tracks of an absolutely positioned item. Valid for `Line(OriginZeroGridPlacement)`.
-        pub inline fn resolveAbsolutelyPositionedGridTracks(self: Self) Line(?T.LineType) {
+        pub fn resolveAbsolutelyPositionedGridTracks(self: Self) Line(?T.LineType) {
             return T.lineResolveAbsolutelyPositionedGridTracks(self);
         }
 
         /// If neither of the start and end positions is a track index then the other end can be resolved
         /// into a track index if a definite start position is supplied externally.
         /// Valid for `Line(OriginZeroGridPlacement)`.
-        pub inline fn resolveIndefiniteGridTracks(self: Self, start_line: T.LineType) Line(T.LineType) {
+        pub fn resolveIndefiniteGridTracks(self: Self, start_line: T.LineType) Line(T.LineType) {
             return T.lineResolveIndefiniteGridTracks(self, start_line);
         }
 
         /// The number of tracks between the start and end lines. Valid for `Line(OriginZeroLine)`.
-        pub inline fn span(self: Self) u16 {
+        pub fn span(self: Self) u16 {
             return T.lineSpan(self);
         }
     };
@@ -447,22 +447,22 @@ pub const FloatInsets = struct {
     pub const zero: FloatInsets = .{ .left = 0.0, .right = 0.0 };
 
     /// Create a new `FloatInsets`
-    pub inline fn new(left: f32, right: f32) FloatInsets {
+    pub fn new(left: f32, right: f32) FloatInsets {
         return .{ .left = left, .right = right };
     }
 
     /// The sum of the left and right insets
-    pub inline fn sum(self: FloatInsets) f32 {
+    pub fn sum(self: FloatInsets) f32 {
         return self.left + self.right;
     }
 
     /// The larger of the two insets on each side
-    pub inline fn max(self: FloatInsets, other: FloatInsets) FloatInsets {
+    pub fn max(self: FloatInsets, other: FloatInsets) FloatInsets {
         return .{ .left = @max(self.left, other.left), .right = @max(self.right, other.right) };
     }
 
     /// Component-wise addition (upstream `Add` impl)
-    pub inline fn add(self: FloatInsets, rhs: FloatInsets) FloatInsets {
+    pub fn add(self: FloatInsets, rhs: FloatInsets) FloatInsets {
         return .{ .left = self.left + rhs.left, .right = self.right + rhs.right };
     }
 };
@@ -480,17 +480,17 @@ pub fn Size(comptime T: type) type {
         height: T,
 
         /// Component-wise addition (upstream `Add` impl; numeric `T` only)
-        pub inline fn add(self: Self, rhs: Self) Self {
+        pub fn add(self: Self, rhs: Self) Self {
             return .{ .width = self.width + rhs.width, .height = self.height + rhs.height };
         }
 
         /// Component-wise subtraction (upstream `Sub` impl; numeric `T` only)
-        pub inline fn sub(self: Self, rhs: Self) Self {
+        pub fn sub(self: Self, rhs: Self) Self {
             return .{ .width = self.width - rhs.width, .height = self.height - rhs.height };
         }
 
         /// Get either the width or height depending on the AbsoluteAxis passed in
-        pub inline fn getAbs(self: Self, axis: AbsoluteAxis) T {
+        pub fn getAbs(self: Self, axis: AbsoluteAxis) T {
             return switch (axis) {
                 .horizontal => self.width,
                 .vertical => self.height,
@@ -498,30 +498,30 @@ pub fn Size(comptime T: type) type {
         }
 
         /// Swap the width and height components
-        pub inline fn transpose(self: Self) Self {
+        pub fn transpose(self: Self) Self {
             return .{ .width = self.height, .height = self.width };
         }
 
         /// Applies the function `f` to both the width and height
         ///
         /// This is used to transform a `Size(T)` into a `Size(R)`.
-        pub inline fn map(self: Self, comptime R: type, comptime f: fn (T) R) Size(R) {
+        pub fn map(self: Self, comptime R: type, comptime f: fn (T) R) Size(R) {
             return .{ .width = f(self.width), .height = f(self.height) };
         }
 
         /// Applies the function `f` to the width
-        pub inline fn mapWidth(self: Self, comptime f: fn (T) T) Self {
+        pub fn mapWidth(self: Self, comptime f: fn (T) T) Self {
             return .{ .width = f(self.width), .height = self.height };
         }
 
         /// Applies the function `f` to the height
-        pub inline fn mapHeight(self: Self, comptime f: fn (T) T) Self {
+        pub fn mapHeight(self: Self, comptime f: fn (T) T) Self {
             return .{ .width = self.width, .height = f(self.height) };
         }
 
         /// Applies the function `f` to both the width and height
         /// of this value and another passed value
-        pub inline fn zipMap(
+        pub fn zipMap(
             self: Self,
             comptime Other: type,
             other: Size(Other),
@@ -534,7 +534,7 @@ pub fn Size(comptime T: type) type {
         /// Sets the extent of the main layout axis
         ///
         /// Whether this is the width or height depends on the `direction` provided
-        pub inline fn setMain(self: *Self, direction: FlexDirection, value: T) void {
+        pub fn setMain(self: *Self, direction: FlexDirection, value: T) void {
             if (direction.isRow()) {
                 self.width = value;
             } else {
@@ -545,7 +545,7 @@ pub fn Size(comptime T: type) type {
         /// Sets the extent of the cross layout axis
         ///
         /// Whether this is the width or height depends on the `direction` provided
-        pub inline fn setCross(self: *Self, direction: FlexDirection, value: T) void {
+        pub fn setCross(self: *Self, direction: FlexDirection, value: T) void {
             if (direction.isRow()) {
                 self.height = value;
             } else {
@@ -556,7 +556,7 @@ pub fn Size(comptime T: type) type {
         /// Creates a new value of type Self with the main axis set to value provided
         ///
         /// Whether this is the width or height depends on the `direction` provided
-        pub inline fn withMain(self: Self, direction: FlexDirection, value: T) Self {
+        pub fn withMain(self: Self, direction: FlexDirection, value: T) Self {
             var new_value = self;
             if (direction.isRow()) {
                 new_value.width = value;
@@ -569,7 +569,7 @@ pub fn Size(comptime T: type) type {
         /// Creates a new value of type Self with the cross axis set to value provided
         ///
         /// Whether this is the width or height depends on the `direction` provided
-        pub inline fn withCross(self: Self, direction: FlexDirection, value: T) Self {
+        pub fn withCross(self: Self, direction: FlexDirection, value: T) Self {
             var new_value = self;
             if (direction.isRow()) {
                 new_value.height = value;
@@ -582,7 +582,7 @@ pub fn Size(comptime T: type) type {
         /// Creates a new value of type Self with the main axis modified by the callback provided
         ///
         /// Whether this is the width or height depends on the `direction` provided
-        pub inline fn mapMain(self: Self, direction: FlexDirection, comptime mapper: fn (T) T) Self {
+        pub fn mapMain(self: Self, direction: FlexDirection, comptime mapper: fn (T) T) Self {
             var new_value = self;
             if (direction.isRow()) {
                 new_value.width = mapper(new_value.width);
@@ -595,7 +595,7 @@ pub fn Size(comptime T: type) type {
         /// Creates a new value of type Self with the cross axis modified by the callback provided
         ///
         /// Whether this is the width or height depends on the `direction` provided
-        pub inline fn mapCross(self: Self, direction: FlexDirection, comptime mapper: fn (T) T) Self {
+        pub fn mapCross(self: Self, direction: FlexDirection, comptime mapper: fn (T) T) Self {
             var new_value = self;
             if (direction.isRow()) {
                 new_value.height = mapper(new_value.height);
@@ -608,20 +608,20 @@ pub fn Size(comptime T: type) type {
         /// Gets the extent of the main layout axis
         ///
         /// Whether this is the width or height depends on the `direction` provided
-        pub inline fn main(self: Self, direction: FlexDirection) T {
+        pub fn main(self: Self, direction: FlexDirection) T {
             return if (direction.isRow()) self.width else self.height;
         }
 
         /// Gets the extent of the cross layout axis
         ///
         /// Whether this is the width or height depends on the `direction` provided
-        pub inline fn cross(self: Self, direction: FlexDirection) T {
+        pub fn cross(self: Self, direction: FlexDirection) T {
             return if (direction.isRow()) self.height else self.width;
         }
 
         /// Gets the extent of the specified layout axis
         /// Whether this is the width or height depends on the `AbstractAxis` provided
-        pub inline fn get(self: Self, axis: AbstractAxis) T {
+        pub fn get(self: Self, axis: AbstractAxis) T {
             return switch (axis) {
                 .@"inline" => self.width,
                 .block => self.height,
@@ -630,7 +630,7 @@ pub fn Size(comptime T: type) type {
 
         /// Sets the extent of the specified layout axis
         /// Whether this is the width or height depends on the `AbstractAxis` provided
-        pub inline fn set(self: *Self, axis: AbstractAxis, value: T) void {
+        pub fn set(self: *Self, axis: AbstractAxis, value: T) void {
             switch (axis) {
                 .@"inline" => self.width = value,
                 .block => self.height = value,
@@ -639,7 +639,7 @@ pub fn Size(comptime T: type) type {
 
         /// Returns a copy with the extent of the specified layout axis set
         /// Whether this is the width or height depends on the `AbstractAxis` provided
-        pub inline fn with(self: Self, axis: AbstractAxis, value: T) Self {
+        pub fn with(self: Self, axis: AbstractAxis, value: T) Self {
             var new_value = self;
             switch (axis) {
                 .@"inline" => new_value.width = value,
@@ -649,24 +649,24 @@ pub fn Size(comptime T: type) type {
         }
 
         /// Upstream `From<Point<T>> for Size<T>`
-        pub inline fn fromPoint(value: Point(T)) Self {
+        pub fn fromPoint(value: Point(T)) Self {
             return .{ .width = value.x, .height = value.y };
         }
 
         // `Size<f32>` helpers
 
         /// Applies `@max` to each component separately (`Size(f32)` only)
-        pub inline fn max(self: Self, rhs: Self) Self {
+        pub fn max(self: Self, rhs: Self) Self {
             return .{ .width = @max(self.width, rhs.width), .height = @max(self.height, rhs.height) };
         }
 
         /// Applies `@min` to each component separately (`Size(f32)` only)
-        pub inline fn min(self: Self, rhs: Self) Self {
+        pub fn min(self: Self, rhs: Self) Self {
             return .{ .width = @min(self.width, rhs.width), .height = @min(self.height, rhs.height) };
         }
 
         /// Return true if both width and height are greater than 0 else false (`Size(f32)` only)
-        pub inline fn hasNonZeroArea(self: Self) bool {
+        pub fn hasNonZeroArea(self: Self) bool {
             return self.width > 0.0 and self.height > 0.0;
         }
 
@@ -676,12 +676,12 @@ pub fn Size(comptime T: type) type {
         pub const none: Self = .{ .width = null, .height = null };
 
         /// A `Size(?f32)` with `width` and `height` as parameters (upstream `Size::<Option<f32>>::new`)
-        pub inline fn new(width: f32, height: f32) Self {
+        pub fn new(width: f32, height: f32) Self {
             return .{ .width = width, .height = height };
         }
 
         /// Creates a new `Size(?f32)` with either the width or height set based on the provided `direction`
-        pub inline fn fromCross(direction: FlexDirection, value: ?f32) Self {
+        pub fn fromCross(direction: FlexDirection, value: ?f32) Self {
             var new_value: Self = none;
             if (direction.isRow()) {
                 new_value.height = value;
@@ -696,7 +696,7 @@ pub fn Size(comptime T: type) type {
         ///   - If height is non-null but width is null, then width is computed from height and aspect_ratio
         ///
         /// If aspect_ratio is null then this function simply returns self.
-        pub inline fn maybeApplyAspectRatio(self: Self, aspect_ratio: ?f32) Self {
+        pub fn maybeApplyAspectRatio(self: Self, aspect_ratio: ?f32) Self {
             const ratio = aspect_ratio orelse return self;
             if (self.width) |width| {
                 if (self.height == null) return .{ .width = width, .height = width / ratio };
@@ -709,12 +709,12 @@ pub fn Size(comptime T: type) type {
         // `Size<Option<T>>` helpers
 
         /// Performs `orelse` on each component separately (upstream `unwrap_or`; optional `T` only)
-        pub inline fn unwrapOr(self: Self, alt: Size(OptionalChild(T))) Size(OptionalChild(T)) {
+        pub fn unwrapOr(self: Self, alt: Size(OptionalChild(T))) Size(OptionalChild(T)) {
             return .{ .width = self.width orelse alt.width, .height = self.height orelse alt.height };
         }
 
         /// Performs Option::or on each component separately (optional `T` only)
-        pub inline fn @"or"(self: Self, alt: Self) Self {
+        pub fn @"or"(self: Self, alt: Self) Self {
             return .{
                 .width = if (self.width != null) self.width else alt.width,
                 .height = if (self.height != null) self.height else alt.height,
@@ -722,32 +722,32 @@ pub fn Size(comptime T: type) type {
         }
 
         /// Return true if both components are non-null, else false. (optional `T` only)
-        pub inline fn bothAxisDefined(self: Self) bool {
+        pub fn bothAxisDefined(self: Self) bool {
             return self.width != null and self.height != null;
         }
 
         // `Size<Dimension>` helpers
 
         /// Generates a `Size(Dimension)` using length values
-        pub inline fn fromLengths(width: f32, height: f32) Self {
+        pub fn fromLengths(width: f32, height: f32) Self {
             return .{ .width = T.length(width), .height = T.length(height) };
         }
 
         /// Generates a `Size(Dimension)` using percentage values (upstream `Size::<Dimension>::from_percent`)
-        pub inline fn fromPercents(width: f32, height: f32) Self {
+        pub fn fromPercents(width: f32, height: f32) Self {
             return .{ .width = T.percent(width), .height = T.percent(height) };
         }
 
         // `Size<AvailableSpace>` helpers
 
         /// Convert `Size(AvailableSpace)` into `Size(?f32)`
-        pub inline fn intoOptions(self: Self) Size(?f32) {
+        pub fn intoOptions(self: Self) Size(?f32) {
             return .{ .width = self.width.intoOption(), .height = self.height.intoOption() };
         }
 
         /// If passed value is non-null then return `.definite` containing that value, else return self
         /// (`Size(AvailableSpace)` only)
-        pub inline fn maybeSet(self: Self, value: Size(?f32)) Self {
+        pub fn maybeSet(self: Self, value: Size(?f32)) Self {
             return .{ .width = self.width.maybeSet(value.width), .height = self.height.maybeSet(value.height) };
         }
 
@@ -763,27 +763,27 @@ pub fn Size(comptime T: type) type {
         pub const max_content: Self = both(elementMaxContent(T));
 
         /// A Size with width and height set to the same `fit-content(…)` value with the given argument
-        pub inline fn fitContent(argument: LengthPercentage) Self {
+        pub fn fitContent(argument: LengthPercentage) Self {
             return both(elementFitContent(T, argument));
         }
         /// A Size where both components are the same given absolute length (upstream `FromLength`)
-        pub inline fn fromLength(value: anytype) Self {
+        pub fn fromLength(value: anytype) Self {
             return both(elementLength(T, value));
         }
         /// A Size where both components are the same given absolute length (upstream `Size::length`)
-        pub inline fn length(value: anytype) Self {
+        pub fn length(value: anytype) Self {
             return fromLength(value);
         }
         /// A Size where both components are the same given percentage (upstream `FromPercent`)
-        pub inline fn fromPercent(value: anytype) Self {
+        pub fn fromPercent(value: anytype) Self {
             return both(elementPercent(T, value));
         }
         /// A Size where both components are the same given percentage (upstream `Size::percent`)
-        pub inline fn percent(value: anytype) Self {
+        pub fn percent(value: anytype) Self {
             return fromPercent(value);
         }
 
-        inline fn both(value: T) Self {
+        fn both(value: T) Self {
             return .{ .width = value, .height = value };
         }
     };
@@ -815,20 +815,20 @@ pub fn Point(comptime T: type) type {
         pub const none: Self = .{ .x = null, .y = null };
 
         /// Component-wise addition (upstream `Add` impl; numeric `T` only)
-        pub inline fn add(self: Self, rhs: Self) Self {
+        pub fn add(self: Self, rhs: Self) Self {
             return .{ .x = self.x + rhs.x, .y = self.y + rhs.y };
         }
 
         /// Applies the function `f` to both the x and y
         ///
         /// This is used to transform a `Point(T)` into a `Point(R)`.
-        pub inline fn map(self: Self, comptime R: type, comptime f: fn (T) R) Point(R) {
+        pub fn map(self: Self, comptime R: type, comptime f: fn (T) R) Point(R) {
             return .{ .x = f(self.x), .y = f(self.y) };
         }
 
         /// Gets the extent of the specified layout axis
         /// Whether this is the x or y depends on the `AbstractAxis` provided
-        pub inline fn get(self: Self, axis: AbstractAxis) T {
+        pub fn get(self: Self, axis: AbstractAxis) T {
             return switch (axis) {
                 .@"inline" => self.x,
                 .block => self.y,
@@ -836,13 +836,13 @@ pub fn Point(comptime T: type) type {
         }
 
         /// Swap x and y components
-        pub inline fn transpose(self: Self) Self {
+        pub fn transpose(self: Self) Self {
             return .{ .x = self.y, .y = self.x };
         }
 
         /// Sets the extent of the specified layout axis
         /// Whether this is the x or y depends on the `AbstractAxis` provided
-        pub inline fn set(self: *Self, axis: AbstractAxis, value: T) void {
+        pub fn set(self: *Self, axis: AbstractAxis, value: T) void {
             switch (axis) {
                 .@"inline" => self.x = value,
                 .block => self.y = value,
@@ -852,14 +852,14 @@ pub fn Point(comptime T: type) type {
         /// Gets the component in the main layout axis
         ///
         /// Whether this is the x or y depends on the `direction` provided
-        pub inline fn main(self: Self, direction: FlexDirection) T {
+        pub fn main(self: Self, direction: FlexDirection) T {
             return if (direction.isRow()) self.x else self.y;
         }
 
         /// Gets the component in the cross layout axis
         ///
         /// Whether this is the x or y depends on the `direction` provided
-        pub inline fn cross(self: Self, direction: FlexDirection) T {
+        pub fn cross(self: Self, direction: FlexDirection) T {
             return if (direction.isRow()) self.y else self.x;
         }
 
@@ -875,27 +875,27 @@ pub fn Point(comptime T: type) type {
         pub const max_content: Self = both(elementMaxContent(T));
 
         /// A Point with x and y set to the same `fit-content(…)` value with the given argument
-        pub inline fn fitContent(argument: LengthPercentage) Self {
+        pub fn fitContent(argument: LengthPercentage) Self {
             return both(elementFitContent(T, argument));
         }
         /// A Point where x and y are the same given absolute length (upstream `FromLength`)
-        pub inline fn fromLength(value: anytype) Self {
+        pub fn fromLength(value: anytype) Self {
             return both(elementLength(T, value));
         }
         /// A Point where x and y are the same given absolute length (upstream `Point::length`)
-        pub inline fn length(value: anytype) Self {
+        pub fn length(value: anytype) Self {
             return fromLength(value);
         }
         /// A Point where x and y are the same given percentage (upstream `FromPercent`)
-        pub inline fn fromPercent(value: anytype) Self {
+        pub fn fromPercent(value: anytype) Self {
             return both(elementPercent(T, value));
         }
         /// A Point where x and y are the same given percentage (upstream `Point::percent`)
-        pub inline fn percent(value: anytype) Self {
+        pub fn percent(value: anytype) Self {
             return fromPercent(value);
         }
 
-        inline fn both(value: T) Self {
+        fn both(value: T) Self {
             return .{ .x = value, .y = value };
         }
     };

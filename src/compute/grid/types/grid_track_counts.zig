@@ -47,7 +47,7 @@ pub fn Range(comptime T: type) type {
         end: T,
 
         /// Whether `value` lies within the range
-        pub inline fn contains(self: Self, value: T) bool {
+        pub fn contains(self: Self, value: T) bool {
             return self.start <= value and value < self.end;
         }
     };
@@ -64,22 +64,22 @@ pub const TrackCounts = struct {
     positive_implicit: u16 = 0,
 
     /// Create a TrackCounts instance from raw track count numbers
-    pub inline fn fromRaw(negative_implicit: u16, explicit: u16, positive_implicit: u16) TrackCounts {
+    pub fn fromRaw(negative_implicit: u16, explicit: u16, positive_implicit: u16) TrackCounts {
         return .{ .negative_implicit = negative_implicit, .explicit = explicit, .positive_implicit = positive_implicit };
     }
 
     /// Count the total number of tracks in the axis
-    pub inline fn len(self: TrackCounts) usize {
+    pub fn len(self: TrackCounts) usize {
         return @as(usize, self.negative_implicit + self.explicit + self.positive_implicit);
     }
 
     /// The OriginZeroLine representing the start of the implicit grid
-    pub inline fn implicitStartLine(self: TrackCounts) OriginZeroLine {
+    pub fn implicitStartLine(self: TrackCounts) OriginZeroLine {
         return OriginZeroLine.from(-@as(i16, @bitCast(self.negative_implicit)));
     }
 
     /// The OriginZeroLine representing the end of the implicit grid
-    pub inline fn implicitEndLine(self: TrackCounts) OriginZeroLine {
+    pub fn implicitEndLine(self: TrackCounts) OriginZeroLine {
         return OriginZeroLine.from(@bitCast(self.explicit + self.positive_implicit));
     }
 
@@ -87,13 +87,13 @@ pub const TrackCounts = struct {
 
     /// Converts a grid line in OriginZero coordinates into the track immediately
     /// following that grid line as an index into the CellOccupancyMatrix.
-    pub inline fn ozLineToNextTrack(self: TrackCounts, index: OriginZeroLine) i16 {
+    pub fn ozLineToNextTrack(self: TrackCounts, index: OriginZeroLine) i16 {
         return index.inner + @as(i16, @bitCast(self.negative_implicit));
     }
 
     /// Converts start and end grid lines in OriginZero coordinates into a range of tracks
     /// as indexes into the CellOccupancyMatrix
-    pub inline fn ozLineRangeToTrackRange(self: TrackCounts, input: Line(OriginZeroLine)) Range(i16) {
+    pub fn ozLineRangeToTrackRange(self: TrackCounts, input: Line(OriginZeroLine)) Range(i16) {
         const start = self.ozLineToNextTrack(input.start);
         const end = self.ozLineToNextTrack(input.end); // Don't subtract 1 as output range is exclusive
         return .{ .start = start, .end = end };
@@ -101,13 +101,13 @@ pub const TrackCounts = struct {
 
     /// Converts a track as an index into the CellOccupancyMatrix into the grid line immediately
     /// preceding that track in OriginZero coordinates.
-    pub inline fn trackToPrevOzLine(self: TrackCounts, index: u16) OriginZeroLine {
+    pub fn trackToPrevOzLine(self: TrackCounts, index: u16) OriginZeroLine {
         return OriginZeroLine.from(@as(i16, @bitCast(index)) - @as(i16, @bitCast(self.negative_implicit)));
     }
 
     /// Converts a range of tracks as indexes into the CellOccupancyMatrix into
     /// start and end grid lines in OriginZero coordinates
-    pub inline fn trackRangeToOzLineRange(self: TrackCounts, input: Range(i16)) Line(OriginZeroLine) {
+    pub fn trackRangeToOzLineRange(self: TrackCounts, input: Range(i16)) Line(OriginZeroLine) {
         const start = self.trackToPrevOzLine(@bitCast(input.start));
         const end = self.trackToPrevOzLine(@bitCast(input.end)); // Don't add 1 as input range is exclusive
         return .{ .start = start, .end = end };

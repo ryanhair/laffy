@@ -14,32 +14,32 @@ pub const NodeId = packed struct(u64) {
     inner: u64,
 
     /// Create a new NodeId from a u64 value
-    pub inline fn new(val: u64) NodeId {
+    pub fn new(val: u64) NodeId {
         return .{ .inner = val };
     }
 
     /// Upstream `From<u64> for NodeId`
-    pub inline fn fromU64(raw: u64) NodeId {
+    pub fn fromU64(raw: u64) NodeId {
         return .{ .inner = raw };
     }
 
     /// Upstream `From<NodeId> for u64`
-    pub inline fn toU64(self: NodeId) u64 {
+    pub fn toU64(self: NodeId) u64 {
         return self.inner;
     }
 
     /// Upstream `From<usize> for NodeId`
-    pub inline fn fromUsize(raw: usize) NodeId {
+    pub fn fromUsize(raw: usize) NodeId {
         return .{ .inner = @intCast(raw) };
     }
 
     /// Upstream `From<NodeId> for usize` (truncating on targets where usize is narrower than 64 bits)
-    pub inline fn toUsize(self: NodeId) usize {
+    pub fn toUsize(self: NodeId) usize {
         return @truncate(self.inner);
     }
 
     /// Equality (upstream derived `PartialEq`)
-    pub inline fn eql(self: NodeId, other: NodeId) bool {
+    pub fn eql(self: NodeId, other: NodeId) bool {
         return self.inner == other.inner;
     }
 

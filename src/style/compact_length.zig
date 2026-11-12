@@ -107,23 +107,23 @@ pub const CompactLength = packed struct(u64) {
     // Inner constructors (upstream `CompactLengthInner`)
 
     /// Construct from a tag and pointer
-    inline fn fromPtr(ptr: *const anyopaque, tag_value: usize) CompactLength {
+    fn fromPtr(ptr: *const anyopaque, tag_value: usize) CompactLength {
         return .{ .bits = @as(u64, @intFromPtr(ptr)) | @as(u64, tag_value) };
     }
 
     /// Construct from a tag and numeric value
-    inline fn fromVal(val: f32, tag_value: usize) CompactLength {
+    fn fromVal(val: f32, tag_value: usize) CompactLength {
         const val_bits: u32 = @bitCast(val);
         return .{ .bits = (@as(u64, val_bits) << 32) | @as(u64, tag_value) };
     }
 
     /// Construct from only a tag
-    inline fn fromTag(tag_value: usize) CompactLength {
+    fn fromTag(tag_value: usize) CompactLength {
         return .{ .bits = @as(u64, tag_value) };
     }
 
     /// Get the calc tag (low 3 bits)
-    inline fn calcTag(self: CompactLength) usize {
+    fn calcTag(self: CompactLength) usize {
         return @intCast(self.bits & calc_tag_mask);
     }
 
@@ -131,14 +131,14 @@ pub const CompactLength = packed struct(u64) {
 
     /// An absolute length in some abstract units. Users of laffy may define what they correspond
     /// to in their application (pixels, logical pixels, mm, etc) as they see fit.
-    pub inline fn length(val: f32) CompactLength {
+    pub fn length(val: f32) CompactLength {
         return fromVal(val, length_tag);
     }
 
     /// A percentage length relative to the size of the containing block.
     ///
     /// **NOTE: percentages are represented as a f32 value in the range [0.0, 1.0] NOT the range [0.0, 100.0]**
-    pub inline fn percent(val: f32) CompactLength {
+    pub fn percent(val: f32) CompactLength {
         return fromVal(val, percent_tag);
     }
 
@@ -173,7 +173,7 @@ pub const CompactLength = packed struct(u64) {
     /// The dimension as a fraction of the total available grid space (`fr` units in CSS)
     /// Specified value is the numerator of the fraction. Denominator is the sum of all fraction specified in that grid dimension
     /// Spec: <https://www.w3.org/TR/css3-grid-layout/#fr-unit>
-    pub inline fn fr(val: f32) CompactLength {
+    pub fn fr(val: f32) CompactLength {
         return fromVal(val, fr_tag);
     }
 
@@ -191,7 +191,7 @@ pub const CompactLength = packed struct(u64) {
     ///
     /// The effect of this is that the item takes the size of `limit` clamped
     /// by the min-content and max-content sizes.
-    pub inline fn fitContentPx(limit: f32) CompactLength {
+    pub fn fitContentPx(limit: f32) CompactLength {
         return fromVal(limit, fit_content_px_tag);
     }
 
@@ -201,7 +201,7 @@ pub const CompactLength = packed struct(u64) {
     ///
     /// The effect of this is that the item takes the size of `limit` clamped
     /// by the min-content and max-content sizes.
-    pub inline fn fitContentPercent(limit: f32) CompactLength {
+    pub fn fitContentPercent(limit: f32) CompactLength {
         return fromVal(limit, fit_content_percent_tag);
     }
 
@@ -225,17 +225,17 @@ pub const CompactLength = packed struct(u64) {
     pub const zero: CompactLength = length(0.0);
 
     /// Create from an `Into<f64>`-like number (upstream `FromLength`)
-    pub inline fn fromLength(number: anytype) CompactLength {
+    pub fn fromLength(number: anytype) CompactLength {
         return length(toF32(number));
     }
 
     /// Create from an `Into<f64>`-like number (upstream `FromPercent`)
-    pub inline fn fromPercent(number: anytype) CompactLength {
+    pub fn fromPercent(number: anytype) CompactLength {
         return percent(toF32(number));
     }
 
     /// Create from an `Into<f64>`-like number (upstream `FromFr`)
-    pub inline fn fromFr(number: anytype) CompactLength {
+    pub fn fromFr(number: anytype) CompactLength {
         return fr(toF32(number));
     }
 
@@ -255,87 +255,87 @@ pub const CompactLength = packed struct(u64) {
     // Accessors
 
     /// Get the primary tag
-    pub inline fn tag(self: CompactLength) usize {
+    pub fn tag(self: CompactLength) usize {
         return @intCast(self.bits & tag_mask);
     }
 
     /// Get the numeric value associated with the `CompactLength`
     /// (e.g. the pixel value for a LENGTH variant)
-    pub inline fn value(self: CompactLength) f32 {
+    pub fn value(self: CompactLength) f32 {
         return @bitCast(@as(u32, @truncate(self.bits >> 32)));
     }
 
     /// Get the calc pointer of the `CompactLength` (with the tag bits cleared)
-    pub inline fn calcValue(self: CompactLength) *const anyopaque {
+    pub fn calcValue(self: CompactLength) *const anyopaque {
         return @ptrFromInt(@as(usize, @intCast(self.bits & ~calc_tag_mask)));
     }
 
     /// Returns true if the value is a plain calc() value (not a fit-content(calc()) value)
-    pub inline fn isPlainCalc(self: CompactLength) bool {
+    pub fn isPlainCalc(self: CompactLength) bool {
         return self.calcTag() & (non_pointer_bit | keyword_bit) == 0;
     }
 
     /// Returns true if the value is a fit-content() value with a calc() limit
-    pub inline fn isFitContentCalc(self: CompactLength) bool {
+    pub fn isFitContentCalc(self: CompactLength) bool {
         return self.tag() & (non_pointer_bit | keyword_bit) == keyword_bit;
     }
 
     /// Returns true if the value holds a calc() pointer: either a plain calc() value or a
     /// fit-content() value with a calc() limit. `calcValue()` is valid for exactly these values.
-    pub inline fn hasCalc(self: CompactLength) bool {
+    pub fn hasCalc(self: CompactLength) bool {
         return self.tag() & non_pointer_bit == 0;
     }
 
     /// Returns true if the value is 0 px (bitwise equal to `zero`, so `-0.0` is not zero)
-    pub inline fn isZero(self: CompactLength) bool {
+    pub fn isZero(self: CompactLength) bool {
         return self == zero;
     }
 
     /// Returns true if the value is a length or percentage value
-    pub inline fn isLengthOrPercentage(self: CompactLength) bool {
+    pub fn isLengthOrPercentage(self: CompactLength) bool {
         return self.tag() & (non_pointer_bit | keyword_bit) == non_pointer_bit;
     }
 
     /// Returns true if the value is a length, a percentage or a plain `calc()` value (not a
     /// `fit-content(calc())` value): anything that resolves to a length given a percentage basis
-    pub inline fn isLengthPercentageOrCalc(self: CompactLength) bool {
+    pub fn isLengthPercentageOrCalc(self: CompactLength) bool {
         return self.tag() & keyword_bit == 0;
     }
 
     /// Returns true if the value is auto
-    pub inline fn isAuto(self: CompactLength) bool {
+    pub fn isAuto(self: CompactLength) bool {
         return self.tag() == auto_tag;
     }
 
     /// Returns true if the value is the content keyword
-    pub inline fn isContent(self: CompactLength) bool {
+    pub fn isContent(self: CompactLength) bool {
         return self.tag() == content_tag;
     }
 
     /// Returns true if the value is min-content
-    pub inline fn isMinContent(self: CompactLength) bool {
+    pub fn isMinContent(self: CompactLength) bool {
         return self.tag() == min_content_tag;
     }
 
     /// Returns true if the value is max-content
-    pub inline fn isMaxContent(self: CompactLength) bool {
+    pub fn isMaxContent(self: CompactLength) bool {
         return self.tag() == max_content_tag;
     }
 
     /// Returns true if the value is a fit-content(...) value
-    pub inline fn isFitContent(self: CompactLength) bool {
+    pub fn isFitContent(self: CompactLength) bool {
         const t = self.tag();
         return t == fit_content_px_tag or t == fit_content_percent_tag or self.isFitContentCalc();
     }
 
     /// Returns true if the value is min-content, max-content, fit-content, fit-content(...), or stretch
-    pub inline fn isSizingKeyword(self: CompactLength) bool {
+    pub fn isSizingKeyword(self: CompactLength) bool {
         const mask: usize = non_pointer_bit | keyword_bit | sizing_keyword_bit;
         return self.tag() & mask == mask or self.isFitContentCalc();
     }
 
     /// Returns true if the value is max-content or a fit-content(...) value
-    pub inline fn isMaxOrFitContent(self: CompactLength) bool {
+    pub fn isMaxOrFitContent(self: CompactLength) bool {
         const t = self.tag();
         return t == max_content_tag or t == fit_content_px_tag or t == fit_content_percent_tag or
             self.isFitContentCalc();
@@ -344,32 +344,32 @@ pub const CompactLength = packed struct(u64) {
     /// Returns true if the max track sizing function is `MaxContent`, `FitContent` or `Auto` else false.
     /// "In all cases, treat auto and fit-content() as max-content, except where specified otherwise for fit-content()."
     /// See: <https://www.w3.org/TR/css-grid-1/#algo-terms>
-    pub inline fn isMaxContentAlike(self: CompactLength) bool {
+    pub fn isMaxContentAlike(self: CompactLength) bool {
         const t = self.tag();
         return t == auto_tag or t == max_content_tag or t == fit_content_px_tag or
             t == fit_content_percent_tag or self.isFitContentCalc();
     }
 
     /// Returns true if the min track sizing function is `MinContent` or `MaxContent`, else false.
-    pub inline fn isMinOrMaxContent(self: CompactLength) bool {
+    pub fn isMinOrMaxContent(self: CompactLength) bool {
         const t = self.tag();
         return t == min_content_tag or t == max_content_tag;
     }
 
     /// Returns true if the value is auto, min-content, max-content, or fit-content(...)
-    pub inline fn isIntrinsic(self: CompactLength) bool {
+    pub fn isIntrinsic(self: CompactLength) bool {
         const t = self.tag();
         return t == auto_tag or t == min_content_tag or t == max_content_tag or
             t == fit_content_px_tag or t == fit_content_percent_tag or self.isFitContentCalc();
     }
 
     /// Returns true if the value is and fr value
-    pub inline fn isFr(self: CompactLength) bool {
+    pub fn isFr(self: CompactLength) bool {
         return self.tag() == fr_tag;
     }
 
     /// Whether the track sizing functions depends on the size of the parent node
-    pub inline fn usesPercentage(self: CompactLength) bool {
+    pub fn usesPercentage(self: CompactLength) bool {
         return self.tag() & percentage_bit != 0;
     }
 
@@ -377,7 +377,7 @@ pub const CompactLength = packed struct(u64) {
     /// Non-percentage values always return null.
     ///
     /// `calc` must provide `resolveCalcValue(ptr: *const anyopaque, basis: f32) f32`.
-    pub inline fn resolvedPercentageSize(self: CompactLength, parent_size: f32, calc_resolver: anytype) ?f32 {
+    pub fn resolvedPercentageSize(self: CompactLength, parent_size: f32, calc_resolver: anytype) ?f32 {
         if (self.tag() == percent_tag) return self.value() * parent_size;
         if (self.isPlainCalc()) return calc_resolver.resolveCalcValue(self.calcValue(), parent_size);
         return null;
@@ -386,7 +386,7 @@ pub const CompactLength = packed struct(u64) {
 
 /// Converts an `Into<f64>`-style number (any int or float, or a comptime number) into an `f32`
 /// the same way upstream does (`value.into() as f32`: via `f64`).
-pub inline fn toF32(value: anytype) f32 {
+pub fn toF32(value: anytype) f32 {
     const T = @TypeOf(value);
     return switch (@typeInfo(T)) {
         .comptime_float => @floatCast(@as(f64, value)),

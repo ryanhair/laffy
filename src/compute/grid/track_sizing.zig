@@ -131,13 +131,13 @@ fn IntrinsicSizeMeasurer(comptime Tree: type) type {
         /// These are estimates based on either the max track sizing function or the provisional base size in the opposite
         /// axis to the one currently being sized.
         /// https://www.w3.org/TR/css-grid-1/#algo-overview
-        inline fn gridAreaSize(self: *const Self, item: *GridItem, axis_tracks: []const GridTrack) Size(?f32) {
+        fn gridAreaSize(self: *const Self, item: *GridItem, axis_tracks: []const GridTrack) Size(?f32) {
             return item.gridAreaSizeCached(self.axis, axis_tracks, self.other_axis_tracks, self.inner_node_size, self.get_track_size_estimate, self.tree);
         }
 
         /// Compute the item's resolved margins for size contributions. Horizontal percentage margins always resolve
         /// to zero if the container size is indefinite as otherwise this would introduce a cyclic dependency.
-        inline fn marginsAxisSumsWithBaselineShims(self: *const Self, item: *const GridItem, percentage_basis: ?f32) Size(f32) {
+        fn marginsAxisSumsWithBaselineShims(self: *const Self, item: *const GridItem, percentage_basis: ?f32) Size(f32) {
             return item.marginsAxisSumsWithBaselineShims(percentage_basis, self.tree);
         }
 
@@ -389,7 +389,7 @@ const IntrinsicContributionType = enum {
 
 /// Add any planned base size increases to the base size after a round of distributing space to base sizes
 /// Reset the planed base size increase to zero ready for the next round.
-inline fn flushPlannedBaseSizeIncreases(tracks: []GridTrack) void {
+fn flushPlannedBaseSizeIncreases(tracks: []GridTrack) void {
     for (tracks) |*track| {
         track.base_size += track.base_size_planned_increase;
         track.base_size_planned_increase = 0.0;
@@ -398,7 +398,7 @@ inline fn flushPlannedBaseSizeIncreases(tracks: []GridTrack) void {
 
 /// Add any planned growth limit increases to the growth limit after a round of distributing space to growth limits
 /// Reset the planed growth limit increase to zero ready for the next round.
-inline fn flushPlannedGrowthLimitIncreases(tracks: []GridTrack, set_infinitely_growable: bool) void {
+fn flushPlannedGrowthLimitIncreases(tracks: []GridTrack, set_infinitely_growable: bool) void {
     for (tracks) |*track| {
         if (track.growth_limit_planned_increase > 0.0) {
             track.growth_limit = if (track.growth_limit == inf)
@@ -415,7 +415,7 @@ inline fn flushPlannedGrowthLimitIncreases(tracks: []GridTrack, set_infinitely_g
 
 /// 11.4 Initialise Track sizes
 /// Initialize each track’s base size and growth limit.
-inline fn initializeTrackSizes(tree: anytype, axis_tracks: []GridTrack, axis_inner_node_size: ?f32) void {
+fn initializeTrackSizes(tree: anytype, axis_tracks: []GridTrack, axis_inner_node_size: ?f32) void {
     for (axis_tracks) |*track| {
         // For each track, if the track’s min track sizing function is:
         // - A fixed sizing function
@@ -530,7 +530,7 @@ fn resolveItemBaselines(tree: anytype, axis: AbstractAxis, items_in: []GridItem,
 }
 
 /// Items are aligned by the distance from the top of their margin box to their baseline
-inline fn marginBoxBaseline(tree: anytype, item: *const GridItem, inner_node_size: Size(?f32)) f32 {
+fn marginBoxBaseline(tree: anytype, item: *const GridItem, inner_node_size: Size(?f32)) f32 {
     return (item.baseline orelse 0.0) + resolveOrZero(item.margin.top, inner_node_size.width, tree);
 }
 
@@ -893,7 +893,7 @@ fn lessThanSpan(axis: AbstractAxis, a: *GridItem, b: *GridItem) bool {
 }
 
 /// The sum of the base sizes of the inflexible tracks in an item's spanned track range
-inline fn inflexibleBaseSizeSum(tracks: []const GridTrack) f32 {
+fn inflexibleBaseSizeSum(tracks: []const GridTrack) f32 {
     var sum: f32 = -0.0;
     for (tracks) |*track| {
         if (!track.isFlexible()) sum += track.base_size;
@@ -902,7 +902,7 @@ inline fn inflexibleBaseSizeSum(tracks: []const GridTrack) f32 {
 }
 
 /// The sum of the flex factors of the flexible tracks in an item's spanned track range
-inline fn crossedFlexFactorSum(tracks: []const GridTrack) f32 {
+fn crossedFlexFactorSum(tracks: []const GridTrack) f32 {
     var sum: f32 = -0.0;
     for (tracks) |*track| {
         if (track.isFlexible()) sum += track.flexFactor();
@@ -915,14 +915,14 @@ inline fn crossedFlexFactorSum(tracks: []const GridTrack) f32 {
 
 /// `|track| track.is_flexible()`
 const IsFlexible = struct {
-    inline fn call(_: IsFlexible, track: *const GridTrack) bool {
+    fn call(_: IsFlexible, track: *const GridTrack) bool {
         return track.isFlexible();
     }
 };
 
 /// `|track| track.has_intrinsic_sizing_function()`
 const HasIntrinsicSizingFunction = struct {
-    inline fn call(_: HasIntrinsicSizingFunction, track: *const GridTrack) bool {
+    fn call(_: HasIntrinsicSizingFunction, track: *const GridTrack) bool {
         return track.hasIntrinsicSizingFunction();
     }
 };
@@ -933,7 +933,7 @@ fn HasIntrinsicMinTrackSizingFunction(comptime Tree: type) type {
         axis_inner_node_size: ?f32,
         tree: Tree,
 
-        inline fn call(self: @This(), track: *const GridTrack) bool {
+        fn call(self: @This(), track: *const GridTrack) bool {
             return track.min_track_sizing_function.definiteValue(self.axis_inner_node_size, self.tree) == null;
         }
     };
@@ -941,7 +941,7 @@ fn HasIntrinsicMinTrackSizingFunction(comptime Tree: type) type {
 
 /// Whether the track has a min-content or max-content min track sizing function
 const HasMinOrMaxContentMinTrackSizingFunction = struct {
-    pub inline fn call(_: HasMinOrMaxContentMinTrackSizingFunction, track: *const GridTrack) bool {
+    pub fn call(_: HasMinOrMaxContentMinTrackSizingFunction, track: *const GridTrack) bool {
         return track.min_track_sizing_function.isMinOrMaxContent();
     }
 };
@@ -955,21 +955,21 @@ const HasMinOrMaxContentMinTrackSizingFunction = struct {
 ///
 ///    "If the max is less than the min, then the max will be floored by the min (essentially yielding minmax(min, min))"
 const HasAutoMinTrackSizingFunction = struct {
-    pub inline fn call(_: HasAutoMinTrackSizingFunction, track: *const GridTrack) bool {
+    pub fn call(_: HasAutoMinTrackSizingFunction, track: *const GridTrack) bool {
         return track.min_track_sizing_function.isAuto() and !track.max_track_sizing_function.isMinContent();
     }
 };
 
 /// Whether a track has a MaxContent min track sizing function
 const HasMaxContentMinTrackSizingFunction = struct {
-    pub inline fn call(_: HasMaxContentMinTrackSizingFunction, track: *const GridTrack) bool {
+    pub fn call(_: HasMaxContentMinTrackSizingFunction, track: *const GridTrack) bool {
         return track.min_track_sizing_function.isMaxContent();
     }
 };
 
 /// `has_auto_min_track_sizing_function(track) || has_max_content_min_track_sizing_function(track)`
 const HasAutoOrMaxContentMinTrackSizingFunction = struct {
-    pub inline fn call(_: HasAutoOrMaxContentMinTrackSizingFunction, track: *const GridTrack) bool {
+    pub fn call(_: HasAutoOrMaxContentMinTrackSizingFunction, track: *const GridTrack) bool {
         return (HasAutoMinTrackSizingFunction{}).call(track) or (HasMaxContentMinTrackSizingFunction{}).call(track);
     }
 };
@@ -978,7 +978,7 @@ const HasAutoOrMaxContentMinTrackSizingFunction = struct {
 const HasIntrinsicMaxTrackSizingFunction = struct {
     axis_inner_node_size: ?f32,
 
-    pub inline fn call(self: HasIntrinsicMaxTrackSizingFunction, track: *const GridTrack) bool {
+    pub fn call(self: HasIntrinsicMaxTrackSizingFunction, track: *const GridTrack) bool {
         return !track.max_track_sizing_function.hasDefiniteValue(self.axis_inner_node_size);
     }
 };
@@ -987,7 +987,7 @@ const HasIntrinsicMaxTrackSizingFunction = struct {
 const HasMaxContentMaxTrackSizingFunction = struct {
     axis_inner_node_size: ?f32,
 
-    pub inline fn call(self: HasMaxContentMaxTrackSizingFunction, track: *const GridTrack) bool {
+    pub fn call(self: HasMaxContentMaxTrackSizingFunction, track: *const GridTrack) bool {
         return track.max_track_sizing_function.isMaxContentAlike() or
             (track.max_track_sizing_function.usesPercentage() and self.axis_inner_node_size == null);
     }
@@ -995,7 +995,7 @@ const HasMaxContentMaxTrackSizingFunction = struct {
 
 /// `|_| true`
 const AnyTrack = struct {
-    inline fn call(_: AnyTrack, _: *const GridTrack) bool {
+    fn call(_: AnyTrack, _: *const GridTrack) bool {
         return true;
     }
 };
@@ -1006,7 +1006,7 @@ fn And(comptime A: type, comptime B: type) type {
         a: A,
         b: B,
 
-        inline fn call(self: @This(), track: *const GridTrack) bool {
+        fn call(self: @This(), track: *const GridTrack) bool {
             return self.a.call(track) and self.b.call(track);
         }
     };
@@ -1017,7 +1017,7 @@ fn FlexibleAnd(comptime P: type) type {
     return struct {
         p: P,
 
-        inline fn call(self: @This(), track: *const GridTrack) bool {
+        fn call(self: @This(), track: *const GridTrack) bool {
             return track.isFlexible() and self.p.call(track);
         }
     };
@@ -1028,7 +1028,7 @@ fn GrowableAnd(comptime P: type) type {
     return struct {
         p: P,
 
-        inline fn call(self: @This(), track: *const GridTrack) bool {
+        fn call(self: @This(), track: *const GridTrack) bool {
             return self.p.call(track) and (track.infinitely_growable or track.growth_limit == inf);
         }
     };
@@ -1043,7 +1043,7 @@ const BeyondLimitsFilter = enum {
     /// All affected tracks
     all,
 
-    inline fn call(self: BeyondLimitsFilter, track: *const GridTrack) bool {
+    fn call(self: BeyondLimitsFilter, track: *const GridTrack) bool {
         return switch (self) {
             .intrinsic_max => track.max_track_sizing_function.isIntrinsic(),
             .max_or_fit_content_max => track.max_track_sizing_function.isMaxOrFitContent(),
@@ -1054,56 +1054,56 @@ const BeyondLimitsFilter = enum {
 
 /// `|_| 1.0`
 const EqualProportion = struct {
-    inline fn call(_: EqualProportion, _: *const GridTrack) f32 {
+    fn call(_: EqualProportion, _: *const GridTrack) f32 {
         return 1.0;
     }
 };
 
 /// `|track| track.flex_factor()`
 const FlexFactorProportion = struct {
-    inline fn call(_: FlexFactorProportion, track: *const GridTrack) f32 {
+    fn call(_: FlexFactorProportion, track: *const GridTrack) f32 {
         return track.flexFactor();
     }
 };
 
 /// `|track| track.base_size`
 const BaseSize = struct {
-    inline fn call(_: BaseSize, track: *const GridTrack) f32 {
+    fn call(_: BaseSize, track: *const GridTrack) f32 {
         return track.base_size;
     }
 };
 
 /// `|track| track.growth_limit`
 const GrowthLimit = struct {
-    inline fn call(_: GrowthLimit, track: *const GridTrack) f32 {
+    fn call(_: GrowthLimit, track: *const GridTrack) f32 {
         return track.growth_limit;
     }
 };
 
 /// `|track| track.fit_content_limited_growth_limit()`
 const FitContentLimitedGrowthLimit = struct {
-    inline fn call(_: FitContentLimitedGrowthLimit, track: *const GridTrack) f32 {
+    fn call(_: FitContentLimitedGrowthLimit, track: *const GridTrack) f32 {
         return track.fitContentLimitedGrowthLimit();
     }
 };
 
 /// `|track| track.fit_content_limit()`
 const FitContentLimit = struct {
-    inline fn call(_: FitContentLimit, track: *const GridTrack) f32 {
+    fn call(_: FitContentLimit, track: *const GridTrack) f32 {
         return track.fitContentLimit();
     }
 };
 
 /// `|_| f32::INFINITY`
 const Infinity = struct {
-    inline fn call(_: Infinity, _: *const GridTrack) f32 {
+    fn call(_: Infinity, _: *const GridTrack) f32 {
         return inf;
     }
 };
 
 /// `|track| if track.growth_limit == f32::INFINITY { track.base_size } else { track.growth_limit }`
 const GrowthLimitOrBaseSize = struct {
-    inline fn call(_: GrowthLimitOrBaseSize, track: *const GridTrack) f32 {
+    fn call(_: GrowthLimitOrBaseSize, track: *const GridTrack) f32 {
         return if (track.growth_limit == inf) track.base_size else track.growth_limit;
     }
 };
@@ -1113,7 +1113,7 @@ const GrowthLimitOrBaseSize = struct {
 
 /// 11.5.1. Distributing Extra Space Across Spanned Tracks
 /// https://www.w3.org/TR/css-grid-1/#extra-space
-inline fn distributeItemSpaceToBaseSize(
+fn distributeItemSpaceToBaseSize(
     is_flex: bool,
     space: f32,
     tracks: []GridTrack,
@@ -1263,7 +1263,7 @@ fn distributeItemSpaceToGrowthLimit(space: f32, tracks: []GridTrack, track_is_af
 
 /// 11.6 Maximise Tracks
 /// Distributes free space (if any) to tracks with FINITE growth limits, up to their limits.
-inline fn maximiseTracks(axis_tracks: []GridTrack, axis_available_grid_space: AvailableSpace) void {
+fn maximiseTracks(axis_tracks: []GridTrack, axis_available_grid_space: AvailableSpace) void {
     var used_space: f32 = -0.0;
     for (axis_tracks) |*track| used_space += track.base_size;
     const free_space = axis_available_grid_space.computeFreeSpace(used_space);
@@ -1280,7 +1280,7 @@ inline fn maximiseTracks(axis_tracks: []GridTrack, axis_available_grid_space: Av
 
 /// 11.7. Expand Flexible Tracks
 /// This step sizes flexible tracks using the largest value it can assign to an fr without exceeding the available space.
-inline fn expandFlexibleTracks(
+fn expandFlexibleTracks(
     tree: anytype,
     axis: AbstractAxis,
     axis_tracks: []GridTrack,
@@ -1376,7 +1376,7 @@ inline fn expandFlexibleTracks(
 /// 11.7.1. Find the Size of an fr
 /// This algorithm finds the largest size that an fr unit can be without exceeding the target size.
 /// It must be called with a set of grid tracks and some quantity of space to fill.
-inline fn findSizeOfFr(tracks: []const GridTrack, space_to_fill: f32) f32 {
+fn findSizeOfFr(tracks: []const GridTrack, space_to_fill: f32) f32 {
     // Handle the trivial case where there is no space to fill
     // Do not remove as otherwise the loop below will loop infinitely
     if (space_to_fill == 0.0) {
@@ -1438,7 +1438,7 @@ inline fn findSizeOfFr(tracks: []const GridTrack, space_to_fill: f32) f32 {
 
 /// 11.8. Stretch auto Tracks
 /// This step expands tracks that have an auto max track sizing function by dividing any remaining positive, definite free space equally amongst them.
-inline fn stretchAutoTracks(axis_tracks: []GridTrack, axis_min_size: ?f32, axis_available_space_for_expansion: AvailableSpace) void {
+fn stretchAutoTracks(axis_tracks: []GridTrack, axis_min_size: ?f32, axis_available_space_for_expansion: AvailableSpace) void {
     var num_auto_tracks: usize = 0;
     for (axis_tracks) |*track| {
         if (track.max_track_sizing_function.isAuto()) num_auto_tracks += 1;
@@ -1466,7 +1466,7 @@ inline fn stretchAutoTracks(axis_tracks: []GridTrack, axis_min_size: ?f32, axis_
 
 /// Helper function for distributing space to tracks evenly
 /// Used by both distributeItemSpaceToBaseSize and maximiseTracks steps
-inline fn distributeSpaceUpToLimits(
+fn distributeSpaceUpToLimits(
     space_to_distribute_in: f32,
     tracks: []GridTrack,
     track_is_affected: anytype,

@@ -301,7 +301,7 @@ pub fn assertImplements(comptime Tree: type, comptime interfaces: []const Interf
 // --- Provided methods (upstream `LayoutPartialTreeExt`)
 
 /// Compute the size of the node given the specified constraints
-pub inline fn measureChildSize(
+pub fn measureChildSize(
     tree: anytype,
     node_id: NodeId,
     known_dimensions: Size(?f32),
@@ -326,7 +326,7 @@ pub inline fn measureChildSize(
 }
 
 /// Compute the size of the node given the specified constraints
-pub inline fn measureChildSizeBoth(
+pub fn measureChildSizeBoth(
     tree: anytype,
     node_id: NodeId,
     known_dimensions: Size(?f32),
@@ -351,7 +351,7 @@ pub inline fn measureChildSizeBoth(
 
 /// Perform a full layout on the node given the specified constraints. The caller owns the
 /// returned output.
-pub inline fn performChildLayout(
+pub fn performChildLayout(
     tree: anytype,
     node_id: NodeId,
     known_dimensions: Size(?f32),
@@ -373,7 +373,7 @@ pub inline fn performChildLayout(
 }
 
 /// Alias to `resolveCalcValue` with a shorter function name
-pub inline fn calc(tree: anytype, val: *const anyopaque, basis: f32) f32 {
+pub fn calc(tree: anytype, val: *const anyopaque, basis: f32) f32 {
     return tree.resolveCalcValue(val, basis);
 }
 

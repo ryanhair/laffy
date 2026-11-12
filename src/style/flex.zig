@@ -32,12 +32,12 @@ pub const FlexWrap = enum(u8) {
     pub const default: FlexWrap = .no_wrap;
 
     /// Is this a wrapping mode (any value other than `no_wrap`)?
-    pub inline fn isMultiLine(self: FlexWrap) bool {
+    pub fn isMultiLine(self: FlexWrap) bool {
         return self != .no_wrap;
     }
 
     /// Do lines stack in the opposite direction to the cross axis?
-    pub inline fn isReverse(self: FlexWrap) bool {
+    pub fn isReverse(self: FlexWrap) bool {
         return switch (self) {
             .wrap_reverse => true,
             .balance_reverse => true,
@@ -46,7 +46,7 @@ pub const FlexWrap = enum(u8) {
     }
 
     /// Are items balanced across lines?
-    pub inline fn isBalance(self: FlexWrap) bool {
+    pub fn isBalance(self: FlexWrap) bool {
         return self == .balance or self == .balance_reverse;
     }
 };
@@ -84,17 +84,17 @@ pub const FlexDirection = enum(u8) {
     pub const default: FlexDirection = .row;
 
     /// Is the direction `row` or `row_reverse`?
-    pub inline fn isRow(self: FlexDirection) bool {
+    pub fn isRow(self: FlexDirection) bool {
         return self == .row or self == .row_reverse;
     }
 
     /// Is the direction `column` or `column_reverse`?
-    pub inline fn isColumn(self: FlexDirection) bool {
+    pub fn isColumn(self: FlexDirection) bool {
         return self == .column or self == .column_reverse;
     }
 
     /// Is the direction `row_reverse` or `column_reverse`?
-    pub inline fn isReverse(self: FlexDirection) bool {
+    pub fn isReverse(self: FlexDirection) bool {
         return self == .row_reverse or self == .column_reverse;
     }
 
@@ -102,7 +102,7 @@ pub const FlexDirection = enum(u8) {
     ///
     /// `axis` is a `RequestedAxis` (defined with the tree types): any enum with the variants
     /// `horizontal`, `vertical` and `both`.
-    pub inline fn mainAxisIsRequestedAxis(self: FlexDirection, axis: anytype) bool {
+    pub fn mainAxisIsRequestedAxis(self: FlexDirection, axis: anytype) bool {
         return switch (axis) {
             .horizontal => self.isRow(),
             .vertical => self.isColumn(),
@@ -111,7 +111,7 @@ pub const FlexDirection = enum(u8) {
     }
 
     /// The `AbsoluteAxis` that corresponds to the main axis
-    pub inline fn mainAxis(self: FlexDirection) AbsoluteAxis {
+    pub fn mainAxis(self: FlexDirection) AbsoluteAxis {
         return switch (self) {
             .row, .row_reverse => .horizontal,
             .column, .column_reverse => .vertical,
@@ -119,7 +119,7 @@ pub const FlexDirection = enum(u8) {
     }
 
     /// The `AbsoluteAxis` that corresponds to the cross axis
-    pub inline fn crossAxis(self: FlexDirection) AbsoluteAxis {
+    pub fn crossAxis(self: FlexDirection) AbsoluteAxis {
         return switch (self) {
             .row, .row_reverse => .vertical,
             .column, .column_reverse => .horizontal,

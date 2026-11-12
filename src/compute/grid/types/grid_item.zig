@@ -45,7 +45,7 @@ pub const TrackSizeEstimate = enum {
     base_size,
 
     /// Estimate the size of `track`
-    pub inline fn estimate(self: TrackSizeEstimate, track: *const GridTrack, parent_size: ?f32, tree: anytype) ?f32 {
+    pub fn estimate(self: TrackSizeEstimate, track: *const GridTrack, parent_size: ?f32, tree: anytype) ?f32 {
         return switch (self) {
             .max_track_sizing_function => track.max_track_sizing_function.definiteValue(parent_size, tree),
             .base_size => track.base_size,
@@ -54,7 +54,7 @@ pub const TrackSizeEstimate = enum {
 };
 
 /// `Option<f32>` equality (upstream `PartialEq`: float comparison of the payloads)
-pub inline fn optionalEql(a: ?f32, b: ?f32) bool {
+pub fn optionalEql(a: ?f32, b: ?f32) bool {
     if (a) |av| {
         if (b) |bv| return av == bv;
         return false;
@@ -205,7 +205,7 @@ pub const GridItem = struct {
     }
 
     /// Whether the item has an auto margin in the block axis
-    pub inline fn hasAutoBlockMargin(self: *const GridItem) bool {
+    pub fn hasAutoBlockMargin(self: *const GridItem) bool {
         return self.margin.top.isAuto() or self.margin.bottom.isAuto();
     }
 
@@ -213,21 +213,21 @@ pub const GridItem = struct {
     /// dependency with baseline alignment (which affects row sizing). Per
     /// <https://www.w3.org/TR/css-grid-1/#row-align> such items do not participate in baseline
     /// alignment and are aligned using their fallback alignment instead.
-    pub inline fn hasCyclicBlockSizeDependency(self: *const GridItem) bool {
+    pub fn hasCyclicBlockSizeDependency(self: *const GridItem) bool {
         return self.size.height.inner.usesPercentage() and (self.crosses_intrinsic_row or self.crosses_flexible_row);
     }
 
     /// Returns true if the item participates in baseline alignment: it has `align-self: baseline`
     /// and neither of its block-axis margins are `auto`.
     /// See <https://www.w3.org/TR/css-align-3/#baseline-align-self>
-    pub inline fn participatesInBaselineAlignment(self: *const GridItem) bool {
+    pub fn participatesInBaselineAlignment(self: *const GridItem) bool {
         return self.align_self.keyword == .baseline and
             !self.hasAutoBlockMargin() and
             !self.hasCyclicBlockSizeDependency();
     }
 
     /// This item's placement in the specified axis in OriginZero coordinates
-    pub inline fn placement(self: *const GridItem, axis: AbstractAxis) Line(OriginZeroLine) {
+    pub fn placement(self: *const GridItem, axis: AbstractAxis) Line(OriginZeroLine) {
         return switch (axis) {
             .block => self.row,
             .@"inline" => self.column,
@@ -235,7 +235,7 @@ pub const GridItem = struct {
     }
 
     /// This item's placement in the specified axis as GridTrackVec indices
-    pub inline fn placementIndexes(self: *const GridItem, axis: AbstractAxis) Line(u16) {
+    pub fn placementIndexes(self: *const GridItem, axis: AbstractAxis) Line(u16) {
         return switch (axis) {
             .block => self.row_indexes,
             .@"inline" => self.column_indexes,
@@ -245,13 +245,13 @@ pub const GridItem = struct {
     /// Returns a range which can be used as an index into the GridTrackVec in the specified axis
     /// which will produce a sub-slice of covering all the tracks and lines that this item spans
     /// excluding the lines that bound it.
-    pub inline fn trackRangeExcludingLines(self: *const GridItem, axis: AbstractAxis) Range(usize) {
+    pub fn trackRangeExcludingLines(self: *const GridItem, axis: AbstractAxis) Range(usize) {
         const indexes = self.placementIndexes(axis);
         return .{ .start = @as(usize, indexes.start) + 1, .end = @as(usize, indexes.end) };
     }
 
     /// The tracks (and gutters) spanned by this item in the specified axis, excluding the lines that bound it
-    pub inline fn spannedTracks(self: *const GridItem, axis: AbstractAxis, axis_tracks: anytype) @TypeOf(axis_tracks) {
+    pub fn spannedTracks(self: *const GridItem, axis: AbstractAxis, axis_tracks: anytype) @TypeOf(axis_tracks) {
         const range = self.trackRangeExcludingLines(axis);
         return axis_tracks[range.start..range.end];
     }
@@ -266,7 +266,7 @@ pub const GridItem = struct {
     }
 
     /// Returns the number of tracks that this item spans in the specified axis
-    pub inline fn span(self: *const GridItem, axis: AbstractAxis) u16 {
+    pub fn span(self: *const GridItem, axis: AbstractAxis) u16 {
         return switch (axis) {
             .block => self.row.span(),
             .@"inline" => self.column.span(),
@@ -275,7 +275,7 @@ pub const GridItem = struct {
 
     /// Returns the pre-computed value indicating whether the grid item crosses a flexible track in
     /// the specified axis
-    pub inline fn crossesFlexibleTrack(self: *const GridItem, axis: AbstractAxis) bool {
+    pub fn crossesFlexibleTrack(self: *const GridItem, axis: AbstractAxis) bool {
         return switch (axis) {
             .@"inline" => self.crosses_flexible_column,
             .block => self.crosses_flexible_row,
@@ -284,7 +284,7 @@ pub const GridItem = struct {
 
     /// Returns the pre-computed value indicating whether the grid item crosses an intrinsic track in
     /// the specified axis
-    pub inline fn crossesIntrinsicTrack(self: *const GridItem, axis: AbstractAxis) bool {
+    pub fn crossesIntrinsicTrack(self: *const GridItem, axis: AbstractAxis) bool {
         return switch (axis) {
             .@"inline" => self.crosses_intrinsic_column,
             .block => self.crosses_intrinsic_row,
@@ -333,7 +333,7 @@ pub const GridItem = struct {
 
     /// Retrieve the known_dimensions for the given grid area size from the cache or compute them.
     /// The min-content and max-content contributions of an item are both computed from the same known_dimensions.
-    inline fn knownDimensionsCached(self: *GridItem, tree: anytype, grid_area_size: Size(?f32)) Size(?f32) {
+    fn knownDimensionsCached(self: *GridItem, tree: anytype, grid_area_size: Size(?f32)) Size(?f32) {
         if (self.known_dimensions_cache) |entry| {
             if (optionalEql(entry.grid_area_size.width, grid_area_size.width) and
                 optionalEql(entry.grid_area_size.height, grid_area_size.height))
@@ -347,7 +347,7 @@ pub const GridItem = struct {
     }
 
     /// Whether the given self-alignment stretches the item: `stretch`, or `normal` unless the item is replaced
-    inline fn isStretchAligned(self: *const GridItem, alignment: AlignSelf) bool {
+    fn isStretchAligned(self: *const GridItem, alignment: AlignSelf) bool {
         return switch (alignment.keyword) {
             .stretch => true,
             .normal => !self.is_replaced,
@@ -513,7 +513,7 @@ pub const GridItem = struct {
 
     /// Compute the item's resolved margins for size contributions. Horizontal percentage margins always resolve
     /// to zero if the container size is indefinite as otherwise this would introduce a cyclic dependency.
-    pub inline fn marginsAxisSumsWithBaselineShims(self: *const GridItem, inner_node_width: ?f32, tree: anytype) Size(f32) {
+    pub fn marginsAxisSumsWithBaselineShims(self: *const GridItem, inner_node_width: ?f32, tree: anytype) Size(f32) {
         const rect: Rect(f32) = .{
             .left = resolveOrZero(self.margin.left, @as(?f32, 0.0), tree),
             .right = resolveOrZero(self.margin.right, @as(?f32, 0.0), tree),
@@ -559,7 +559,7 @@ pub const GridItem = struct {
     }
 
     /// Retrieve the item's min content contribution from the cache or compute it using the provided parameters
-    pub inline fn minContentContributionCached(
+    pub fn minContentContributionCached(
         self: *GridItem,
         axis: AbstractAxis,
         tree: anytype,
@@ -609,7 +609,7 @@ pub const GridItem = struct {
     /// to the item's margin box, giving the available space that is passed to the item.
     /// As when the item is laid out into its final position, margins resolve against the width
     /// of the grid area and `auto` margins are treated as zero.
-    inline fn availableSpaceMinusMargins(
+    fn availableSpaceMinusMargins(
         self: *const GridItem,
         grid_area_size: Size(?f32),
         available_space: Size(?f32),
@@ -656,7 +656,7 @@ pub const GridItem = struct {
     }
 
     /// Retrieve the item's max content contribution from the cache or compute it using the provided parameters
-    pub inline fn maxContentContributionCached(
+    pub fn maxContentContributionCached(
         self: *GridItem,
         axis: AbstractAxis,
         tree: anytype,
@@ -781,7 +781,7 @@ pub const GridItem = struct {
     }
 
     /// Retrieve the item's minimum contribution from the cache or compute it using the provided parameters
-    pub inline fn minimumContributionCached(
+    pub fn minimumContributionCached(
         self: *GridItem,
         tree: anytype,
         axis: AbstractAxis,

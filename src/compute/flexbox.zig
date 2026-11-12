@@ -163,7 +163,7 @@ const FlexItem = struct {
 
     /// Whether the used cross size of the item is the cross size of its flex line: it has a cross size of
     /// `stretch`, or of `auto` with `align-self: stretch`, and neither of its cross-axis margins is `auto`.
-    inline fn isStretched(self: *const FlexItem, dir: FlexDirection) bool {
+    fn isStretched(self: *const FlexItem, dir: FlexDirection) bool {
         const cross_size = self.size_style.cross(dir);
         return !self.margin_is_auto.crossStart(dir) and
             !self.margin_is_auto.crossEnd(dir) and
@@ -269,7 +269,7 @@ const AlgoConstants = struct {
     /// definite cross-axis available space for measuring items is divided between the requested
     /// number of lines (after subtracting the cross-axis gaps between them).
     /// See <https://github.com/w3c/csswg-drafts/issues/13414>
-    inline fn dividedCrossSpace(self: *const AlgoConstants, cross_available_space: f32) f32 {
+    fn dividedCrossSpace(self: *const AlgoConstants, cross_available_space: f32) f32 {
         if (self.line_count) |line_count_int| {
             if (line_count_int > 1) {
                 const line_count: f32 = @floatFromInt(line_count_int);
@@ -362,7 +362,7 @@ pub fn computeFlexboxLayout(tree: anytype, node: NodeId, inputs: LayoutInput) La
 }
 
 /// `Some(min)` if both `min` and `max` are set and `max <= min`
-inline fn minMaxDefinite(min: ?f32, max: ?f32) ?f32 {
+fn minMaxDefinite(min: ?f32, max: ?f32) ?f32 {
     if (min) |min_v| {
         if (max) |max_v| {
             if (max_v <= min_v) return min_v;
@@ -636,7 +636,7 @@ fn computeEmptyContainerLayout(tree: anytype, inputs: LayoutInput, constants_in:
 
 /// Resolve the `normal` alignment keyword, which behaves as `stretch` for flex items.
 /// <https://www.w3.org/TR/css-align-3/#align-flex>
-inline fn resolveNormalAlignment(alignment_value: AlignItems) AlignItems {
+fn resolveNormalAlignment(alignment_value: AlignItems) AlignItems {
     return switch (alignment_value.keyword) {
         .normal => AlignItems.stretch,
         else => alignment_value,
@@ -750,12 +750,12 @@ fn computeConstants(
 }
 
 /// `a orelse b` for the `Option::or` pattern
-inline fn optOr(a: ?f32, b: ?f32) ?f32 {
+fn optOr(a: ?f32, b: ?f32) ?f32 {
     return if (a != null) a else b;
 }
 
 /// `opt.map(|pos| -pos)`
-inline fn optNeg(a: ?f32) ?f32 {
+fn optNeg(a: ?f32) ?f32 {
     return if (a) |v| -v else null;
 }
 
@@ -891,7 +891,7 @@ fn generateAnonymousFlexItems(tree: anytype, node: NodeId, constants: *const Alg
 /// **This might result in an infinite value**.
 ///
 /// Note: the flex container's margins have already been subtracted from `outer_available_space` by its parent.
-inline fn determineAvailableSpace(
+fn determineAvailableSpace(
     known_dimensions: Size(?f32),
     outer_available_space: Size(AvailableSpace),
     constants: *const AlgoConstants,
@@ -1351,7 +1351,7 @@ fn collectBalancedFlexLines(
 /// layout on the item. An item's post-flexing main size is only treated as definite if the container
 /// has a definite main size or the item's used flex basis is definite.
 /// See <https://www.w3.org/TR/css-flexbox-1/#definite-sizes>
-inline fn itemKnownDimensionDefiniteness(constants: *const AlgoConstants, item: *const FlexItem) Size(bool) {
+fn itemKnownDimensionDefiniteness(constants: *const AlgoConstants, item: *const FlexItem) Size(bool) {
     const dir = constants.dir;
     const main_is_definite = constants.has_definite_main_size or item.flex_basis_is_definite;
 
@@ -1395,7 +1395,7 @@ const TotalCmpMax = struct {
 
 /// The length of an item for the purposes of determining a container's main size from definite
 /// available space
-inline fn itemMainLength(child: *const FlexItem, constants: *const AlgoConstants) f32 {
+fn itemMainLength(child: *const FlexItem, constants: *const AlgoConstants) f32 {
     const padding_border_sum = child.padding.add(child.border).mainAxisSum(constants.dir);
     return @max(maybeMax(child.flex_basis, child.min_size.main(constants.dir)) + child.margin.mainAxisSum(constants.dir), padding_border_sum);
 }
@@ -2778,7 +2778,7 @@ fn crossEdgeFor(keyword: AlignItemsKeyword, cross_is_rtl: bool, cross_axis_flex_
 /// Computes the total space taken up by gaps in an axis given:
 ///   - The size of each gap
 ///   - The number of items (children or flex-lines) between which there are gaps
-inline fn sumAxisGaps(gap: f32, num_items: usize) f32 {
+fn sumAxisGaps(gap: f32, num_items: usize) f32 {
     // Gaps only exist between items, so...
     if (num_items <= 1) {
         // ...if there are less than 2 items then there are no gaps
