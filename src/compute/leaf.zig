@@ -11,7 +11,6 @@ const Baselines = layout.Baselines;
 const CollapsibleMarginSet = layout.CollapsibleMarginSet;
 const LayoutInput = layout.LayoutInput;
 const LayoutOutput = layout.LayoutOutput;
-const OofCandidates = layout.OofCandidates;
 const ScrollableOverflow = layout.ScrollableOverflow;
 const math = @import("../util/math.zig");
 const maybeAdd = math.maybeAdd;
@@ -120,7 +119,6 @@ pub fn computeLeafLayout(
                     .top_margin = CollapsibleMarginSet.zero,
                     .bottom_margin = CollapsibleMarginSet.zero,
                     .margins_can_collapse_through = false,
-                    .oof_candidates = OofCandidates.none,
                     .oof_positioning_area = null,
                 };
             }
@@ -202,7 +200,6 @@ pub fn computeLeafLayout(
         .margins_can_collapse_through = !has_styles_preventing_being_collapsed_through and
             size.height == 0.0 and
             measured_size.height == 0.0,
-        .oof_candidates = OofCandidates.none,
         .oof_positioning_area = null,
     };
 }

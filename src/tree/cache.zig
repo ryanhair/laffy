@@ -1,15 +1,9 @@
 //! A cache for storing the results of layout computation
-//!
-//! The final-layout entry owns a `LayoutOutput`, whose out-of-flow candidate list is heap
-//! allocated. `get`, `store`, `clear` and `deinit` therefore take the allocator that the stored
-//! outputs were allocated with (the tree's allocator).
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 const Size = @import("../geometry.zig").Size;
 const AvailableSpace = @import("../style.zig").AvailableSpace;
 const layout = @import("layout.zig");
 const CollapsibleMarginSet = layout.CollapsibleMarginSet;
-const LayoutError = layout.LayoutError;
 const LayoutInput = layout.LayoutInput;
 const LayoutOutput = layout.LayoutOutput;
 const RunMode = layout.RunMode;
@@ -189,16 +183,8 @@ pub const Cache = struct {
     /// and storing a result that was computed with a different mode drops the existing entries.
     mode: CacheMode = CacheMode.initial,
 
-    /// Free the memory owned by the cache's entries
-    pub fn deinit(self: *Cache, gpa: Allocator) void {
-        if (self.final_layout_entry) |*entry| entry.content.deinit(gpa);
-        self.* = .{};
-    }
-
-    /// Try to retrieve a cached result from the cache.
-    ///
-    /// The returned output is a copy owned by the caller (see `LayoutOutput.deinit`).
-    pub fn get(self: *Cache, gpa: Allocator, input: *const LayoutInput) LayoutError!?LayoutOutput {
+    /// Try to retrieve a cached result from the cache
+    pub fn get(self: *Cache, input: *const LayoutInput) ?LayoutOutput {
         if (self.mode.inner != CacheMode.fromInput(input).inner) {
             return null;
         }
@@ -206,7 +192,7 @@ pub const Cache = struct {
         switch (input.run_mode) {
             .perform_layout => {
                 if (self.final_layout_entry) |*entry| {
-                    if (entry.key.eql(key)) return try entry.content.clone(gpa);
+                    if (entry.key.eql(key)) return entry.content;
                 }
                 return null;
             },
@@ -229,29 +215,22 @@ pub const Cache = struct {
         }
     }
 
-    /// Store a computed size in the cache. The cache takes ownership of `layout_output` (it is
-    /// freed with `gpa` when it is replaced or discarded).
-    pub fn store(self: *Cache, gpa: Allocator, input: *const LayoutInput, layout_output: LayoutOutput) void {
-        var output = layout_output;
-        if (input.run_mode == .perform_hidden_layout) {
-            output.deinit(gpa);
-            return;
-        }
+    /// Store a computed size in the cache
+    pub fn store(self: *Cache, input: *const LayoutInput, output: LayoutOutput) void {
+        if (input.run_mode == .perform_hidden_layout) return;
         const mode = CacheMode.fromInput(input);
         if (self.mode.inner != mode.inner) {
-            _ = self.clear(gpa);
+            _ = self.clear();
             self.mode = mode;
         }
         const key = CacheKey.fromInput(input);
         switch (input.run_mode) {
             .perform_layout => {
                 self.is_empty = false;
-                if (self.final_layout_entry) |*entry| entry.content.deinit(gpa);
                 self.final_layout_entry = .{ .key = key, .content = output };
             },
             .compute_size => {
                 // Only the size is stored
-                defer output.deinit(gpa);
                 // Measure entries only store the size, and cache hits are reconstructed with
                 // `LayoutOutput.fromOuterSize`, which resets the margin-collapse metadata
                 // (`top_margin`, `bottom_margin`, `margins_can_collapse_through`). Results that
@@ -292,12 +271,11 @@ pub const Cache = struct {
     }
 
     /// Clear all cache entries and reports clear operation outcome (`ClearState`)
-    pub fn clear(self: *Cache, gpa: Allocator) ClearState {
+    pub fn clear(self: *Cache) ClearState {
         if (self.is_empty) {
             return .already_empty;
         }
         self.is_empty = true;
-        if (self.final_layout_entry) |*entry| entry.content.deinit(gpa);
         self.final_layout_entry = null;
         self.measure_entries = @splat(null);
         self.recently_used_entries = 0;
@@ -348,8 +326,7 @@ fn testOutput(width: f32) LayoutOutput {
 
 /// Assert that `cache.get(in)` returns `expected` (or nothing)
 fn expectGet(cache: *Cache, in: LayoutInput, expected: ?LayoutOutput) !void {
-    var result = try cache.get(testing.allocator, &in);
-    defer if (result) |*r| r.deinit(testing.allocator);
+    const result = cache.get(&in);
     if (expected) |e| {
         try testing.expect(result != null);
         try testing.expect(result.?.eql(&e));
@@ -368,14 +345,13 @@ fn countMeasureEntries(cache: *const Cache) usize {
 
 test "recently used measure entries get a second chance" {
     var cache: Cache = .{};
-    defer cache.deinit(testing.allocator);
     for (0..cache_size) |width| {
-        cache.store(testing.allocator, &testInput(@floatFromInt(width)), testOutput(@floatFromInt(width)));
+        cache.store(&testInput(@floatFromInt(width)), testOutput(@floatFromInt(width)));
     }
-    cache.store(testing.allocator, &testInput(@floatFromInt(cache_size)), testOutput(@floatFromInt(cache_size)));
+    cache.store(&testInput(@floatFromInt(cache_size)), testOutput(@floatFromInt(cache_size)));
 
     try expectGet(&cache, testInput(1.0), testOutput(1.0));
-    cache.store(testing.allocator, &testInput(@floatFromInt(cache_size + 1)), testOutput(@floatFromInt(cache_size + 1)));
+    cache.store(&testInput(@floatFromInt(cache_size + 1)), testOutput(@floatFromInt(cache_size + 1)));
 
     try expectGet(&cache, testInput(1.0), testOutput(1.0));
     try expectGet(&cache, testInput(2.0), null);
@@ -383,10 +359,9 @@ test "recently used measure entries get a second chance" {
 
 test "storing an existing measurement updates it in place" {
     var cache: Cache = .{};
-    defer cache.deinit(testing.allocator);
-    cache.store(testing.allocator, &testInput(1.0), testOutput(1.0));
-    cache.store(testing.allocator, &testInput(2.0), testOutput(2.0));
-    cache.store(testing.allocator, &testInput(1.0), testOutput(3.0));
+    cache.store(&testInput(1.0), testOutput(1.0));
+    cache.store(&testInput(2.0), testOutput(2.0));
+    cache.store(&testInput(1.0), testOutput(3.0));
 
     try testing.expectEqual(@as(usize, 2), countMeasureEntries(&cache));
     try expectGet(&cache, testInput(1.0), testOutput(3.0));
@@ -394,24 +369,22 @@ test "storing an existing measurement updates it in place" {
 
 test "measurements with margin collapse metadata are not cached" {
     var cache: Cache = .{};
-    defer cache.deinit(testing.allocator);
 
     var collapse_through = testOutput(1.0);
     collapse_through.margins_can_collapse_through = true;
-    cache.store(testing.allocator, &testInput(1.0), collapse_through);
+    cache.store(&testInput(1.0), collapse_through);
     try expectGet(&cache, testInput(1.0), null);
 
     var carried_margin = testOutput(2.0);
     carried_margin.top_margin = CollapsibleMarginSet.fromMargin(10.0);
-    cache.store(testing.allocator, &testInput(2.0), carried_margin);
+    cache.store(&testInput(2.0), carried_margin);
     try expectGet(&cache, testInput(2.0), null);
 }
 
 test "retrieving a measurement only marks its slot as used" {
     var cache: Cache = .{};
-    defer cache.deinit(testing.allocator);
-    cache.store(testing.allocator, &testInput(1.0), testOutput(1.0));
-    cache.store(testing.allocator, &testInput(2.0), testOutput(2.0));
+    cache.store(&testInput(1.0), testOutput(1.0));
+    cache.store(&testInput(2.0), testOutput(2.0));
     cache.recently_used_entries = 0;
     const entries = cache.measure_entries;
 
@@ -455,9 +428,8 @@ test "cache mode distinguishes every combination of inputs" {
 
 test "retrieving with a different mode misses and keeps the entries" {
     var cache: Cache = .{};
-    defer cache.deinit(testing.allocator);
-    cache.store(testing.allocator, &performLayoutInput(100.0, 50.0), testOutput(1.0));
-    cache.store(testing.allocator, &testInput(1.0), testOutput(2.0));
+    cache.store(&performLayoutInput(100.0, 50.0), testOutput(1.0));
+    cache.store(&testInput(1.0), testOutput(2.0));
 
     for (otherModes(performLayoutInput(100.0, 50.0))) |other| {
         try expectGet(&cache, other, null);
@@ -473,17 +445,16 @@ test "retrieving with a different mode misses and keeps the entries" {
 test "storing with a different mode drops the existing entries" {
     for (otherModes(testInput(3.0))) |other| {
         var cache: Cache = .{};
-        defer cache.deinit(testing.allocator);
-        cache.store(testing.allocator, &performLayoutInput(100.0, 50.0), testOutput(1.0));
-        cache.store(testing.allocator, &testInput(1.0), testOutput(2.0));
+        cache.store(&performLayoutInput(100.0, 50.0), testOutput(1.0));
+        cache.store(&testInput(1.0), testOutput(2.0));
 
-        cache.store(testing.allocator, &other, testOutput(3.0));
+        cache.store(&other, testOutput(3.0));
         try expectGet(&cache, other, testOutput(3.0));
         try testing.expect(cache.final_layout_entry == null);
         try testing.expectEqual(@as(usize, 1), countMeasureEntries(&cache));
 
         // The old entries are gone, even for inputs that have the mode that the cache had before
-        cache.store(testing.allocator, &testInput(4.0), testOutput(4.0));
+        cache.store(&testInput(4.0), testOutput(4.0));
         try expectGet(&cache, performLayoutInput(100.0, 50.0), null);
         try expectGet(&cache, testInput(1.0), null);
         try expectGet(&cache, other, null);
@@ -492,11 +463,10 @@ test "storing with a different mode drops the existing entries" {
 
     for (otherModes(performLayoutInput(100.0, 50.0))) |other| {
         var cache: Cache = .{};
-        defer cache.deinit(testing.allocator);
-        cache.store(testing.allocator, &performLayoutInput(100.0, 50.0), testOutput(1.0));
-        cache.store(testing.allocator, &testInput(1.0), testOutput(2.0));
+        cache.store(&performLayoutInput(100.0, 50.0), testOutput(1.0));
+        cache.store(&testInput(1.0), testOutput(2.0));
 
-        cache.store(testing.allocator, &other, testOutput(3.0));
+        cache.store(&other, testOutput(3.0));
         try expectGet(&cache, other, testOutput(3.0));
         try testing.expectEqual(@as(usize, 0), countMeasureEntries(&cache));
         try expectGet(&cache, performLayoutInput(100.0, 50.0), null);
@@ -505,36 +475,18 @@ test "storing with a different mode drops the existing entries" {
 
 test "hidden layouts do not affect the cache" {
     var cache: Cache = .{};
-    defer cache.deinit(testing.allocator);
-    cache.store(testing.allocator, &testInput(1.0), testOutput(1.0));
-    cache.store(testing.allocator, &LayoutInput.hidden, testOutput(2.0));
+    cache.store(&testInput(1.0), testOutput(1.0));
+    cache.store(&LayoutInput.hidden, testOutput(2.0));
     try expectGet(&cache, testInput(1.0), testOutput(1.0));
 }
 
-test "final layout entries own their out-of-flow candidates" {
-    const gpa = testing.allocator;
+test "storing a final layout replaces the previous one" {
     var cache: Cache = .{};
-    defer cache.deinit(gpa);
-    var out = testOutput(5.0);
-    try out.oof_candidates.push(gpa, .{
-        .node = @import("node.zig").NodeId.new(7),
-        .order = 1,
-        .position = .fixed,
-        .static_position = .{
-            .x = layout.AxisStaticPosition.fromEdge(0.0, .start),
-            .y = layout.AxisStaticPosition.fromEdge(0.0, .start),
-        },
-    });
-    cache.store(gpa, &performLayoutInput(5.0, 5.0), out);
-    // Replacing the entry frees the previous output
-    var out2 = try out.clone(gpa);
-    out2.size.width = 6.0;
-    cache.store(gpa, &performLayoutInput(5.0, 5.0), out2);
-    var got = (try cache.get(gpa, &performLayoutInput(5.0, 5.0))).?;
-    defer got.deinit(gpa);
-    try testing.expectEqual(@as(usize, 1), got.oof_candidates.asSlice().len);
+    cache.store(&performLayoutInput(5.0, 5.0), testOutput(5.0));
+    cache.store(&performLayoutInput(5.0, 5.0), testOutput(6.0));
+    const got = cache.get(&performLayoutInput(5.0, 5.0)).?;
     try testing.expectEqual(@as(f32, 6.0), got.size.width);
-    try testing.expectEqual(ClearState.cleared, cache.clear(gpa));
-    try testing.expectEqual(ClearState.already_empty, cache.clear(gpa));
+    try testing.expectEqual(ClearState.cleared, cache.clear());
+    try testing.expectEqual(ClearState.already_empty, cache.clear());
     try testing.expect(cache.isEmpty());
 }

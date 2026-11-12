@@ -33,7 +33,7 @@ const Layout = layout.Layout;
 const LayoutError = layout.LayoutError;
 const LayoutInput = layout.LayoutInput;
 const LayoutOutput = layout.LayoutOutput;
-const OofCandidates = layout.OofCandidates;
+const OofCandidate = layout.OofCandidate;
 const OofPositioningArea = layout.OofPositioningArea;
 const NodeId = @import("../tree/node.zig").NodeId;
 const traits = @import("../tree/traits.zig");
@@ -236,12 +236,6 @@ fn computeContainerConstants(tree: anytype, style: anytype, inputs: LayoutInput)
     };
 }
 
-/// Free the grid items (and any out-of-flow candidates they still own)
-fn freeItems(gpa: Allocator, scratch: Allocator, items: *std.ArrayList(GridItem)) void {
-    for (items.items) |*item| item.oof_candidates.deinit(gpa);
-    items.deinit(scratch);
-}
-
 /// The sum of the base sizes of `tracks`
 fn baseSizeSum(tracks: []const GridTrack) f32 {
     var sum: f32 = -0.0;
@@ -269,8 +263,7 @@ const TrackIsOccupied = struct {
 ///   - Track (row/column) sizing
 ///   - Alignment & Final item placement
 ///
-/// `tree` implements `LayoutGridContainer` (see `src/tree/traits.zig`). The caller owns the
-/// returned output.
+/// `tree` implements `LayoutGridContainer` (see `src/tree/traits.zig`).
 pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) LayoutError!LayoutOutput {
     traits.assertImplements(@TypeOf(tree), &.{.layout_grid_container});
     const gpa = tree.allocator();
@@ -382,7 +375,6 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
     // results drive both the grid size estimate and item placement below.
     const child_count = tree.childCount(node);
     var items: std.ArrayList(GridItem) = .empty;
-    defer freeItems(gpa, scratch, &items);
     try items.ensureTotalCapacity(scratch, child_count);
     var placements: std.ArrayList(ItemPlacement) = .empty;
     defer placements.deinit(scratch);
@@ -727,8 +719,7 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
     // Out-of-flow candidates in document order: direct out-of-flow children of the grid
     // interleaved with candidates bubbled from in-flow children's subtrees. These are laid out
     // by the out-of-flow positioning pass (`computeOofLayout`), which runs after this algorithm.
-    var oof_candidates: OofCandidates = .none;
-    errdefer oof_candidates.deinit(gpa);
+    var oof_candidates: std.ArrayList(OofCandidate) = .empty;
 
     const container_alignment_styles: InBothAbsAxis(AlignItems) = .{ .horizontal = justify_items, .vertical = align_items };
 
@@ -788,7 +779,7 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
     var in_flow_index: usize = 0;
     for (0..tree.childCount(node)) |index| {
         if (in_flow_index < items.items.len and items.items[in_flow_index].source_order == index) {
-            try oof_candidates.append(gpa, &items.items[in_flow_index].oof_candidates);
+            try oof_candidates.appendSlice(scratch, items.items[in_flow_index].oof_candidates.items);
             in_flow_index += 1;
             continue;
         }
@@ -799,7 +790,7 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
         // Position hidden child
         if (child_style.getBoxGenerationMode() == .none) {
             tree.setUnroundedLayout(child, &Layout.withOrder(order));
-            var hidden_output = try traits.performChildLayout(
+            _ = try traits.performChildLayout(
                 tree,
                 child,
                 Size(?f32).none,
@@ -808,7 +799,6 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
                 .inherent_size,
                 Line(bool).false,
             );
-            hidden_output.deinit(gpa);
             order += 1;
             continue;
         }
@@ -853,7 +843,7 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
                     .bottom = container_border_box.height - border.bottom - padding.bottom - scrollbar_gutter.y,
                 };
 
-            try oof_candidates.push(gpa, .{
+            try oof_candidates.append(scratch, .{
                 .node = child,
                 .order = order,
                 .position = position,
@@ -909,7 +899,7 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
                 is_scroll_container,
             ),
         );
-        output.oof_candidates = oof_candidates;
+        try tree.setOofCandidates(node, oof_candidates.items);
         output.oof_positioning_area = oof_positioning_area;
         return output;
     }
@@ -970,7 +960,7 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
         scrollable_overflow_rect,
         Baselines.fromFirst(grid_container_baseline),
     );
-    output.oof_candidates = oof_candidates;
+    try tree.setOofCandidates(node, oof_candidates.items);
     output.oof_positioning_area = oof_positioning_area;
     return output;
 }

@@ -165,46 +165,32 @@ fn free(ctx: *anyopaque, memory: []u8, _: Alignment, _: usize) void {
     self.offset = @intFromPtr(memory.ptr) - @intFromPtr(chunk.ptr);
 }
 
-/// The scratch memory of one layout algorithm invocation.
+/// The scratch memory of one layout algorithm invocation: everything allocated between `begin`
+/// and `end` (including by the layout of descendants) is released by `end`.
 ///
-/// `begin` takes a tree. If the tree type has a `scratch(self) *Scratch` method, allocations come
-/// from that allocator and `end` releases them all at once. Otherwise they come from the tree's
-/// `allocator()` and must be freed individually, which layout code always does anyway.
+/// `tree` is any tree with a `scratch(self) *Scratch` method.
 pub const Frame = struct {
-    scratch: ?*Scratch,
+    scratch: *Scratch,
     start: Mark,
-    fallback: Allocator,
 
     pub fn begin(tree: anytype) Frame {
-        if (comptime hasScratch(@TypeOf(tree))) {
-            const s: *Scratch = tree.scratch();
-            return .{ .scratch = s, .start = s.mark(), .fallback = undefined };
-        }
-        return .{ .scratch = null, .start = undefined, .fallback = tree.allocator() };
+        const s: *Scratch = tree.scratch();
+        return .{ .scratch = s, .start = s.mark() };
     }
 
     pub fn allocator(self: *const Frame) Allocator {
-        return if (self.scratch) |s| s.allocator() else self.fallback;
+        return self.scratch.allocator();
     }
 
     pub fn end(self: *const Frame) void {
-        if (self.scratch) |s| s.release(self.start);
+        self.scratch.release(self.start);
     }
 };
 
 /// The allocator for temporary buffers of a tree, for code that runs inside a `Frame` that one
 /// of its callers began
 pub fn allocatorOf(tree: anytype) Allocator {
-    if (comptime hasScratch(@TypeOf(tree))) return tree.scratch().allocator();
-    return tree.allocator();
-}
-
-fn hasScratch(comptime TreePtr: type) bool {
-    const Tree = switch (@typeInfo(TreePtr)) {
-        .pointer => |p| p.child,
-        else => TreePtr,
-    };
-    return @hasDecl(Tree, "scratch");
+    return tree.scratch().allocator();
 }
 
 const testing = std.testing;

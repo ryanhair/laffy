@@ -67,9 +67,11 @@ const Node = struct {
     layout: Layout = Layout.withOrder(0),
     children: []Node,
     hoisted_children: std.ArrayList(NodeId) = .empty,
+    oof_candidates: std.ArrayList(laffy.OofCandidate) = .empty,
+    scratch_allocator: laffy.Scratch,
 
     fn new(kind: Kind, style: Style, children: []Node) Node {
-        return .{ .kind = kind, .style = style, .children = children };
+        return .{ .kind = kind, .style = style, .children = children, .scratch_allocator = .init(testing.allocator) };
     }
 
     fn leaf(min_width: f32, max_width: f32, height: f32, style: Style) Node {
@@ -77,8 +79,9 @@ const Node = struct {
     }
 
     fn deinit(self: *Node) void {
-        self.cache.deinit(testing.allocator);
         self.hoisted_children.deinit(testing.allocator);
+        self.oof_candidates.deinit(testing.allocator);
+        self.scratch_allocator.deinit();
         for (self.children) |*child| child.deinit();
     }
 
@@ -131,6 +134,20 @@ const Node = struct {
 
     pub fn allocator(_: *const Node) std.mem.Allocator {
         return testing.allocator;
+    }
+
+    pub fn scratch(self: *Node) *laffy.Scratch {
+        return &self.scratch_allocator;
+    }
+
+    pub fn oofCandidates(self: *const Node, node_id: NodeId) []const laffy.OofCandidate {
+        return self.nodeFromId(node_id).oof_candidates.items;
+    }
+
+    pub fn setOofCandidates(self: *Node, node_id: NodeId, candidates: []const laffy.OofCandidate) LayoutError!void {
+        const list = &self.nodeFromIdMut(node_id).oof_candidates;
+        list.clearRetainingCapacity();
+        try list.appendSlice(testing.allocator, candidates);
     }
 
     pub fn getCoreContainerStyle(self: *const Node, node_id: NodeId) *const Style {
@@ -197,16 +214,16 @@ const Node = struct {
 
     // CacheTree
 
-    pub fn cacheGet(self: *Node, node_id: NodeId, inputs: *const LayoutInput) LayoutError!?LayoutOutput {
-        return self.nodeFromIdMut(node_id).cache.get(testing.allocator, inputs);
+    pub fn cacheGet(self: *Node, node_id: NodeId, inputs: *const LayoutInput) ?LayoutOutput {
+        return self.nodeFromIdMut(node_id).cache.get(inputs);
     }
 
     pub fn cacheStore(self: *Node, node_id: NodeId, inputs: *const LayoutInput, layout_output: LayoutOutput) void {
-        self.nodeFromIdMut(node_id).cache.store(testing.allocator, inputs, layout_output);
+        self.nodeFromIdMut(node_id).cache.store(inputs, layout_output);
     }
 
     pub fn cacheClear(self: *Node, node_id: NodeId) void {
-        _ = self.nodeFromIdMut(node_id).cache.clear(testing.allocator);
+        _ = self.nodeFromIdMut(node_id).cache.clear();
     }
 
     // LayoutBlockContainer

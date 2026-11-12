@@ -30,7 +30,6 @@ const LayoutError = layout.LayoutError;
 const LayoutInput = layout.LayoutInput;
 const LayoutOutput = layout.LayoutOutput;
 const OofCandidate = layout.OofCandidate;
-const OofCandidates = layout.OofCandidates;
 const NodeId = @import("../tree/node.zig").NodeId;
 const traits = @import("../tree/traits.zig");
 const math = @import("../util/math.zig");
@@ -145,8 +144,8 @@ const FlexItem = struct {
 
     /// Out-of-flow candidates bubbled out of this item's subtree. Anchors are relative to the
     /// container's border box (translated when the item's final layout is computed).
-    /// Allocated with the tree's allocator and owned by the item.
-    oof_candidates: OofCandidates,
+    /// Scratch memory.
+    oof_candidates: []const OofCandidate,
 
     /// The size that the item's size styles exclude: padding + border for `box-sizing: content-box`, otherwise zero
     fn boxSizingAdjustment(self: *const FlexItem, style: anytype) Size(f32) {
@@ -372,15 +371,8 @@ fn minMaxDefinite(min: ?f32, max: ?f32) ?f32 {
     return null;
 }
 
-/// Free the flex items (and any out-of-flow candidates they still own)
-fn freeFlexItems(gpa: std.mem.Allocator, scratch: std.mem.Allocator, flex_items: []FlexItem) void {
-    for (flex_items) |*item| item.oof_candidates.deinit(gpa);
-    scratch.free(flex_items);
-}
-
 /// Compute a preliminary size for an item
 fn computePreliminary(tree: anytype, node: NodeId, inputs: LayoutInput) LayoutError!LayoutOutput {
-    const gpa = tree.allocator();
     const frame = Scratch.Frame.begin(tree);
     defer frame.end();
     const scratch = frame.allocator();
@@ -410,7 +402,6 @@ fn computePreliminary(tree: anytype, node: NodeId, inputs: LayoutInput) LayoutEr
 
     // 1. Generate anonymous flex items as described in §4 Flex Items.
     const flex_items = try generateAnonymousFlexItems(tree, node, &constants);
-    defer freeFlexItems(gpa, scratch, flex_items);
 
     // 9.2. Line Length Determination
 
@@ -527,9 +518,9 @@ fn computePreliminary(tree: anytype, node: NodeId, inputs: LayoutInput) LayoutEr
     // Collect out-of-flow candidates in document order (direct out-of-flow children interleaved
     // with candidates bubbled from in-flow children's subtrees). These are laid out by the
     // out-of-flow positioning pass (`computeOofLayout`), which runs after this algorithm.
-    var candidates: OofCandidates = .none;
-    errdefer candidates.deinit(gpa);
-    try collectOofCandidates(tree, node, &constants, flex_lines, &candidates);
+    var candidates: std.ArrayList(OofCandidate) = .empty;
+    try collectOofCandidates(tree, scratch, node, &constants, flex_lines, &candidates);
+    try tree.setOofCandidates(node, candidates.items);
 
     const absolute_position_area = constants.container_size.sub(constants.padding_box_inset.sumAxes());
     const absolute_position_offset: Point(f32) = .{ .x = constants.padding_box_inset.left, .y = constants.padding_box_inset.top };
@@ -539,7 +530,7 @@ fn computePreliminary(tree: anytype, node: NodeId, inputs: LayoutInput) LayoutEr
         const child = tree.getChildId(node, order);
         if (tree.getFlexboxChildStyle(child).getBoxGenerationMode() == .none) {
             tree.setUnroundedLayout(child, &Layout.withOrder(@intCast(order)));
-            var hidden_output = try traits.performChildLayout(
+            _ = try traits.performChildLayout(
                 tree,
                 child,
                 Size(?f32).none,
@@ -548,7 +539,6 @@ fn computePreliminary(tree: anytype, node: NodeId, inputs: LayoutInput) LayoutEr
                 .content_size,
                 Line(bool).false,
             );
-            hidden_output.deinit(gpa);
         }
     }
 
@@ -586,7 +576,6 @@ fn computePreliminary(tree: anytype, node: NodeId, inputs: LayoutInput) LayoutEr
         ),
         Baselines.fromFirst(first_vertical_baseline),
     );
-    output.oof_candidates = candidates;
     output.oof_positioning_area = .{ .size = absolute_position_area, .offset = absolute_position_offset };
     return output;
 }
@@ -877,7 +866,7 @@ fn generateAnonymousFlexItems(tree: anytype, node: NodeId, constants: *const Alg
             .offset_main = 0.0,
             .offset_cross = 0.0,
 
-            .oof_candidates = .none,
+            .oof_candidates = &.{},
         });
     }
     return flex_items.toOwnedSlice(gpa);
@@ -1897,7 +1886,6 @@ fn determineHypotheticalCrossSize(
     node_size: Size(?f32),
     available_space: Size(AvailableSpace),
 ) LayoutError!void {
-    const gpa = tree.allocator();
     const dir = constants.dir;
     // If the flex container is single-line and has a definite cross size then that is the cross size of the
     // line, whatever the hypothetical cross sizes of the items are
@@ -1971,7 +1959,6 @@ fn determineHypotheticalCrossSize(
                 },
                 .vertical_margins_are_collapsible = Line(bool).false,
             });
-            defer output.deinit(gpa);
             break :blk @max(maybeClamp(output.size.getAbs(dir.crossAxis()), transferred_min_cross, transferred_max_cross), padding_border_sum);
         };
         const child_outer_cross = child_inner_cross + child.margin.crossAxisSum(dir);
@@ -1989,7 +1976,6 @@ fn calculateChildrenBaseLines(
     flex_lines: []FlexLine,
     constants: *const AlgoConstants,
 ) LayoutError!void {
-    const gpa = tree.allocator();
     // Only compute baselines for flex rows because we only support baseline alignment in the cross axis
     // where that axis is also the inline axis
     // TODO: this may need revisiting if/when we support vertical writing modes
@@ -2023,7 +2009,7 @@ fn calculateChildrenBaseLines(
                 else
                     AvailableSpace.fromF32(constants.container_size.height),
             };
-            var measured_size_and_baselines = try tree.computeChildLayout(child.node, .{
+            const measured_size_and_baselines = try tree.computeChildLayout(child.node, .{
                 .run_mode = .perform_layout,
                 .sizing_mode = .content_size,
                 .axis = .both,
@@ -2037,7 +2023,6 @@ fn calculateChildrenBaseLines(
                 .available_space = maybeMax(maybeSub(unclamped_available_space, child.margin.sumAxes()), Size(f32).zero),
                 .vertical_margins_are_collapsible = Line(bool).false,
             });
-            defer measured_size_and_baselines.deinit(gpa);
 
             const height = measured_size_and_baselines.size.height;
             const baseline = childFirstBaseline(measured_size_and_baselines.baselines.first, height, child.overflow.y) orelse height;
@@ -2429,13 +2414,12 @@ fn calculateFlexItem(
     overflow_container: *const ScrollableOverflowContainer,
     constants: *const AlgoConstants,
 ) LayoutError!void {
-    const gpa = tree.allocator();
     const container_size = constants.container_size;
     const node_inner_size = constants.node_inner_size;
     const direction = constants.dir;
     const layout_direction = constants.layout_direction;
     const item_known_dimension_definiteness = itemKnownDimensionDefiniteness(constants, item);
-    var layout_output = try tree.computeChildLayout(item.node, .{
+    const layout_output = try tree.computeChildLayout(item.node, .{
         .run_mode = .perform_layout,
         .sizing_mode = .content_size,
         .axis = .both,
@@ -2449,7 +2433,6 @@ fn calculateFlexItem(
         },
         .vertical_margins_are_collapsible = Line(bool).false,
     });
-    defer layout_output.deinit(gpa);
     const size = layout_output.size;
     const scrollable_overflow_rect = layout_output.scrollable_overflow_rect;
 
@@ -2501,11 +2484,7 @@ fn calculateFlexItem(
 
     // Keep out-of-flow candidates from the item's subtree, translating anchors from
     // item-relative to container-relative coordinates
-    item.oof_candidates.deinit(gpa);
-    item.oof_candidates = layout_output.oof_candidates.take();
-    if (!item.oof_candidates.isEmpty()) {
-        item.oof_candidates.translate(location);
-    }
+    item.oof_candidates = try layout.translatedOofCandidates(Scratch.allocatorOf(tree), tree.oofCandidates(item.node), location);
 
     if (is_rtl_row) {
         total_offset_main.* -= item.offset_main + item.margin.mainAxisSum(direction) + size.main(direction);
@@ -2636,7 +2615,7 @@ const ItemsWithCandidates = struct {
         while (self.line < self.lines.len) {
             const items = self.lines[self.line].items;
             while (self.item < items.len) : (self.item += 1) {
-                if (!items[self.item].oof_candidates.isEmpty()) return &items[self.item];
+                if (items[self.item].oof_candidates.len != 0) return &items[self.item];
             }
             self.line += 1;
             self.item = 0;
@@ -2659,12 +2638,12 @@ const ItemsWithCandidates = struct {
 /// out-of-flow positioning pass at the containing block.
 fn collectOofCandidates(
     tree: anytype,
+    gpa: std.mem.Allocator,
     node: NodeId,
     constants: *const AlgoConstants,
     flex_lines: []FlexLine,
-    candidates: *OofCandidates,
+    candidates: *std.ArrayList(OofCandidate),
 ) LayoutError!void {
-    const gpa = tree.allocator();
     // Lines are contiguous slices of the items in document order (reversal is applied to
     // positions, not storage), so walking the lines yields items sorted by `order`
     var items: ItemsWithCandidates = .{ .lines = flex_lines };
@@ -2701,7 +2680,7 @@ fn collectOofCandidates(
         // In-flow item: merge the candidates bubbled out of its subtree
         if (!position.isOutOfFlow()) {
             if (items.nextIfOrder(@intCast(order))) |item| {
-                try candidates.append(gpa, &item.oof_candidates);
+                try candidates.appendSlice(gpa, item.oof_candidates);
             }
             continue;
         }
@@ -2753,7 +2732,7 @@ fn collectOofCandidates(
         const main: AxisStaticPosition = .{ .area = main_area, .@"align" = AxisStaticAlign.fromKeyword(main_edge) };
 
         const static_position: Point(AxisStaticPosition) = if (constants.is_row) .{ .x = main, .y = cross } else .{ .x = cross, .y = main };
-        try candidates.push(gpa, .{ .node = child, .order = @intCast(order), .position = position, .static_position = static_position });
+        try candidates.append(gpa, .{ .node = child, .order = @intCast(order), .position = position, .static_position = static_position });
     }
 }
 

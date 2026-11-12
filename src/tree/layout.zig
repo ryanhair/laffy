@@ -7,15 +7,11 @@
 //! pass). It is declared explicitly everywhere, because layout recurses through generic functions
 //! and Zig cannot infer error sets across that recursion.
 //!
-//! # Ownership of out-of-flow candidates
+//! # Out-of-flow candidates
 //!
-//! `LayoutOutput.oof_candidates` is a heap list (empty, and allocation-free, in the common case).
-//! All candidate lists are allocated with the tree's allocator (`tree.allocator()`). A
-//! `LayoutOutput` owns its list: whoever receives a `LayoutOutput` (for example from
-//! `computeChildLayout`) must either move the candidates elsewhere (`OofCandidates.append` /
-//! `OofCandidates.take`) or call `LayoutOutput.deinit`. Outputs of `RunMode.compute_size` runs never
-//! carry candidates, so dropping them without `deinit` is harmless, but calling `deinit` is always
-//! correct.
+//! A `LayoutOutput` is a plain value. The out-of-flow boxes that a node could not lay out itself
+//! (its "candidates") are not part of it: they are stored on the tree, per node, and read with
+//! `tree.oofCandidates(node)`. See `OofCandidate`.
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const geometry = @import("../geometry.zig");
@@ -432,8 +428,15 @@ pub const AxisStaticPosition = struct {
 /// been laid out because its containing block is an ancestor of its parent.
 ///
 /// Candidates are produced by the layout algorithm of the box's parent (which computes the static
-/// position) and bubble up through `LayoutOutput` until they reach a node which acts as the box's
-/// containing block, which lays the box out.
+/// position) and bubble up the tree until they reach a node which acts as the box's containing
+/// block, which lays the box out.
+///
+/// A container's layout algorithm stores the full document-ordered list for its node with
+/// `tree.setOofCandidates` (direct out-of-flow children plus the candidates of its in-flow
+/// children). The out-of-flow positioning pass (`computeOofLayout`) then lays out those for which
+/// the node is the containing block and replaces the stored list with the unclaimed remainder,
+/// which the node's parent reads with `tree.oofCandidates`. Only `RunMode.perform_layout` passes
+/// produce candidates.
 pub const OofCandidate = struct {
     /// The id of the out-of-flow node
     node: NodeId,
@@ -445,95 +448,35 @@ pub const OofCandidate = struct {
     static_position: Point(AxisStaticPosition),
 };
 
-/// A list of `OofCandidate`s.
+/// Append copies of `source` to `list`, with their static-position areas translated by `offset`.
 ///
-/// This is a lazily-allocated heap list (an empty list performs no allocation). Every method that
-/// can allocate or free takes the allocator the list was allocated with (the tree's allocator).
-pub const OofCandidates = struct {
-    /// Backing storage for the candidates
-    inner: std.ArrayList(OofCandidate) = .empty,
-
-    /// An empty list of candidates
-    pub const none: OofCandidates = .{};
-
-    /// Free the list's memory
-    pub fn deinit(self: *OofCandidates, gpa: Allocator) void {
-        self.inner.deinit(gpa);
-        self.* = none;
+/// This converts areas from being relative to a child node's border box to being relative to
+/// the parent node's border box as candidates bubble up the tree.
+pub fn appendOofCandidates(
+    list: *std.ArrayList(OofCandidate),
+    gpa: Allocator,
+    source: []const OofCandidate,
+    offset: Point(f32),
+) LayoutError!void {
+    try list.ensureUnusedCapacity(gpa, source.len);
+    for (source) |candidate| {
+        var translated = candidate;
+        translated.static_position.x.area.start += offset.x;
+        translated.static_position.x.area.end += offset.x;
+        translated.static_position.y.area.start += offset.y;
+        translated.static_position.y.area.end += offset.y;
+        list.appendAssumeCapacity(translated);
     }
+}
 
-    /// Whether the list contains no candidates
-    pub fn isEmpty(self: *const OofCandidates) bool {
-        return self.inner.items.len == 0;
-    }
-
-    /// The candidates as a slice
-    pub fn asSlice(self: *const OofCandidates) []const OofCandidate {
-        return self.inner.items;
-    }
-
-    /// The candidates as a mutable slice
-    pub fn asMutSlice(self: *OofCandidates) []OofCandidate {
-        return self.inner.items;
-    }
-
-    /// Append a candidate to the list
-    pub fn push(self: *OofCandidates, gpa: Allocator, candidate: OofCandidate) LayoutError!void {
-        try self.inner.append(gpa, candidate);
-    }
-
-    /// Move all candidates from `other` into `self`, leaving `other` empty
-    pub fn append(self: *OofCandidates, gpa: Allocator, other: *OofCandidates) LayoutError!void {
-        if (other.isEmpty()) return;
-        if (self.inner.capacity == 0) {
-            self.inner = other.inner;
-            other.* = none;
-        } else {
-            try self.inner.appendSlice(gpa, other.inner.items);
-            other.deinit(gpa);
-        }
-    }
-
-    /// Take the candidates out of this list, leaving it empty
-    pub fn take(self: *OofCandidates) OofCandidates {
-        const result = self.*;
-        self.* = none;
-        return result;
-    }
-
-    /// Remove all candidates from the list (and free its memory)
-    pub fn clear(self: *OofCandidates, gpa: Allocator) void {
-        self.deinit(gpa);
-    }
-
-    /// A deep copy of the list (upstream `Clone`). Copying an empty list does not allocate.
-    pub fn clone(self: *const OofCandidates, gpa: Allocator) LayoutError!OofCandidates {
-        if (self.isEmpty()) return none;
-        return .{ .inner = try self.inner.clone(gpa) };
-    }
-
-    /// Translate the static-position areas of every candidate in the list by `offset`.
-    ///
-    /// This is used to convert areas from being relative to a child node's border box to being
-    /// relative to the parent node's border box as candidates bubble up the tree.
-    pub fn translate(self: *OofCandidates, offset: Point(f32)) void {
-        for (self.asMutSlice()) |*candidate| {
-            candidate.static_position.x.area.start += offset.x;
-            candidate.static_position.x.area.end += offset.x;
-            candidate.static_position.y.area.start += offset.y;
-            candidate.static_position.y.area.end += offset.y;
-        }
-    }
-
-    /// Element-wise equality (upstream derived `PartialEq`)
-    pub fn eql(self: *const OofCandidates, other: *const OofCandidates) bool {
-        if (self.inner.items.len != other.inner.items.len) return false;
-        for (self.inner.items, other.inner.items) |a, b| {
-            if (!std.meta.eql(a, b)) return false;
-        }
-        return true;
-    }
-};
+/// A copy of `source` allocated with `gpa`, with the static-position areas translated by `offset`
+pub fn translatedOofCandidates(gpa: Allocator, source: []const OofCandidate, offset: Point(f32)) LayoutError![]OofCandidate {
+    if (source.len == 0) return &.{};
+    var list: std.ArrayList(OofCandidate) = try .initCapacity(gpa, source.len);
+    errdefer list.deinit(gpa);
+    try appendOofCandidates(&list, gpa, source, offset);
+    return list.toOwnedSlice(gpa);
+}
 
 /// The area of a container against which the insets of its out-of-flow (absolute/fixed) boxes
 /// are resolved: the container's border box minus its borders and scrollbar gutters.
@@ -555,8 +498,6 @@ pub const OofPositioningArea = struct {
 /// children that may be text nodes. See <https://www.w3.org/TR/css-writing-modes-3/#intro-baselines> for details.
 /// If your node does not have a baseline (or you are unsure how to compute it), then simply return `Baselines.none`
 /// for the baselines field
-///
-/// A `LayoutOutput` owns its `oof_candidates` list; see the module documentation.
 pub const LayoutOutput = struct {
     /// The size of the node
     size: Size(f32),
@@ -574,17 +515,6 @@ pub const LayoutOutput = struct {
     /// Whether margins can be collapsed through this node. This is used for CSS block layout and can
     /// be set to `false` for other layout modes that don't support margin collapsing
     margins_can_collapse_through: bool,
-    /// Out-of-flow (absolute/fixed) descendants of this node for which this node is *not* the
-    /// containing block. These bubble up the tree until they reach their containing block, which
-    /// lays them out. Empty (allocation-free) when there are no such descendants (the common case).
-    ///
-    /// Candidates are only produced by `RunMode.perform_layout` passes.
-    ///
-    /// Container layout algorithms place the *full* document-ordered candidate list here (direct
-    /// out-of-flow children plus candidates bubbled from in-flow children). The out-of-flow
-    /// positioning pass (`computeOofLayout`) then lays out those for which the node is the
-    /// containing block and replaces this list with the unclaimed remainder.
-    oof_candidates: OofCandidates,
     /// The node's inset-resolution area for out-of-flow boxes. Set by container layout
     /// algorithms for `RunMode.perform_layout` runs; `null` for leaves and size-only runs
     /// (in which case the out-of-flow positioning pass is a no-op).
@@ -598,7 +528,6 @@ pub const LayoutOutput = struct {
         .top_margin = CollapsibleMarginSet.zero,
         .bottom_margin = CollapsibleMarginSet.zero,
         .margins_can_collapse_through = false,
-        .oof_candidates = OofCandidates.none,
         .oof_positioning_area = null,
     };
 
@@ -615,7 +544,6 @@ pub const LayoutOutput = struct {
             .top_margin = CollapsibleMarginSet.zero,
             .bottom_margin = CollapsibleMarginSet.zero,
             .margins_can_collapse_through = false,
-            .oof_candidates = OofCandidates.none,
             .oof_positioning_area = null,
         };
     }
@@ -638,7 +566,6 @@ pub const LayoutOutput = struct {
             .top_margin = CollapsibleMarginSet.zero,
             .bottom_margin = CollapsibleMarginSet.zero,
             .margins_can_collapse_through = false,
-            .oof_candidates = self.oof_candidates,
             .oof_positioning_area = if (self.oof_positioning_area) |area|
                 .{ .size = area.size.transpose(), .offset = area.offset.transpose() }
             else
@@ -651,19 +578,7 @@ pub const LayoutOutput = struct {
         return fromSizes(size, ScrollableOverflow.zero);
     }
 
-    /// Free the output's out-of-flow candidate list
-    pub fn deinit(self: *LayoutOutput, gpa: Allocator) void {
-        self.oof_candidates.deinit(gpa);
-    }
-
-    /// A deep copy of the output (upstream `Clone`). Does not allocate when there are no candidates.
-    pub fn clone(self: *const LayoutOutput, gpa: Allocator) LayoutError!LayoutOutput {
-        var result = self.*;
-        result.oof_candidates = try self.oof_candidates.clone(gpa);
-        return result;
-    }
-
-    /// Equality (upstream derived `PartialEq`)
+    /// Equality
     pub fn eql(self: *const LayoutOutput, other: *const LayoutOutput) bool {
         return std.meta.eql(self.size, other.size) and
             self.scrollable_overflow_rect.eql(other.scrollable_overflow_rect) and
@@ -671,7 +586,6 @@ pub const LayoutOutput = struct {
             self.top_margin.eql(other.top_margin) and
             self.bottom_margin.eql(other.bottom_margin) and
             self.margins_can_collapse_through == other.margins_can_collapse_through and
-            self.oof_candidates.eql(&other.oof_candidates) and
             std.meta.eql(self.oof_positioning_area, other.oof_positioning_area);
     }
 };
@@ -928,7 +842,7 @@ test "AxisStaticPosition" {
     try testing.expectEqual(AlignmentSafety.default, e.@"align".safety);
 }
 
-test "OofCandidates ownership" {
+test "appendOofCandidates translates copies" {
     const gpa = testing.allocator;
     const candidate: OofCandidate = .{
         .node = NodeId.new(1),
@@ -936,32 +850,16 @@ test "OofCandidates ownership" {
         .position = .absolute,
         .static_position = .{ .x = AxisStaticPosition.fromEdge(1.0, .start), .y = AxisStaticPosition.fromEdge(2.0, .start) },
     };
-    var a: OofCandidates = .none;
-    try testing.expect(a.isEmpty());
-    try a.push(gpa, candidate);
-    var b: OofCandidates = .none;
-    try b.append(gpa, &a);
-    try testing.expect(a.isEmpty());
-    try testing.expectEqual(@as(usize, 1), b.asSlice().len);
-    var c = try b.clone(gpa);
-    try testing.expect(c.eql(&b));
-    c.translate(.{ .x = 10.0, .y = 20.0 });
-    try testing.expectEqual(@as(f32, 11.0), c.asSlice()[0].static_position.x.area.start);
-    try testing.expectEqual(@as(f32, 22.0), c.asSlice()[0].static_position.y.area.end);
-    try b.append(gpa, &c);
-    try testing.expectEqual(@as(usize, 2), b.asSlice().len);
-    var taken = b.take();
-    try testing.expect(b.isEmpty());
-    taken.deinit(gpa);
+    var list: std.ArrayList(OofCandidate) = .empty;
+    defer list.deinit(gpa);
+    try appendOofCandidates(&list, gpa, &.{candidate}, .{ .x = 10.0, .y = 20.0 });
+    try appendOofCandidates(&list, gpa, &.{}, Point(f32).zero);
+    try testing.expectEqual(@as(usize, 1), list.items.len);
+    try testing.expectEqual(@as(f32, 11.0), list.items[0].static_position.x.area.start);
+    try testing.expectEqual(@as(f32, 22.0), list.items[0].static_position.y.area.end);
 
-    var output = LayoutOutput.fromOuterSize(.{ .width = 1.0, .height = 2.0 });
-    try output.oof_candidates.push(gpa, candidate);
-    var copy = try output.clone(gpa);
-    try testing.expect(copy.eql(&output));
-    var transposed = copy.transpose();
-    try testing.expectEqual(Size(f32){ .width = 2.0, .height = 1.0 }, transposed.size);
-    transposed.deinit(gpa);
-    output.deinit(gpa);
+    const output = LayoutOutput.fromOuterSize(.{ .width = 1.0, .height = 2.0 });
+    try testing.expectEqual(Size(f32){ .width = 2.0, .height = 1.0 }, output.transpose().size);
 }
 
 test "Layout helpers" {

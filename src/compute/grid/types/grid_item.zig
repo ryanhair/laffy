@@ -17,7 +17,7 @@ const LengthPercentageAuto = style_mod.LengthPercentageAuto;
 const Overflow = style_mod.Overflow;
 const layout = @import("../../../tree/layout.zig");
 const LayoutError = layout.LayoutError;
-const OofCandidates = layout.OofCandidates;
+const OofCandidate = layout.OofCandidate;
 const NodeId = @import("../../../tree/node.zig").NodeId;
 const traits = @import("../../../tree/traits.zig");
 const math = @import("../../../util/math.zig");
@@ -155,8 +155,8 @@ pub const GridItem = struct {
     height: f32,
 
     /// Out-of-flow candidates bubbled out of this item's subtree (anchors relative to the
-    /// container's border box). Owned by the item (allocated with the tree's allocator).
-    oof_candidates: OofCandidates,
+    /// container's border box). Scratch memory.
+    oof_candidates: std.ArrayList(OofCandidate) = .empty,
 
     /// Create a new item from its style. Its placement (`row`/`column`) is filled in by the placement algorithm.
     pub fn newWithStyleAndOrder(
@@ -200,7 +200,6 @@ pub const GridItem = struct {
             .minimum_contribution_cache = Size(?f32).none,
             .y_position = 0.0,
             .height = 0.0,
-            .oof_candidates = OofCandidates.none,
         };
     }
 

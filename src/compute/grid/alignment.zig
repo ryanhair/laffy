@@ -16,7 +16,8 @@ const Position = style_mod.Position;
 const layout = @import("../../tree/layout.zig");
 const Layout = layout.Layout;
 const LayoutError = layout.LayoutError;
-const OofCandidates = layout.OofCandidates;
+const OofCandidate = layout.OofCandidate;
+const Scratch = @import("../../util/scratch.zig");
 const NodeId = @import("../../tree/node.zig").NodeId;
 const traits = @import("../../tree/traits.zig");
 const math = @import("../../util/math.zig");
@@ -131,9 +132,8 @@ pub fn alignAndPositionItem(
     direction: Direction,
     padding_box_inset: Rect(f32),
     overflow_container: *const ScrollableOverflowContainer,
-    bubbled_candidates: *OofCandidates,
+    bubbled_candidates: *std.ArrayList(OofCandidate),
 ) LayoutError!PositionedItem {
-    const gpa = tree.allocator();
     const grid_area_size: Size(f32) = .{ .width = grid_area.right - grid_area.left, .height = grid_area.bottom - grid_area.top };
 
     const style = tree.getGridChildStyle(node);
@@ -368,7 +368,6 @@ pub fn alignAndPositionItem(
         .inherent_size,
         Line(bool).false,
     );
-    defer layout_output.deinit(gpa);
 
     // Resolve final size
     const final_size = maybeClamp(size.unwrapOr(layout_output.size), min_size, max_size);
@@ -412,12 +411,7 @@ pub fn alignAndPositionItem(
 
     // Bubble out-of-flow candidates from the item's subtree, translating anchors from
     // item-relative to container-relative coordinates
-    var item_candidates = layout_output.oof_candidates.take();
-    if (!item_candidates.isEmpty()) {
-        errdefer item_candidates.deinit(gpa);
-        item_candidates.translate(.{ .x = x, .y = y });
-        try bubbled_candidates.append(gpa, &item_candidates);
-    }
+    try layout.appendOofCandidates(bubbled_candidates, Scratch.allocatorOf(tree), tree.oofCandidates(node), .{ .x = x, .y = y });
 
     tree.setUnroundedLayout(node, &.{
         .order = order,

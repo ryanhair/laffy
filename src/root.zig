@@ -141,7 +141,6 @@ pub const LayoutError = tree.LayoutError;
 pub const LayoutInput = tree.LayoutInput;
 pub const LayoutOutput = tree.LayoutOutput;
 pub const OofCandidate = tree.OofCandidate;
-pub const OofCandidates = tree.OofCandidates;
 pub const OofPositioningArea = tree.OofPositioningArea;
 pub const RequestedAxis = tree.RequestedAxis;
 pub const RunMode = tree.RunMode;
@@ -157,6 +156,7 @@ pub const measureChildSizeBoth = traits.measureChildSizeBoth;
 pub const performChildLayout = traits.performChildLayout;
 
 // util (upstream `pub use crate::util::print_tree` / `write_tree`)
+pub const Scratch = util.Scratch;
 pub const printTree = util.printTree;
 pub const writeTree = util.writeTree;
 

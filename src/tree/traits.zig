@@ -63,12 +63,18 @@
 //! single node that only has access to it's immediate children.
 //!
 //!   - `allocator(self) std.mem.Allocator`: required (laffy addition). The allocator for memory
-//!     that outlives a single algorithm invocation: `LayoutOutput.oof_candidates`, cached final
-//!     layouts and detailed grid info. It must be a general-purpose allocator and must not be
-//!     reset between nested child layouts.
-//!   - `scratch(self) *Scratch`: optional (laffy addition). A `util.Scratch` allocator for the
+//!     that outlives a single algorithm invocation: detailed grid info and the float context of a
+//!     block formatting context. It must be a general-purpose allocator.
+//!   - `scratch(self) *Scratch`: required (laffy addition). A `util.Scratch` allocator for the
 //!     temporary lists of the algorithms, which release everything they took from it when they
-//!     return. Without it those lists come from `allocator()` and are freed individually.
+//!     return. A tree normally just owns one and returns a pointer to it.
+//!   - `oofCandidates(self, node_id: NodeId) []const OofCandidate`: required (laffy addition).
+//!     The out-of-flow candidates most recently stored for the node (see `OofCandidate`). The
+//!     slice must stay valid until the next `setOofCandidates` call for the same node.
+//!   - `setOofCandidates(self, node_id: NodeId, candidates: []const OofCandidate) LayoutError!void`:
+//!     required (laffy addition). Replace the node's stored candidates with a copy of
+//!     `candidates`. Called for every node whose final layout is computed, so a tree that keeps
+//!     one list per node always holds the candidates that belong to the node's current layout.
 //!   - `getCoreContainerStyle(self, node_id: NodeId) CoreStyle`: required. Only called for the node
 //!     being laid out, never for its children (those go through the `get*ChildStyle` methods), so
 //!     it may be expressed in the node's own axes while child styles are expressed in the axes of
@@ -80,7 +86,7 @@
 //!   - `setUnroundedLayout(self, node_id: NodeId, layout: *const Layout) void`: required.
 //!   - `computeChildLayout(self, node_id: NodeId, inputs: LayoutInput) LayoutError!LayoutOutput`:
 //!     required. Compute the specified node's size or full layout given the specified
-//!     constraints. The caller owns the returned output (see `LayoutOutput.deinit`).
+//!     constraints.
 //!
 //! ## LayoutContainingBlock (requires LayoutPartialTree)
 //!
@@ -110,12 +116,11 @@
 //! ## CacheTree
 //!
 //! Used by `computeCachedLayout` to store and retrieve cached layout results. The `Cache` struct
-//! implements a per-node cache compatible with this interface (pass it `self.allocator()`).
+//! implements a per-node cache compatible with this interface.
 //!
-//!   - `cacheGet(self, node_id: NodeId, input: *const LayoutInput) LayoutError!?LayoutOutput`:
-//!     required. Returns a copy owned by the caller.
+//!   - `cacheGet(self, node_id: NodeId, input: *const LayoutInput) ?LayoutOutput`: required.
 //!   - `cacheStore(self, node_id: NodeId, input: *const LayoutInput, layout_output: LayoutOutput) void`:
-//!     required. Takes ownership of `layout_output`.
+//!     required.
 //!   - `cacheClear(self, node_id: NodeId) void`: required.
 //!
 //! ## RoundTree (requires TraverseTree)
@@ -172,7 +177,7 @@
 //!     default (`LayoutBlockContainerDefaults.computeBlockChildLayout`, ignores `block_ctx` and
 //!     calls `computeChildLayout`). `BlockContext` is defined in `compute/block.zig`. The block
 //!     algorithm calls this for children that participate in the parent's block formatting
-//!     context, so that floats are positioned in the shared context; the caller owns the output.
+//!     context, so that floats are positioned in the shared context.
 //!
 //! ## Provided methods (upstream `LayoutPartialTreeExt`)
 //!
@@ -260,7 +265,7 @@ pub const Interface = enum {
     /// The method names that the interface requires (including those of the interfaces it extends)
     pub fn methods(comptime self: Interface) []const []const u8 {
         const traverse = &[_][]const u8{ "childIds", "childCount", "getChildId" };
-        const layout_partial = traverse ++ &[_][]const u8{ "allocator", "getCoreContainerStyle", "resolveCalcValue", "setUnroundedLayout", "computeChildLayout" };
+        const layout_partial = traverse ++ &[_][]const u8{ "allocator", "scratch", "oofCandidates", "setOofCandidates", "getCoreContainerStyle", "resolveCalcValue", "setUnroundedLayout", "computeChildLayout" };
         return switch (self) {
             .traverse_partial_tree, .traverse_tree => traverse,
             .layout_partial_tree => layout_partial,
@@ -313,7 +318,7 @@ pub fn measureChildSize(
     axis: AbsoluteAxis,
     vertical_margins_are_collapsible: Line(bool),
 ) LayoutError!f32 {
-    var output = try tree.computeChildLayout(node_id, .{
+    const output = try tree.computeChildLayout(node_id, .{
         .known_dimensions = known_dimensions,
         .known_dimensions_are_definite = .{ .width = true, .height = true },
         .parent_size = parent_size,
@@ -323,7 +328,6 @@ pub fn measureChildSize(
         .run_mode = .compute_size,
         .vertical_margins_are_collapsible = vertical_margins_are_collapsible,
     });
-    defer output.deinit(tree.allocator());
     return output.size.getAbs(axis);
 }
 
@@ -337,7 +341,7 @@ pub fn measureChildSizeBoth(
     sizing_mode: SizingMode,
     vertical_margins_are_collapsible: Line(bool),
 ) LayoutError!Size(f32) {
-    var output = try tree.computeChildLayout(node_id, .{
+    const output = try tree.computeChildLayout(node_id, .{
         .known_dimensions = known_dimensions,
         .known_dimensions_are_definite = .{ .width = true, .height = true },
         .parent_size = parent_size,
@@ -347,12 +351,10 @@ pub fn measureChildSizeBoth(
         .run_mode = .compute_size,
         .vertical_margins_are_collapsible = vertical_margins_are_collapsible,
     });
-    defer output.deinit(tree.allocator());
     return output.size;
 }
 
-/// Perform a full layout on the node given the specified constraints. The caller owns the
-/// returned output.
+/// Perform a full layout on the node given the specified constraints
 pub fn performChildLayout(
     tree: anytype,
     node_id: NodeId,
@@ -381,7 +383,7 @@ pub fn calc(tree: anytype, val: *const anyopaque, basis: f32) f32 {
 
 test "interface method lists" {
     try std.testing.expectEqual(@as(usize, 3), Interface.traverse_tree.methods().len);
-    try std.testing.expectEqual(@as(usize, 12), Interface.layout_containing_block.methods().len);
+    try std.testing.expectEqual(@as(usize, 15), Interface.layout_containing_block.methods().len);
     const Dummy = struct {
         pub const resolveCalcValue = LayoutPartialTreeDefaults.resolveCalcValue;
         pub const getDetailedLayoutInfo = LayoutContainingBlockDefaults.getDetailedLayoutInfo;

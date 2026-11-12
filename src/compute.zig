@@ -42,7 +42,6 @@ const LayoutError = layout.LayoutError;
 const LayoutInput = layout.LayoutInput;
 const LayoutOutput = layout.LayoutOutput;
 const OofCandidate = layout.OofCandidate;
-const OofCandidates = layout.OofCandidates;
 const ScrollableOverflow = layout.ScrollableOverflow;
 const NodeId = @import("tree/node.zig").NodeId;
 const traits = @import("tree/traits.zig");
@@ -55,6 +54,7 @@ const resolve = @import("util/resolve.zig");
 const maybeResolve = resolve.maybeResolve;
 const resolveOrZero = resolve.resolveOrZero;
 const sys = @import("util/sys.zig");
+const Scratch = @import("util/scratch.zig");
 
 pub const common = struct {
     pub const alignment = @import("compute/common/alignment.zig");
@@ -109,7 +109,9 @@ pub const detailed_info = struct {
 /// `tree` implements `LayoutContainingBlock` and `CacheTree`.
 pub fn computeRootLayout(tree: anytype, root: NodeId, available_space: Size(AvailableSpace)) LayoutError!void {
     traits.assertImplements(@TypeOf(tree), &.{ .layout_containing_block, .cache_tree });
-    const gpa = tree.allocator();
+    const frame = Scratch.Frame.begin(tree);
+    defer frame.end();
+    const scratch = frame.allocator();
     const root_style = tree.getCoreContainerStyle(root);
     const position = root_style.getPosition();
     const direction = root_style.getDirection();
@@ -126,7 +128,6 @@ pub fn computeRootLayout(tree: anytype, root: NodeId, available_space: Size(Avai
     var root_is_cached = false;
 
     var root_layout: Layout = undefined;
-    var candidates: OofCandidates = undefined;
     if (oof_root_area) |area_size| {
         // The static position of the root places its margin box at the origin of the ICB
         const start: f32, const end: f32 = if (direction.isRtl()) .{ area_size.width, area_size.width } else .{ 0.0, 0.0 };
@@ -154,18 +155,16 @@ pub fn computeRootLayout(tree: anytype, root: NodeId, available_space: Size(Avai
             RootCacheCheck{ .root = root, .root_is_cached = &root_is_cached },
         );
         root_layout = box.layout;
-        candidates = box.surfaced;
     } else {
-        const result = try computeInFlowRootLayout(tree, root, available_space, &root_is_cached);
-        root_layout = result.layout;
-        candidates = result.candidates;
+        root_layout = try computeInFlowRootLayout(tree, root, available_space, &root_is_cached);
     }
-    defer candidates.deinit(gpa);
+    // The out-of-flow boxes that no node in the tree claimed
+    const candidates = tree.oofCandidates(root);
 
     // Final positioning pass for out-of-flow boxes with no nearer containing block: the initial
     // containing block is the containing block for `position: fixed` boxes and for
     // `position: absolute` boxes with no positioned ancestor.
-    if (!candidates.isEmpty()) {
+    if (candidates.len != 0) {
         const overflow = tree.getCoreContainerStyle(root).getOverflow();
 
         // The initial containing block has the dimensions of the viewport (the available space) and is
@@ -190,13 +189,12 @@ pub fn computeRootLayout(tree: anytype, root: NodeId, available_space: Size(Avai
         const area_offset: Point(f32) = .{ .x = area_x, .y = area_y };
 
         var hoisted: std.ArrayList(NodeId) = .empty;
-        defer hoisted.deinit(gpa);
-        var unclaimed: OofCandidates = .none;
-        defer unclaimed.deinit(gpa);
+        var unclaimed: std.ArrayList(OofCandidate) = .empty;
         _ = try oof.performOofLayout(
             tree,
+            scratch,
             root,
-            candidates.asSlice(),
+            candidates,
             area_size,
             area_offset,
             direction,
@@ -208,7 +206,7 @@ pub fn computeRootLayout(tree: anytype, root: NodeId, available_space: Size(Avai
             &unclaimed,
         );
         // the root positioning pass must claim all remaining candidates
-        std.debug.assert(unclaimed.isEmpty());
+        std.debug.assert(unclaimed.items.len == 0);
         if (!root_is_cached) {
             try tree.addHoistedChildren(root, hoisted.items);
         }
@@ -222,20 +220,18 @@ const RootCacheCheck = struct {
     root_is_cached: *bool,
 
     pub fn call(self: RootCacheCheck, tree: anytype, inputs: *const LayoutInput) LayoutError!void {
-        var cached = try tree.cacheGet(self.root, inputs);
-        self.root_is_cached.* = cached != null;
-        if (cached) |*output| output.deinit(tree.allocator());
+        self.root_is_cached.* = tree.cacheGet(self.root, inputs) != null;
     }
 };
 
 /// Lay out an in-flow (or `position: relative`) root node against the available space, store its layout
-/// and return it along with the out-of-flow candidates bubbled up from its subtree.
+/// and return it.
 fn computeInFlowRootLayout(
     tree: anytype,
     root: NodeId,
     available_space: Size(AvailableSpace),
     root_is_cached: *bool,
-) LayoutError!struct { layout: Layout, candidates: OofCandidates } {
+) LayoutError!Layout {
     var known_dimensions = Size(?f32).none;
 
     // The available space passed to the root excludes the root's margins
@@ -293,15 +289,10 @@ fn computeInFlowRootLayout(
         .run_mode = .perform_layout,
         .vertical_margins_are_collapsible = Line(bool).false,
     };
-    {
-        var cached = try tree.cacheGet(root, &inputs);
-        root_is_cached.* = cached != null;
-        if (cached) |*output| output.deinit(tree.allocator());
-    }
+    root_is_cached.* = tree.cacheGet(root, &inputs) != null;
 
     // Recursively compute node layout
-    var output = try tree.computeChildLayout(root, inputs);
-    errdefer output.deinit(tree.allocator());
+    const output = try tree.computeChildLayout(root, inputs);
     const root_style = tree.getCoreContainerStyle(root);
     const padding = resolveOrZero(root_style.getPadding(), available_space.width.intoOption(), tree);
     const border = resolveOrZero(root_style.getBorder(), available_space.width.intoOption(), tree);
@@ -349,7 +340,7 @@ fn computeInFlowRootLayout(
     };
     tree.setUnroundedLayout(root, &root_layout);
 
-    return .{ .layout = root_layout, .candidates = output.oof_candidates.take() };
+    return root_layout;
 }
 
 /// `Some(min)` if both `min` and `max` are set and `max <= min`
@@ -364,11 +355,11 @@ fn minMaxDefinite(min: ?f32, max: ?f32) ?f32 {
 
 /// Attempts to find a cached layout for the specified node and layout inputs.
 ///
-/// Uses `compute_uncached` to compute the layout (and then stores a copy of the result in the
-/// cache) if no cached layout is found. `compute_uncached` is any value (or pointer) with a method
+/// Uses `compute_uncached` to compute the layout (and then stores the result in the cache) if no
+/// cached layout is found. `compute_uncached` is any value (or pointer) with a method
 /// `compute(self, tree: @TypeOf(tree), node_id: NodeId, inputs: LayoutInput) LayoutError!LayoutOutput`.
 ///
-/// `tree` implements `CacheTree` (and `allocator()`). The caller owns the returned output.
+/// `tree` implements `CacheTree` and `LayoutPartialTree`.
 pub fn computeCachedLayout(
     tree: anytype,
     node: NodeId,
@@ -376,15 +367,18 @@ pub fn computeCachedLayout(
     compute_uncached: anytype,
 ) LayoutError!LayoutOutput {
     // First we check if we have a cached result for the given input
-    if (try tree.cacheGet(node, &inputs)) |cached_size_and_baselines| {
+    if (tree.cacheGet(node, &inputs)) |cached_size_and_baselines| {
         return cached_size_and_baselines;
     }
 
-    var computed_size_and_baselines = try compute_uncached.compute(tree, node, inputs);
-    errdefer computed_size_and_baselines.deinit(tree.allocator());
+    // The node's out-of-flow candidates always belong to its most recent final layout. Layout
+    // algorithms store a new list; clear the old one here for the nodes they do not run for.
+    if (inputs.run_mode == .perform_layout) try tree.setOofCandidates(node, &.{});
+
+    const computed_size_and_baselines = try compute_uncached.compute(tree, node, inputs);
 
     // Cache result
-    tree.cacheStore(node, &inputs, try computed_size_and_baselines.clone(tree.allocator()));
+    tree.cacheStore(node, &inputs, computed_size_and_baselines);
 
     return computed_size_and_baselines;
 }
@@ -498,13 +492,13 @@ fn roundEdge(offset: f32, edge: f32) f32 {
 pub fn computeHiddenLayout(tree: anytype, node: NodeId) LayoutError!LayoutOutput {
     // Clear cache and set zeroed-out layout for the node
     tree.cacheClear(node);
+    try tree.setOofCandidates(node, &.{});
     tree.setUnroundedLayout(node, &Layout.withOrder(0));
 
     // Perform hidden layout on all children
     for (0..tree.childCount(node)) |index| {
         const child_id = tree.getChildId(node, index);
-        var output = try tree.computeChildLayout(child_id, LayoutInput.hidden);
-        output.deinit(tree.allocator());
+        _ = try tree.computeChildLayout(child_id, LayoutInput.hidden);
     }
 
     return LayoutOutput.hidden;
@@ -533,6 +527,7 @@ const StackTree = struct {
         style: Style = .{},
         children: std.ArrayList(NodeId) = .empty,
         hoisted: std.ArrayList(NodeId) = .empty,
+        oof_candidates: std.ArrayList(OofCandidate) = .empty,
         cache: Cache = .{},
         unrounded: Layout = .{},
         final: Layout = .{},
@@ -541,6 +536,7 @@ const StackTree = struct {
     };
 
     gpa: std.mem.Allocator,
+    scratch_allocator: Scratch,
     nodes: std.ArrayList(Node) = .empty,
     uncached_computations: usize = 0,
 
@@ -548,9 +544,14 @@ const StackTree = struct {
         for (self.nodes.items) |*n| {
             n.children.deinit(self.gpa);
             n.hoisted.deinit(self.gpa);
-            n.cache.deinit(self.gpa);
+            n.oof_candidates.deinit(self.gpa);
         }
         self.nodes.deinit(self.gpa);
+        self.scratch_allocator.deinit();
+    }
+
+    fn init(gpa: std.mem.Allocator) StackTree {
+        return .{ .gpa = gpa, .scratch_allocator = .init(gpa) };
     }
 
     fn add(self: *StackTree, node_style: Style, content: Size(f32), children: []const NodeId) !NodeId {
@@ -588,6 +589,17 @@ const StackTree = struct {
     pub fn allocator(self: *StackTree) std.mem.Allocator {
         return self.gpa;
     }
+    pub fn scratch(self: *StackTree) *Scratch {
+        return &self.scratch_allocator;
+    }
+    pub fn oofCandidates(self: *StackTree, id: NodeId) []const OofCandidate {
+        return self.node(id).oof_candidates.items;
+    }
+    pub fn setOofCandidates(self: *StackTree, id: NodeId, candidates: []const OofCandidate) LayoutError!void {
+        const list = &self.node(id).oof_candidates;
+        list.clearRetainingCapacity();
+        try list.appendSlice(self.gpa, candidates);
+    }
     pub fn getCoreContainerStyle(self: *StackTree, id: NodeId) *const Style {
         return &self.node(id).style;
     }
@@ -616,14 +628,14 @@ const StackTree = struct {
     pub const computeBlockChildLayout = traits.LayoutBlockContainerDefaults.computeBlockChildLayout;
 
     // CacheTree
-    pub fn cacheGet(self: *StackTree, id: NodeId, input: *const LayoutInput) LayoutError!?LayoutOutput {
-        return self.node(id).cache.get(self.gpa, input);
+    pub fn cacheGet(self: *StackTree, id: NodeId, input: *const LayoutInput) ?LayoutOutput {
+        return self.node(id).cache.get(input);
     }
     pub fn cacheStore(self: *StackTree, id: NodeId, input: *const LayoutInput, output: LayoutOutput) void {
-        self.node(id).cache.store(self.gpa, input, output);
+        self.node(id).cache.store(input, output);
     }
     pub fn cacheClear(self: *StackTree, id: NodeId) void {
-        _ = self.node(id).cache.clear(self.gpa);
+        _ = self.node(id).cache.clear();
     }
 
     // RoundTree
@@ -669,7 +681,6 @@ const StackTree = struct {
                 computeLeafLayout(inputs, &n.style, tree, Measure{ .content = n.content })
             else
                 try computeStackLayout(tree, id, inputs);
-            errdefer output.deinit(tree.gpa);
             if (inputs.run_mode == .perform_layout) try computeOofLayout(tree, id, &output);
             return output;
         }
@@ -677,14 +688,15 @@ const StackTree = struct {
 
     /// The trivial container algorithm: stack in-flow children vertically
     fn computeStackLayout(tree: *StackTree, id: NodeId, inputs: LayoutInput) LayoutError!LayoutOutput {
-        const gpa = tree.allocator();
+        const frame = Scratch.Frame.begin(tree);
+        defer frame.end();
+        const gpa = frame.allocator();
         const container_style = tree.getCoreContainerStyle(id);
         const padding = resolveOrZero(container_style.getPadding(), inputs.parent_size.width, tree);
         const border = resolveOrZero(container_style.getBorder(), inputs.parent_size.width, tree);
         const inset = padding.add(border);
 
-        var candidates: OofCandidates = .none;
-        errdefer candidates.deinit(gpa);
+        var candidates: std.ArrayList(OofCandidate) = .empty;
         var y: f32 = inset.top;
         var width: f32 = 0.0;
         var iter = tree.childIds(id);
@@ -692,7 +704,7 @@ const StackTree = struct {
         while (iter.next()) |child| : (order += 1) {
             const child_style = tree.node(child).style;
             if (child_style.position.isOutOfFlow()) {
-                try candidates.push(gpa, .{
+                try candidates.append(gpa, .{
                     .node = child,
                     .order = order,
                     .position = child_style.position,
@@ -705,11 +717,9 @@ const StackTree = struct {
             }
             const size = try traits.measureChildSizeBoth(tree, child, Size(?f32).none, Size(?f32).none, Size(AvailableSpace).max_content, .inherent_size, Line(bool).false);
             if (inputs.run_mode == .perform_layout) {
-                var child_output = try traits.performChildLayout(tree, child, .{ .width = size.width, .height = size.height }, Size(?f32).none, Size(AvailableSpace).max_content, .inherent_size, Line(bool).false);
-                defer child_output.deinit(gpa);
+                _ = try traits.performChildLayout(tree, child, .{ .width = size.width, .height = size.height }, Size(?f32).none, Size(AvailableSpace).max_content, .inherent_size, Line(bool).false);
                 const location: Point(f32) = .{ .x = inset.left, .y = y };
-                child_output.oof_candidates.translate(location);
-                try candidates.append(gpa, &child_output.oof_candidates);
+                try layout.appendOofCandidates(&candidates, gpa, tree.oofCandidates(child), location);
                 tree.setUnroundedLayout(child, &.{ .order = order, .location = location, .size = size });
             }
             y += size.height;
@@ -719,20 +729,18 @@ const StackTree = struct {
         const size = inputs.known_dimensions.unwrapOr(content_size);
         var output = LayoutOutput.fromOuterSize(size);
         if (inputs.run_mode == .perform_layout) {
-            output.oof_candidates = candidates;
+            try tree.setOofCandidates(id, candidates.items);
             output.oof_positioning_area = .{
                 .size = .{ .width = size.width - border.horizontalAxisSum(), .height = size.height - border.verticalAxisSum() },
                 .offset = .{ .x = border.left, .y = border.top },
             };
-        } else {
-            candidates.deinit(gpa);
         }
         return output;
     }
 };
 
 test "custom tree: multi-level layout through computeCachedLayout recursion" {
-    var tree: StackTree = .{ .gpa = testing.allocator };
+    var tree: StackTree = .init(testing.allocator);
     defer tree.deinit();
 
     var padded: Style = .{};
@@ -770,12 +778,11 @@ test "custom tree: multi-level layout through computeCachedLayout recursion" {
     // The block-container default forwards to computeChildLayout
     tree.node(root).style.display = .flex;
     tree.cacheClear(root);
-    var out = try tree.computeBlockChildLayout(leaf_c, LayoutInput.hidden, null);
-    out.deinit(tree.gpa);
+    _ = try tree.computeBlockChildLayout(leaf_c, LayoutInput.hidden, null);
 }
 
 test "custom tree: out-of-flow candidates bubble to their containing block" {
-    var tree: StackTree = .{ .gpa = testing.allocator };
+    var tree: StackTree = .init(testing.allocator);
     defer tree.deinit();
 
     var abs_style: Style = .{};
@@ -815,7 +822,7 @@ test "custom tree: out-of-flow candidates bubble to their containing block" {
 }
 
 test "custom tree: absolutely positioned and relatively positioned roots" {
-    var tree: StackTree = .{ .gpa = testing.allocator };
+    var tree: StackTree = .init(testing.allocator);
     defer tree.deinit();
 
     var abs_root: Style = .{};
@@ -849,7 +856,7 @@ test "custom tree: absolutely positioned and relatively positioned roots" {
 }
 
 test "rounding keeps signed zero overflow edges" {
-    var tree: StackTree = .{ .gpa = testing.allocator };
+    var tree: StackTree = .init(testing.allocator);
     defer tree.deinit();
     const root = try tree.add(.{}, Size(f32).zero, &.{});
     tree.node(root).unrounded = .{
@@ -889,8 +896,7 @@ test "hidden layout should hide recursively" {
     const root = try taffy.newWithChildren(root_style, &.{ child_00, child_01 });
 
     var view = taffy.asLayoutTree();
-    var output = try computeHiddenLayout(&view, root);
-    output.deinit(testing.allocator);
+    _ = try computeHiddenLayout(&view, root);
 
     // Whatever size and display-mode the nodes had previously,
     // all layouts should resolve to ZERO due to the root's DISPLAY::NONE
@@ -902,7 +908,7 @@ test "hidden layout should hide recursively" {
 }
 
 test "custom tree: computeOofLayoutForArea positions claimed candidates without touching hoisted lists" {
-    var tree: StackTree = .{ .gpa = testing.allocator };
+    var tree: StackTree = .init(testing.allocator);
     defer tree.deinit();
 
     var abs_style: Style = .{};
@@ -936,8 +942,8 @@ test "custom tree: computeOofLayoutForArea positions claimed candidates without 
     defer result.deinit(testing.allocator);
 
     try testing.expectEqualSlices(NodeId, &.{abs}, result.hoisted.items);
-    try testing.expectEqual(@as(usize, 1), result.unclaimed.asSlice().len);
-    try testing.expectEqual(Position.fixed, result.unclaimed.asSlice()[0].position);
+    try testing.expectEqual(@as(usize, 1), result.unclaimed.items.len);
+    try testing.expectEqual(Position.fixed, result.unclaimed.items[0].position);
     try testing.expectEqual(@as(usize, 0), tree.node(owner).hoisted.items.len);
     try testing.expectEqual(Point(f32){ .x = 1.0 + 50.0 - 4.0 - 6.0, .y = 3.0 }, tree.node(abs).unrounded.location);
     try testing.expectEqual(Rect(f32){ .left = 0.0, .right = 46.0, .top = 0.0, .bottom = 5.0 }, result.scrollable_overflow_rect);

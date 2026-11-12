@@ -448,7 +448,6 @@ fn lessThanOtherAxisStart(other_axis: AbstractAxis, a: *GridItem, b: *GridItem) 
 
 /// 11.5.1 Shim baseline-aligned items so their intrinsic size contributions reflect their baseline alignment.
 fn resolveItemBaselines(tree: anytype, axis: AbstractAxis, items_in: []GridItem, inner_node_size: Size(?f32)) LayoutError!void {
-    const gpa = tree.allocator();
     // Sort items by track in the other axis (row) start position so that we can iterate items in groups which
     // are in the same track in the other axis (row)
     const other_axis = axis.other();
@@ -497,7 +496,7 @@ fn resolveItemBaselines(tree: anytype, axis: AbstractAxis, items_in: []GridItem,
                 continue;
             }
 
-            var measured_size_and_baselines = try traits.performChildLayout(
+            const measured_size_and_baselines = try traits.performChildLayout(
                 tree,
                 item.node,
                 Size(?f32).none,
@@ -506,8 +505,6 @@ fn resolveItemBaselines(tree: anytype, axis: AbstractAxis, items_in: []GridItem,
                 .inherent_size,
                 Line(bool).false,
             );
-            // Upstream drops the output (including any out-of-flow candidates)
-            defer measured_size_and_baselines.deinit(gpa);
 
             const height = measured_size_and_baselines.size.height;
             const baseline = childFirstBaseline(measured_size_and_baselines.baselines.first, height, item.overflow.y) orelse height;

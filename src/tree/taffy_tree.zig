@@ -34,6 +34,7 @@ const Scratch = @import("../util/scratch.zig");
 const scratch_retain_limit = 1024 * 1024;
 const LayoutInput = layout_mod.LayoutInput;
 const LayoutOutput = layout_mod.LayoutOutput;
+const OofCandidate = layout_mod.OofCandidate;
 const cache_mod = @import("cache.zig");
 const Cache = cache_mod.Cache;
 const NodeId = @import("node.zig").NodeId;
@@ -123,6 +124,9 @@ pub fn TaffyTree(comptime NodeContext: type) type {
             /// Out-of-flow (absolute/fixed) boxes whose containing block is this node,
             /// as recorded by the out-of-flow positioning pass
             hoisted_children: std.ArrayList(NodeId) = .empty,
+            /// Out-of-flow descendants of the node that it did not lay out itself, as of its most
+            /// recent final layout (see `OofCandidate`). Owned by the node.
+            oof_candidates: []OofCandidate = &.{},
             /// The cached results of the layout computation
             cache: Cache = .{},
             /// The computation result from layout algorithm
@@ -131,7 +135,7 @@ pub fn TaffyTree(comptime NodeContext: type) type {
             fn deinit(self: *NodeData, gpa: Allocator) void {
                 self.children.deinit(gpa);
                 self.hoisted_children.deinit(gpa);
-                self.cache.deinit(gpa);
+                gpa.free(self.oof_candidates);
                 self.detailed_layout_info.deinit(gpa);
             }
         };
@@ -190,16 +194,16 @@ pub fn TaffyTree(comptime NodeContext: type) type {
 
         // --- CacheTree
 
-        pub fn cacheGet(self: *Self, node_id: NodeId, input: *const LayoutInput) LayoutError!?LayoutOutput {
-            return self.nodeData(node_id).cache.get(self.gpa, input);
+        pub fn cacheGet(self: *Self, node_id: NodeId, input: *const LayoutInput) ?LayoutOutput {
+            return self.nodeData(node_id).cache.get(input);
         }
 
         pub fn cacheStore(self: *Self, node_id: NodeId, input: *const LayoutInput, layout_output: LayoutOutput) void {
-            self.nodeData(node_id).cache.store(self.gpa, input, layout_output);
+            self.nodeData(node_id).cache.store(input, layout_output);
         }
 
         pub fn cacheClear(self: *Self, node_id: NodeId) void {
-            _ = self.nodeData(node_id).cache.clear(self.gpa);
+            _ = self.nodeData(node_id).cache.clear();
         }
 
         // --- PrintTree
@@ -537,7 +541,7 @@ pub fn TaffyTree(comptime NodeContext: type) type {
             var current = node;
             while (true) {
                 const data = self.nodeData(current);
-                switch (data.cache.clear(self.gpa)) {
+                switch (data.cache.clear()) {
                     // Node was already marked as dirty.
                     // No need to visit ancestors
                     // as they should be marked as dirty already.
@@ -651,11 +655,10 @@ pub fn TaffyTree(comptime NodeContext: type) type {
                             const node_context: ?*NodeContext = if (node.context) |*context| context else null;
                             break :blk tree.measurer.measure(inputs, node_id, node_context, &node.style);
                         };
-                        errdefer output.deinit(tree.taffy.gpa);
 
                         // Lay out any out-of-flow candidates for which this node is the containing block.
-                        // The rest bubble up via `output.oof_candidates`. This runs inside the cache-miss
-                        // function so that cached outputs already contain the processed candidate list.
+                        // The rest stay stored on the node for its parent to pick up. This runs inside the
+                        // cache-miss function so that the stored list belongs to the cached output.
                         // Only full layout passes run it: measure passes must not write hoisted box layouts
                         // (which would not be rewritten if the final layout pass is a cache hit).
                         if (inputs.run_mode == .perform_layout) {
@@ -688,6 +691,24 @@ pub fn TaffyTree(comptime NodeContext: type) type {
 
                 pub fn scratch(self: *const ViewSelf) *Scratch {
                     return &self.taffy.scratch_allocator;
+                }
+
+                pub fn oofCandidates(self: *const ViewSelf, node_id: NodeId) []const OofCandidate {
+                    return self.taffy.nodeData(node_id).oof_candidates;
+                }
+
+                pub fn setOofCandidates(self: *ViewSelf, node_id: NodeId, candidates: []const OofCandidate) LayoutError!void {
+                    const gpa = self.taffy.gpa;
+                    const node = self.taffy.nodeData(node_id);
+                    if (node.oof_candidates.len != candidates.len) {
+                        // Replace the buffer before copying, so that a failed allocation leaves an
+                        // empty (and so harmless) list behind
+                        gpa.free(node.oof_candidates);
+                        node.oof_candidates = &.{};
+                        if (candidates.len == 0) return;
+                        node.oof_candidates = try gpa.alloc(OofCandidate, candidates.len);
+                    }
+                    @memcpy(node.oof_candidates, candidates);
                 }
 
                 pub fn getCoreContainerStyle(self: *const ViewSelf, node_id: NodeId) *const Style {
@@ -729,7 +750,7 @@ pub fn TaffyTree(comptime NodeContext: type) type {
 
                 // CacheTree
 
-                pub fn cacheGet(self: *ViewSelf, node_id: NodeId, input: *const LayoutInput) LayoutError!?LayoutOutput {
+                pub fn cacheGet(self: *ViewSelf, node_id: NodeId, input: *const LayoutInput) ?LayoutOutput {
                     return self.taffy.cacheGet(node_id, input);
                 }
 
@@ -1460,7 +1481,7 @@ test "the layout view implements every interface method" {
     try testing.expect(!view.isOutOfFlow(child));
 
     // Lay out the leaf child directly through the block-child entry point, without a block context
-    var output = try view.computeBlockChildLayout(child, .{
+    const output = try view.computeBlockChildLayout(child, .{
         .run_mode = .perform_layout,
         .sizing_mode = .inherent_size,
         .axis = .both,
@@ -1470,7 +1491,6 @@ test "the layout view implements every interface method" {
         .available_space = Size(AvailableSpace).max_content,
         .vertical_margins_are_collapsible = geometry.Line(bool).false,
     }, null);
-    defer output.deinit(testing.allocator);
     try testing.expectEqual(Size(f32){ .width = 3.0, .height = 4.0 }, output.size);
     try testing.expect(!taffy.dirty(child));
     try testing.expectEqual(@as(f32, 4.0), try traits.measureChildSize(&view, child, Size(?f32).none, Size(?f32).none, Size(AvailableSpace).max_content, .inherent_size, .vertical, geometry.Line(bool).false));

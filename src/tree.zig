@@ -22,7 +22,6 @@ pub const LayoutError = layout.LayoutError;
 pub const LayoutInput = layout.LayoutInput;
 pub const LayoutOutput = layout.LayoutOutput;
 pub const OofCandidate = layout.OofCandidate;
-pub const OofCandidates = layout.OofCandidates;
 pub const OofPositioningArea = layout.OofPositioningArea;
 pub const RequestedAxis = layout.RequestedAxis;
 pub const RunMode = layout.RunMode;

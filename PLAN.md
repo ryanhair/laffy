@@ -26,6 +26,7 @@ decisions behind the port and the milestone roadmap.
 | --- | --- |
 | Tree traits (`LayoutPartialTree`, `LayoutFlexboxContainer`, ...) | Duck-typed `comptime Tree: type` parameters |
 | `Vec` allocations during layout | `util.Scratch`, a mark-and-release allocator owned by the tree; a general allocator for memory that outlives an algorithm |
+| `LayoutOutput` owning its out-of-flow candidate `Vec` | Plain-value `LayoutOutput`; candidates stored per node (`oofCandidates` / `setOofCandidates`) |
 | Infallible layout | `error{OutOfMemory}!void`, with explicit error sets because layout recurses through generic functions |
 | `CompactLength` tagged pointer | `packed struct(u64)` holding tag, `f32` and calc pointer |
 | `slotmap` in `TaffyTree` | Generational-index arena; `NodeId` stays `u64` |
@@ -96,9 +97,11 @@ being replaced:
 
 - Done: builtins instead of the `sys` float wrappers; declarations on types instead of generic
   constructor helpers; no forced inlining; a scratch allocator with mark and release for the
-  temporary lists of the algorithms (full layout is now about level with taffy).
-- Candidates: plain-value `LayoutOutput` without an owned candidate list; direct field access
-  instead of style accessors; a tagged union instead of the packed `CompactLength`.
+  temporary lists of the algorithms (full layout is now about level with taffy); one constructor
+  name per length type (`fromLength`, not also `length`); `LayoutOutput` is a plain value, with
+  out-of-flow candidates stored per node on the tree instead of in an owned list on the output.
+- Candidates: direct field access instead of style accessors; a tagged union instead of the
+  packed `CompactLength`.
 
 ## Risks to check early
 

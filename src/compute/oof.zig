@@ -1,9 +1,9 @@
 //! Shared positioning pass for out-of-flow (`position: absolute` / `position: fixed`) boxes.
 //!
 //! Layout algorithms do not lay out their out-of-flow children directly (unless they are the
-//! child's containing block). Instead they emit `OofCandidate` records which bubble up the tree
-//! via `LayoutOutput.oof_candidates` until they reach the box's containing block, which lays the
-//! box out using the routine in this module.
+//! child's containing block). Instead they emit `OofCandidate` records, stored per node on the
+//! tree (`tree.setOofCandidates`), which bubble up the tree until they reach the box's
+//! containing block, which lays the box out using the routine in this module.
 //!
 //! `tree` arguments implement `LayoutContainingBlock` (see `src/tree/traits.zig`).
 const std = @import("std");
@@ -30,7 +30,7 @@ const LayoutError = layout.LayoutError;
 const LayoutInput = layout.LayoutInput;
 const LayoutOutput = layout.LayoutOutput;
 const OofCandidate = layout.OofCandidate;
-const OofCandidates = layout.OofCandidates;
+const Scratch = @import("../util/scratch.zig");
 const OofPositioningArea = layout.OofPositioningArea;
 const NodeId = @import("../tree/node.zig").NodeId;
 const traits = @import("../tree/traits.zig");
@@ -346,9 +346,9 @@ const OofAxis = struct {
 };
 
 /// Run the out-of-flow positioning pass for `node_id` after its layout algorithm has produced
-/// `output`: lay out the out-of-flow candidates in `output.oof_candidates` for which the node is
-/// the containing block, record them as the node's hoisted children, and replace
-/// `output.oof_candidates` with the unclaimed remainder (which bubble further up the tree).
+/// `output`: lay out the node's stored out-of-flow candidates (`tree.oofCandidates`) for which
+/// the node is the containing block, record them as the node's hoisted children, and replace the
+/// stored list with the unclaimed remainder (which bubble further up the tree).
 /// The scrollable overflow contributed by the claimed boxes is merged into
 /// `output.scrollable_overflow_rect`.
 ///
@@ -361,36 +361,35 @@ const OofAxis = struct {
 /// `isContainingBlock()`. `position: fixed` boxes unclaimed by every ancestor are claimed by the
 /// final root positioning pass in `computeRootLayout`.
 pub fn computeOofLayout(tree: anytype, node_id: NodeId, output: *LayoutOutput) LayoutError!void {
-    const gpa = tree.allocator();
     const area = output.oof_positioning_area orelse return;
-    if (output.oof_candidates.isEmpty()) {
+    const candidates = tree.oofCandidates(node_id);
+    if (candidates.len == 0) {
         tree.clearHoistedChildren(node_id);
         return;
     }
+    const frame = Scratch.Frame.begin(tree);
+    defer frame.end();
 
     const container_style = tree.getCoreContainerStyle(node_id);
     const direction = container_style.getDirection();
     const claims = container_style.isContainingBlock();
 
-    var candidates = output.oof_candidates.take();
-    defer candidates.deinit(gpa);
     const reversed = output.scrollable_overflow_rect.isReversed();
-    var result = try computeOofLayoutForAreaWithOrigin(
+    const result = try computeOofLayoutForAreaWithOrigin(
         tree,
+        frame.allocator(),
         node_id,
-        candidates.asSlice(),
+        candidates,
         area,
         direction,
         claims,
         reversed,
     );
-    defer result.hoisted.deinit(gpa);
-    errdefer result.unclaimed.deinit(gpa);
     // Always record the hoisted child list (even when empty) so that lists recorded by previous
     // layout runs do not persist
     tree.clearHoistedChildren(node_id);
     try tree.addHoistedChildren(node_id, result.hoisted.items);
-    output.oof_candidates = result.unclaimed;
+    try tree.setOofCandidates(node_id, result.unclaimed.items);
     {
         const final_reversed = output.scrollable_overflow_rect.isReversed();
         const overflow = tree.getCoreContainerStyle(node_id).getOverflow();
@@ -405,12 +404,13 @@ pub fn computeOofLayout(tree: anytype, node_id: NodeId, output: *LayoutOutput) L
 
 /// The result of laying out out-of-flow candidates against an explicit positioning area.
 ///
-/// Both lists are allocated with the tree's allocator and owned by the caller (see `deinit`).
+/// When returned by `computeOofLayoutForArea`, both lists are allocated with the tree's
+/// allocator and owned by the caller (see `deinit`).
 pub const OofLayoutResult = struct {
     /// Candidates claimed and laid out by this pass, in document order.
     hoisted: std.ArrayList(NodeId),
     /// Candidates not claimed by this pass, which must continue bubbling.
-    unclaimed: OofCandidates,
+    unclaimed: std.ArrayList(OofCandidate),
     /// Scrollable overflow contributed by the claimed candidates, relative to the positioning
     /// area's inner top-left edge, in physical coordinates (RTL is not mirrored).
     scrollable_overflow_rect: Rect(f32),
@@ -441,6 +441,7 @@ pub fn computeOofLayoutForArea(
 ) LayoutError!OofLayoutResult {
     return computeOofLayoutForAreaWithOrigin(
         tree,
+        tree.allocator(),
         geometry_owner,
         candidates,
         area,
@@ -451,8 +452,11 @@ pub fn computeOofLayoutForArea(
 }
 
 /// Run the positioning pass using the containing block's algorithm-specific physical origins.
+///
+/// The lists of the result are allocated with `gpa`.
 fn computeOofLayoutForAreaWithOrigin(
     tree: anytype,
+    gpa: std.mem.Allocator,
     geometry_owner: NodeId,
     candidates: []const OofCandidate,
     area: OofPositioningArea,
@@ -460,15 +464,15 @@ fn computeOofLayoutForAreaWithOrigin(
     claims: ContainingBlockClaims,
     reversed: Point(bool),
 ) LayoutError!OofLayoutResult {
-    const gpa = tree.allocator();
     const overflow = tree.getCoreContainerStyle(geometry_owner).getOverflow();
 
     var hoisted: std.ArrayList(NodeId) = .empty;
     errdefer hoisted.deinit(gpa);
-    var unclaimed: OofCandidates = .none;
+    var unclaimed: std.ArrayList(OofCandidate) = .empty;
     errdefer unclaimed.deinit(gpa);
     const raw_scrollable_overflow_rect = try performOofLayout(
         tree,
+        gpa,
         geometry_owner,
         candidates,
         area.size,
@@ -494,9 +498,6 @@ fn computeOofLayoutForAreaWithOrigin(
 pub const OofBoxLayout = struct {
     /// The box's final layout (its `location` is relative to the containing block's border box)
     layout: Layout,
-    /// Out-of-flow candidates surfaced from within the box's subtree, with anchors relative to
-    /// the box's own border box (owned by the caller)
-    surfaced: OofCandidates,
     /// The box's `overflow` style
     overflow: Point(Overflow),
     /// The box's `contain` style
@@ -533,7 +534,6 @@ pub fn layoutOofBox(
     grid_owner: ?NodeId,
     before_layout: anytype,
 ) LayoutError!OofBoxLayout {
-    const gpa = tree.allocator();
     const child_style = tree.getOofItemStyle(candidate.node);
 
     // If the current node is a grid container then the box is positioned relative to the
@@ -749,8 +749,7 @@ pub fn layoutOofBox(
         .vertical_margins_are_collapsible = Line(bool).false,
     };
     try before_layout.call(tree, &layout_input);
-    var layout_output = try tree.computeChildLayout(candidate.node, layout_input);
-    errdefer layout_output.deinit(gpa);
+    const layout_output = try tree.computeChildLayout(candidate.node, layout_input);
 
     // Resolve auto margins <https://www.w3.org/TR/css-position-3/#abspos-margins>
     const horizontal_margin = horizontal.resolveMargins(final_size.width);
@@ -789,7 +788,6 @@ pub fn layoutOofBox(
 
     return .{
         .layout = box_layout,
-        .surfaced = layout_output.oof_candidates.take(),
         .overflow = overflow,
         .contain = contain,
     };
@@ -815,10 +813,11 @@ pub fn layoutOofBox(
 /// `position: fixed` descendant of a `position: absolute` box). These are re-swept: claimed ones
 /// are appended to the work list, unclaimed ones are added to `unclaimed`.
 ///
-/// The ids of claimed boxes are appended to `hoisted` in order (both lists use the tree's
-/// allocator). Returns the scrollable overflow contribution of the claimed boxes.
+/// The ids of claimed boxes are appended to `hoisted` in order. Both lists, and the work list,
+/// are allocated with `gpa`. Returns the scrollable overflow contribution of the claimed boxes.
 pub fn performOofLayout(
     tree: anytype,
+    gpa: std.mem.Allocator,
     node_id: NodeId,
     candidates: []const OofCandidate,
     area_size: Size(f32),
@@ -828,9 +827,8 @@ pub fn performOofLayout(
     container_overflow: Point(Overflow),
     reversed: Point(bool),
     hoisted: *std.ArrayList(NodeId),
-    unclaimed: *OofCandidates,
+    unclaimed: *std.ArrayList(OofCandidate),
 ) LayoutError!Rect(f32) {
-    const gpa = tree.allocator();
     var absolute_overflow_rect = Rect(f32).zero;
     if (direction.isRtl()) {
         var rtl_rect = Rect(f32).zero;
@@ -859,7 +857,7 @@ pub fn performOofLayout(
         if (claims.forPosition(candidate.position)) {
             try worklist.append(gpa, candidate);
         } else {
-            try unclaimed.push(gpa, candidate);
+            try unclaimed.append(gpa, candidate);
         }
     }
 
@@ -869,7 +867,7 @@ pub fn performOofLayout(
         index += 1;
         try hoisted.append(gpa, candidate.node);
 
-        var box = try layoutOofBox(
+        const box = try layoutOofBox(
             tree,
             candidate,
             area_size,
@@ -879,20 +877,23 @@ pub fn performOofLayout(
             node_id,
             NoBeforeLayout{},
         );
-        defer box.surfaced.deinit(gpa);
         const location = box.layout.location;
         const final_size = box.layout.size;
 
         // Re-sweep any candidates surfaced from within the box's subtree, translating their
         // anchors so they are relative to this node's border box
-        if (!box.surfaced.isEmpty()) {
-            box.surfaced.translate(location);
-            for (box.surfaced.asSlice()) |surfaced_candidate| {
-                if (claims.forPosition(surfaced_candidate.position)) {
-                    try worklist.append(gpa, surfaced_candidate);
-                } else {
-                    try unclaimed.push(gpa, surfaced_candidate);
-                }
+        // (the surfaced candidates are those now stored for the box's node, with anchors relative
+        // to the box's own border box)
+        for (tree.oofCandidates(candidate.node)) |stored| {
+            var surfaced_candidate = stored;
+            surfaced_candidate.static_position.x.area.start += location.x;
+            surfaced_candidate.static_position.x.area.end += location.x;
+            surfaced_candidate.static_position.y.area.start += location.y;
+            surfaced_candidate.static_position.y.area.end += location.y;
+            if (claims.forPosition(surfaced_candidate.position)) {
+                try worklist.append(gpa, surfaced_candidate);
+            } else {
+                try unclaimed.append(gpa, surfaced_candidate);
             }
         }
 

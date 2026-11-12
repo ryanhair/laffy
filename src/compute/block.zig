@@ -33,7 +33,7 @@ const Layout = layout.Layout;
 const LayoutError = layout.LayoutError;
 const LayoutInput = layout.LayoutInput;
 const LayoutOutput = layout.LayoutOutput;
-const OofCandidates = layout.OofCandidates;
+const OofCandidate = layout.OofCandidate;
 const RunMode = layout.RunMode;
 const ScrollableOverflow = layout.ScrollableOverflow;
 const NodeId = @import("../tree/node.zig").NodeId;
@@ -438,17 +438,10 @@ const BlockItem = struct {
     /// post-loop `align-content` pass in `computeInner` can shift `location.y` before commit.
     final_layout: ?Layout,
 
-    /// Out-of-flow candidates bubbled out of this (in-flow) item's subtree. Anchors are relative
-    /// to the item's border box until they are translated at merge time.
-    /// Allocated with the tree's allocator and owned by the item.
-    oof_candidates: OofCandidates,
+    /// Out-of-flow candidates bubbled out of this (in-flow) item's subtree (a scratch copy).
+    /// Anchors are relative to the item's border box until they are translated at merge time.
+    oof_candidates: []const OofCandidate,
 };
-
-/// Free the block items (and any out-of-flow candidates they still own)
-fn freeBlockItems(gpa: Allocator, scratch: Allocator, items: []BlockItem) void {
-    for (items) |*item| item.oof_candidates.deinit(gpa);
-    scratch.free(items);
-}
 
 /// `Some(min)` if both `min` and `max` are set and `max <= min`
 fn minMaxDefinite(min: ?f32, max: ?f32) ?f32 {
@@ -554,9 +547,9 @@ pub fn computeBlockLayout(tree: anytype, node_id: NodeId, inputs: LayoutInput, b
 
 /// Computes the layout of a `LayoutBlockContainer` according to the block layout algorithm
 fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: *BlockContext) LayoutError!LayoutOutput {
-    const gpa = tree.allocator();
     const frame = Scratch.Frame.begin(tree);
     defer frame.end();
+    const scratch = frame.allocator();
     const known_dimensions_in = inputs.known_dimensions;
     const parent_size = inputs.parent_size;
     const available_space = inputs.available_space;
@@ -659,7 +652,6 @@ fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: 
 
     // 1. Generate items
     const items = try generateItemList(tree, node_id, container_content_box_size);
-    defer freeBlockItems(gpa, frame.allocator(), items);
 
     // 2. Compute container width
     const container_outer_width = if (known_dimensions.width) |width| width else blk: {
@@ -831,7 +823,6 @@ fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: 
         else
             CollapsibleMarginSet.fromMargin(resolveOrZero(raw_margin.bottom, parent_size.width, tree)),
         .margins_can_collapse_through = can_be_collapsed_through,
-        .oof_candidates = OofCandidates.none,
         .oof_positioning_area = null,
     };
 
@@ -853,8 +844,7 @@ fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: 
     // 4. Collect out-of-flow candidates in document order (direct out-of-flow children plus
     // candidates bubbled from in-flow children's subtrees). These are laid out by the
     // out-of-flow positioning pass (`computeOofLayout`), which runs after this algorithm.
-    var candidates: OofCandidates = .none;
-    errdefer candidates.deinit(gpa);
+    var candidates: std.ArrayList(OofCandidate) = .empty;
     for (items) |*item| {
         if (item.position.isOutOfFlow()) {
             // The static-position rectangle of an out-of-flow child of a block container spans
@@ -871,7 +861,7 @@ fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: 
             // no `align-items`, so an `align_self` of `null` behaves as `normal`.
             const justify_self = (item.justify_self orelse justify_items).resolveSelfRelative(item.direction, direction, true);
             const align_self = (item.align_self orelse AlignItems.normal).resolveSelfRelative(item.direction, direction, false);
-            try candidates.push(gpa, .{
+            try candidates.append(scratch, .{
                 .node = item.node_id,
                 .order = item.order,
                 .position = item.position,
@@ -880,14 +870,13 @@ fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: 
                     .y = AxisStaticPosition.fromAlignment(align_self, block_area, false),
                 },
             });
-        } else if (!item.oof_candidates.isEmpty()) {
+        } else if (item.oof_candidates.len != 0) {
             // Translate anchors from item-relative to container-relative coordinates
-            if (item.final_layout) |*final_layout| {
-                item.oof_candidates.translate(final_layout.location);
-            }
-            try candidates.append(gpa, &item.oof_candidates);
+            const offset = if (item.final_layout) |*final_layout| final_layout.location else Point(f32).zero;
+            try layout.appendOofCandidates(&candidates, scratch, item.oof_candidates, offset);
         }
     }
+    try tree.setOofCandidates(node_id, candidates.items);
 
     const absolute_position_inset = resolved_border.add(scrollbar_gutter);
     const absolute_position_area = final_outer_size.sub(absolute_position_inset.sumAxes());
@@ -926,7 +915,7 @@ fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: 
         const child_style = tree.getBlockChildStyle(child);
         if (child_style.getBoxGenerationMode() == .none) {
             tree.setUnroundedLayout(child, &Layout.withOrder(@intCast(order)));
-            var hidden_output = try traits.performChildLayout(
+            _ = try traits.performChildLayout(
                 tree,
                 child,
                 Size(?f32).none,
@@ -935,17 +924,15 @@ fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: 
                 .inherent_size,
                 Line(bool).false,
             );
-            hidden_output.deinit(gpa);
         }
     }
 
-    output.oof_candidates = candidates;
     output.oof_positioning_area = .{ .size = absolute_position_area, .offset = absolute_position_offset };
     return output;
 }
 
 /// Create a list of `BlockItem` structs where each item in the list represents a child of the current node.
-/// The caller owns the returned slice (free it with `freeBlockItems`).
+/// The returned slice is scratch memory.
 fn generateItemList(tree: anytype, node: NodeId, node_inner_size: Size(?f32)) LayoutError![]BlockItem {
     const gpa = Scratch.allocatorOf(tree);
     var items: std.ArrayList(BlockItem) = .empty;
@@ -1022,7 +1009,7 @@ fn generateItemList(tree: anytype, node: NodeId, node_inner_size: Size(?f32)) La
             .static_position = Point(f32).zero,
             .can_be_collapsed_through = false,
             .final_layout = null,
-            .oof_candidates = .none,
+            .oof_candidates = &.{},
         });
     }
     return items.toOwnedSlice(gpa);
@@ -1219,7 +1206,6 @@ fn performFinalLayoutOnInFlowChildren(
     is_scroll_container: bool,
     block_ctx: *BlockContext,
 ) LayoutError!FinalLayoutResult {
-    const gpa = tree.allocator();
     // Resolve container_inner_width for sizing child nodes using initial content_box_inset
     const container_inner_width = @max(container_outer_width - resolved_content_box_inset.horizontalAxisSum(), 0.0);
     const overflow_container: ScrollableOverflowContainer = .{
@@ -1334,8 +1320,7 @@ fn performFinalLayoutOnInFlowChildren(
                 // collapse with the margins of its children
                 Line(bool).false,
             );
-            item.oof_candidates.deinit(gpa);
-            item.oof_candidates = item_layout.oof_candidates.take();
+            item.oof_candidates = try layout.translatedOofCandidates(Scratch.allocatorOf(tree), tree.oofCandidates(item.node_id), Point(f32).zero);
             const margin_box = item_layout.size.add(item_non_auto_margin.sumAxes());
 
             // Floats that occur between collapsing margins are positioned as if they had an otherwise
@@ -1570,8 +1555,10 @@ fn performFinalLayoutOnInFlowChildren(
 
             break :blk output;
         } else try tree.computeChildLayout(item.node_id, inputs);
-        item.oof_candidates.deinit(gpa);
-        item.oof_candidates = item_layout.oof_candidates.take();
+        item.oof_candidates = if (run_mode == .perform_layout)
+            try layout.translatedOofCandidates(Scratch.allocatorOf(tree), tree.oofCandidates(item.node_id), Point(f32).zero)
+        else
+            &.{};
         const final_size = item_layout.size;
 
         const top_margin_set = item_layout.top_margin.collapseWithMargin(item_margin.top orelse 0.0);
