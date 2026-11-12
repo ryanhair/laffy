@@ -701,7 +701,7 @@ pub const Layout = struct {
 /// Upstream is generic over the custom identifier string type; laffy uses `[]const u8` names.
 ///
 /// Ownership: the `grid` variant owns its boxed `DetailedGridInfo` (allocated with the tree's
-/// allocator, see `LayoutGridContainer.setDetailedGridInfo` in `traits.zig`); free it with
+/// allocator, see `LayoutGridContainer.detailedGridInfo` in `traits.zig`); free it with
 /// `deinit`. The line and area names it holds are borrowed from the grid container's style.
 pub const DetailedLayoutInfo = union(enum) {
     /// For node that hasn't had any detailed information yet

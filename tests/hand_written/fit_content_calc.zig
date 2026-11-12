@@ -248,7 +248,7 @@ const Node = struct {
         return &self.nodeFromId(child_node_id).style;
     }
 
-    pub const setDetailedGridInfo = traits.LayoutGridContainerDefaults.setDetailedGridInfo;
+    pub const detailedGridInfo = traits.LayoutGridContainerDefaults.detailedGridInfo;
 };
 
 // Mirrors WPT css/css-grid/grid-definition/fit-content-track-sizing.html (`calculatedArgument`):

@@ -159,14 +159,14 @@
 //!   - `getGridContainerStyle(self, node_id: NodeId) GridContainerStyle`: required.
 //!   - `getGridChildStyle(self, child_node_id: NodeId) GridItemStyle`: required. Interpreted in
 //!     the container's axes.
-//!   - `setDetailedGridInfo(self, node_id: NodeId, detailed_grid_info: DetailedGridInfo) LayoutError!void`:
-//!     default (`LayoutGridContainerDefaults.setDetailedGridInfo`, discards the info). Optional
-//!     upstream; implementing it gives access to the computed size of each grid track and the
-//!     placement of each grid item. The tree takes ownership of `detailed_grid_info` (allocated
-//!     with `self.allocator()`) in all cases, including when it returns an error: it must free
-//!     the info with `DetailedGridInfo.deinit` when discarding or replacing it. (Upstream boxes
-//!     the info, which is why storing it may need an allocation.) The info borrows line and
-//!     area names from the grid container's style.
+//!   - `detailedGridInfo(self, node_id: NodeId) LayoutError!?*DetailedGridInfo`: default
+//!     (`LayoutGridContainerDefaults.detailedGridInfo`, returns `null`). The storage that the
+//!     grid algorithm records the node's detailed grid info in (the computed size of each grid
+//!     track and the placement of each grid item), or `null` to not record it. The algorithm
+//!     refills the same `DetailedGridInfo` on every full layout, reusing its memory, so return
+//!     the same pointer each time. Its lists are allocated with `self.allocator()`; the tree
+//!     frees them with `DetailedGridInfo.deinit`. The info borrows line and area names from
+//!     the grid container's style.
 //!
 //! ## LayoutBlockContainer (requires LayoutPartialTree)
 //!
@@ -229,11 +229,11 @@ pub const LayoutContainingBlockDefaults = struct {
 
 /// Default methods of `LayoutGridContainer`
 pub const LayoutGridContainerDefaults = struct {
-    /// Set the node's detailed grid information (default: discard (free) it)
-    pub fn setDetailedGridInfo(self: anytype, node_id: NodeId, detailed_grid_info: DetailedGridInfo) LayoutError!void {
+    /// The storage for the node's detailed grid information (default: `null`, do not record it)
+    pub fn detailedGridInfo(self: anytype, node_id: NodeId) LayoutError!?*DetailedGridInfo {
+        _ = self;
         _ = node_id;
-        var info = detailed_grid_info;
-        info.deinit(self.allocator());
+        return null;
     }
 };
 
@@ -274,7 +274,7 @@ pub const Interface = enum {
             .round_tree => traverse ++ &[_][]const u8{ "getUnroundedLayout", "setFinalLayout", "isOutOfFlow", "hoistedChildCount", "getHoistedChildId" },
             .print_tree => traverse ++ &[_][]const u8{ "getDebugLabel", "getFinalLayout" },
             .layout_flexbox_container => layout_partial ++ &[_][]const u8{ "getFlexboxContainerStyle", "getFlexboxChildStyle" },
-            .layout_grid_container => layout_partial ++ &[_][]const u8{ "getGridContainerStyle", "getGridChildStyle", "setDetailedGridInfo" },
+            .layout_grid_container => layout_partial ++ &[_][]const u8{ "getGridContainerStyle", "getGridChildStyle", "detailedGridInfo" },
             .layout_block_container => layout_partial ++ &[_][]const u8{ "getBlockContainerStyle", "getBlockChildStyle", "computeBlockChildLayout" },
         };
     }
@@ -387,19 +387,13 @@ test "interface method lists" {
     const Dummy = struct {
         pub const resolveCalcValue = LayoutPartialTreeDefaults.resolveCalcValue;
         pub const getDetailedLayoutInfo = LayoutContainingBlockDefaults.getDetailedLayoutInfo;
-        pub const setDetailedGridInfo = LayoutGridContainerDefaults.setDetailedGridInfo;
-        pub fn allocator(_: *const @This()) std.mem.Allocator {
-            return std.testing.allocator;
-        }
+        pub const detailedGridInfo = LayoutGridContainerDefaults.detailedGridInfo;
     };
     var dummy: Dummy = .{};
     var x: u8 = 0;
     try std.testing.expectEqual(@as(f32, 0.0), dummy.resolveCalcValue(@ptrCast(&x), 10.0));
     try std.testing.expectEqual(@as(f32, 0.0), calc(&dummy, @ptrCast(&x), 10.0));
     try std.testing.expect(dummy.getDetailedLayoutInfo(NodeId.new(0)).* == .none);
-    // The default takes ownership of the info and frees it
-    var info: DetailedGridInfo = .{};
-    info.items = try std.testing.allocator.alloc(@import("../compute/grid.zig").DetailedGridItemsInfo, 1);
-    try dummy.setDetailedGridInfo(NodeId.new(0), info);
+    try std.testing.expect(try dummy.detailedGridInfo(NodeId.new(0)) == null);
     try std.testing.expect(TreeType(*Dummy) == Dummy);
 }

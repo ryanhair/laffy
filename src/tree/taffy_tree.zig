@@ -796,19 +796,20 @@ pub fn TaffyTree(comptime NodeContext: type) type {
                     return &self.taffy.nodeData(child_node_id).style;
                 }
 
-                /// Store the node's detailed grid info (upstream `DetailedLayoutInfo::Grid(Box::new(detailed_grid_info))`),
-                /// freeing any previously stored info. Takes ownership of `detailed_grid_info` even on error.
-                pub fn setDetailedGridInfo(self: *ViewSelf, node_id: NodeId, detailed_grid_info: DetailedGridInfo) LayoutError!void {
-                    const gpa = self.taffy.gpa;
-                    var info = detailed_grid_info;
-                    const boxed = gpa.create(DetailedGridInfo) catch |err| {
-                        info.deinit(gpa);
-                        return err;
-                    };
-                    boxed.* = info;
+                /// The node's detailed grid info, which the grid algorithm refills on every full
+                /// layout. It is allocated the first time the node is laid out as a grid and then
+                /// kept, so that later layouts reuse its memory.
+                pub fn detailedGridInfo(self: *ViewSelf, node_id: NodeId) LayoutError!?*DetailedGridInfo {
                     const data = self.taffy.nodeData(node_id);
-                    data.detailed_layout_info.deinit(gpa);
-                    data.detailed_layout_info = .{ .grid = boxed };
+                    switch (data.detailed_layout_info) {
+                        .grid => |info| return info,
+                        .none => {
+                            const info = try self.taffy.gpa.create(DetailedGridInfo);
+                            info.* = .{};
+                            data.detailed_layout_info = .{ .grid = info };
+                            return info;
+                        },
+                    }
                 }
 
                 // RoundTree
@@ -1470,12 +1471,11 @@ test "the layout view implements every interface method" {
     try testing.expect(view.getGridChildStyle(child) == taffy.style(child));
     try testing.expect(view.getOofItemStyle(child) == taffy.style(child));
     try testing.expect(view.getDetailedLayoutInfo(root).* == .none);
-    // Detailed grid info is stored (replacing and freeing any previous info) and freed with the node
-    try view.setDetailedGridInfo(root, .{});
+    // Detailed grid info storage is created on first use, then reused, and freed with the node
+    const info = (try view.detailedGridInfo(root)).?;
     try testing.expect(view.getDetailedLayoutInfo(root).* == .grid);
-    var info: DetailedGridInfo = .{};
     info.items = try testing.allocator.alloc(@import("../compute/grid.zig").DetailedGridItemsInfo, 2);
-    try view.setDetailedGridInfo(root, info);
+    try testing.expect((try view.detailedGridInfo(root)).? == info);
     try testing.expectEqual(@as(usize, 2), taffy.detailedLayoutInfo(root).grid.items.len);
     try testing.expectEqual(@as(f32, 0.0), traits.calc(&view, @ptrCast(&view), 1.0));
     try testing.expect(!view.isOutOfFlow(child));

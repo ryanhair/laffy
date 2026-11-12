@@ -4,9 +4,8 @@
 //! # Memory
 //!
 //! Temporary lists (items, placements, tracks, the occupancy matrix and the named line maps) are
-//! allocated with `tree.allocator()` and freed before `computeGridLayout` returns. The
-//! `DetailedGridInfo` produced by a full layout is handed to the tree with
-//! `tree.setDetailedGridInfo`, which takes ownership of it (see `DetailedGridInfo.deinit`).
+//! scratch memory or freed before `computeGridLayout` returns. A full layout refills the
+//! `DetailedGridInfo` that the tree keeps for the node (`tree.detailedGridInfo`), if any.
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const geometry = @import("../geometry.zig");
@@ -859,20 +858,22 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
 
     const absolute_position_area = container_border_box.sub(padding_box_inset.sumAxes());
     const absolute_position_offset: Point(f32) = .{ .x = padding_box_inset.left, .y = padding_box_inset.top };
-    // Store the detailed grid info before the out-of-flow positioning pass so that the pass can
+    // Record the detailed grid info before the out-of-flow positioning pass so that the pass can
     // resolve the grid areas of out-of-flow boxes whose containing block is this grid
-    const detailed_grid_info = try buildDetailedGridInfo(
-        gpa,
-        &name_resolver,
-        final_row_counts,
-        rows.items,
-        &detailed_row_line_names,
-        final_col_counts,
-        columns.items,
-        &detailed_column_line_names,
-        items.items,
-    );
-    try tree.setDetailedGridInfo(node, detailed_grid_info);
+    if (try tree.detailedGridInfo(node)) |info| {
+        try fillDetailedGridInfo(
+            info,
+            gpa,
+            &name_resolver,
+            final_row_counts,
+            rows.items,
+            &detailed_row_line_names,
+            final_col_counts,
+            columns.items,
+            &detailed_column_line_names,
+            items.items,
+        );
+    }
 
     const oof_positioning_area: ?OofPositioningArea = .{ .size = absolute_position_area, .offset = absolute_position_offset };
 
@@ -965,9 +966,11 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
     return output;
 }
 
-/// Build the `DetailedGridInfo` of a laid-out grid, moving the line names and the name resolver's
-/// line maps into it
-fn buildDetailedGridInfo(
+/// Refill the `DetailedGridInfo` of a laid-out grid in place, moving the line names and the name
+/// resolver's line maps into it. The info's lists keep their capacity between layouts, so
+/// refilling the info of a grid without named lines or areas normally does not allocate.
+fn fillDetailedGridInfo(
+    info: *DetailedGridInfo,
     gpa: Allocator,
     name_resolver: *NamedLineResolver,
     final_row_counts: TrackCounts,
@@ -977,16 +980,17 @@ fn buildDetailedGridInfo(
     columns: []const GridTrack,
     detailed_column_line_names: *GridLineNames,
     items: []const GridItem,
-) LayoutError!DetailedGridInfo {
-    var info: DetailedGridInfo = .{};
-    errdefer info.deinit(gpa);
+) LayoutError!void {
+    info.areas.deinit(gpa);
     info.areas = name_resolver.populateDetailedLineResolvers(gpa, detailed_row_line_names, detailed_column_line_names);
-    info.rows = try DetailedGridTracksInfo.fromGridTracksAndTrackCount(gpa, final_row_counts, rows, detailed_row_line_names);
-    info.columns = try DetailedGridTracksInfo.fromGridTracksAndTrackCount(gpa, final_col_counts, columns, detailed_column_line_names);
-    const item_infos = try gpa.alloc(DetailedGridItemsInfo, items.len);
-    for (item_infos, items) |*item_info, *item| item_info.* = DetailedGridItemsInfo.fromGridItem(item);
-    info.items = item_infos;
-    return info;
+    try info.rows.refill(gpa, final_row_counts, rows, detailed_row_line_names);
+    try info.columns.refill(gpa, final_col_counts, columns, detailed_column_line_names);
+    if (info.items.len != items.len) {
+        gpa.free(info.items);
+        info.items = &.{};
+        info.items = try gpa.alloc(DetailedGridItemsInfo, items.len);
+    }
+    for (info.items, items) |*item_info, *item| item_info.* = DetailedGridItemsInfo.fromGridItem(item);
 }
 
 /// Resolve a grid line (by track vector index) used as a start edge to a position
@@ -1355,27 +1359,27 @@ pub const DetailedGridTracksInfo = struct {
         }
     }
 
-    /// Construct DetailedGridTracksInfo from TrackCounts and GridTracks. Moves `line_names.*` into
-    /// the result (leaving it empty) on success.
-    fn fromGridTracksAndTrackCount(
+    /// Refill the info from TrackCounts and GridTracks, keeping the capacity of its lists.
+    /// Moves `line_names.*` into the info (leaving it empty) on success.
+    fn refill(
+        self: *DetailedGridTracksInfo,
         gpa: Allocator,
         track_count: TrackCounts,
         grid_tracks: []const GridTrack,
         line_names: *GridLineNames,
-    ) LayoutError!DetailedGridTracksInfo {
-        var self: DetailedGridTracksInfo = .{
-            .negative_implicit_tracks = track_count.negative_implicit,
-            .explicit_tracks = track_count.explicit,
-            .positive_implicit_tracks = track_count.positive_implicit,
-        };
-        errdefer self.deinit(gpa);
+    ) LayoutError!void {
+        self.negative_implicit_tracks = track_count.negative_implicit;
+        self.explicit_tracks = track_count.explicit;
+        self.positive_implicit_tracks = track_count.positive_implicit;
+        self.positions.clearRetainingCapacity();
+        self.collapsed_tracks.clearRetainingCapacity();
         try self.positionsFromGridTrackLayout(gpa, grid_tracks);
         // An axis with no tracks consists of a single gutter whose offset is where the axis'
         // single grid line was positioned by content alignment
         self.empty_axis_line = if (self.positions.items.len == 0 and grid_tracks.len > 0) grid_tracks[0].offset else null;
+        self.line_names.deinit(gpa);
         self.line_names = line_names.*;
         line_names.* = .{};
-        return self;
     }
 
     /// The names of the grid line with the passed 0-indexed line index, where line `i` bounds
@@ -1715,4 +1719,32 @@ test "grid places items and records detailed grid info" {
     try testing.expectEqual(@as(usize, 0), names.next().?.len);
     try testing.expectEqual(@as(usize, 2), names.next().?.len);
     try testing.expectEqual(@as(?[]const []const u8, null), names.next());
+}
+
+test "relayout of a grid without named lines does not allocate" {
+    var counting = testing.FailingAllocator.init(testing.allocator, .{});
+    var taffy = try TaffyTree(void).init(counting.allocator());
+    defer taffy.deinit();
+
+    var leaf_style: Style = .{};
+    leaf_style.size = Size(Dimension).fromLengths(20.0, 10.0);
+    const columns = [_]GridTemplateComponent{ GridTemplateComponent.fromFr(1.0), GridTemplateComponent.auto };
+    var grid_style: Style = .{ .display = .grid };
+    grid_style.grid_template_columns = &columns;
+
+    var inner_children: [4]NodeId = undefined;
+    for (&inner_children) |*child| child.* = try taffy.newLeaf(leaf_style);
+    const inner = try taffy.newWithChildren(grid_style, &inner_children);
+    const sibling = try taffy.newLeaf(leaf_style);
+    const root = try taffy.newWithChildren(grid_style, &.{ inner, sibling });
+
+    const available: Size(AvailableSpace) = .{ .width = .{ .definite = 200.0 }, .height = .max_content };
+    try taffy.computeLayout(root, available);
+    const first = taffy.layout(inner_children[3]).*;
+
+    const allocations = counting.allocations;
+    taffy.markDirty(inner_children[0]);
+    try taffy.computeLayout(root, available);
+    try testing.expectEqual(allocations, counting.allocations);
+    try testing.expect(taffy.layout(inner_children[3]).eql(first));
 }
