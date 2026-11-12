@@ -156,32 +156,62 @@ const CacheMode = struct {
     }
 };
 
-/// Cached intermediate layout results
-fn CacheEntry(comptime T: type) type {
-    return struct {
-        /// The key for the cache entry
-        key: CacheKey,
-        /// The cached size and baselines of the item
-        content: T,
-    };
-}
-
 /// A cache for caching the results of a sizing a Grid Item or Flexbox Item
+///
+/// The measure entries are stored as parallel arrays with an occupancy mask, which keeps the
+/// cache (and so every node of a tree) small: an array of optional entries would spend 16 of
+/// every 40 bytes on padding.
 pub const Cache = struct {
-    /// The cache entry for the node's final layout (owns its `LayoutOutput`)
-    final_layout_entry: ?CacheEntry(LayoutOutput) = null,
-    /// The cache entries for the node's preliminary size measurements
-    measure_entries: [cache_size]?CacheEntry(Size(f32)) = @splat(null),
+    /// The key of the node's final layout entry (valid if `has_final_layout`)
+    final_layout_key: CacheKey = .{ .kd_available_space = 0, .parent_size = 0, .known_dimensions_are_definite = .{ .width = true, .height = true } },
+    /// The node's cached final layout (valid if `has_final_layout`)
+    final_layout: LayoutOutput = LayoutOutput.hidden,
+    /// `CacheKey.kd_available_space` of each measure entry
+    measure_kd_available_space: [cache_size]u64 = @splat(0),
+    /// `CacheKey.parent_size` of each measure entry
+    measure_parent_size: [cache_size]u64 = @splat(0),
+    /// The cached size of each measure entry
+    measure_sizes: [cache_size]Size(f32) = @splat(Size(f32).zero),
+    /// `CacheKey.known_dimensions_are_definite` of each measure entry: bit 0 is the width, bit 1
+    /// the height
+    measure_definite: [cache_size]u8 = @splat(0),
+    /// Which measure entries hold a value
+    occupied_entries: u16 = 0,
     /// Tracks which measure entries have been used since the eviction cursor last passed them
     recently_used_entries: u16 = 0,
     /// The next measure entry to consider replacing
     next_measure_entry: u8 = 0,
+    /// Whether there is a final layout entry
+    has_final_layout: bool = false,
     /// Tracks if all cache entries are empty
     is_empty: bool = true,
     /// The `sizing_mode` and `vertical_margins_are_collapsible` inputs that all of the cache's
     /// entries were computed with. Results are only retrieved for inputs that have the same mode,
     /// and storing a result that was computed with a different mode drops the existing entries.
     mode: CacheMode = CacheMode.initial,
+
+    fn definiteBits(definite: Size(bool)) u8 {
+        return @as(u8, @intFromBool(definite.width)) | (@as(u8, @intFromBool(definite.height)) << 1);
+    }
+
+    /// The key of the measure entry at `index`, or null if the entry is empty
+    fn measureKey(self: *const Cache, index: usize) ?CacheKey {
+        if (self.occupied_entries & (@as(u16, 1) << @intCast(index)) == 0) return null;
+        const definite = self.measure_definite[index];
+        return .{
+            .kd_available_space = self.measure_kd_available_space[index],
+            .parent_size = self.measure_parent_size[index],
+            .known_dimensions_are_definite = .{ .width = definite & 1 != 0, .height = definite & 2 != 0 },
+        };
+    }
+
+    fn setMeasureEntry(self: *Cache, index: usize, key: CacheKey, size: Size(f32)) void {
+        self.measure_kd_available_space[index] = key.kd_available_space;
+        self.measure_parent_size[index] = key.parent_size;
+        self.measure_definite[index] = definiteBits(key.known_dimensions_are_definite);
+        self.measure_sizes[index] = size;
+        self.occupied_entries |= @as(u16, 1) << @intCast(index);
+    }
 
     /// Try to retrieve a cached result from the cache
     pub fn get(self: *Cache, input: *const LayoutInput) ?LayoutOutput {
@@ -191,21 +221,21 @@ pub const Cache = struct {
         const key = CacheKey.fromInput(input);
         switch (input.run_mode) {
             .perform_layout => {
-                if (self.final_layout_entry) |*entry| {
-                    if (entry.key.eql(key)) return entry.content;
-                }
+                if (self.has_final_layout and self.final_layout_key.eql(key)) return self.final_layout;
                 return null;
             },
             .compute_size => {
-                for (&self.measure_entries, 0..) |*maybe_entry, index| {
-                    const entry = maybe_entry.* orelse continue;
-                    if (entry.key.kd_available_space == key.kd_available_space and
-                        std.meta.eql(entry.key.known_dimensions_are_definite, key.known_dimensions_are_definite) and
-                        (entry.key.xAxisParentSize() == key.xAxisParentSize()) and
-                        entry.key.sizeIsValidFor(key))
+                // Scan one array first: most entries differ in their known dimensions and
+                // available space, so the other arrays are only read for likely matches
+                for (self.measure_kd_available_space, 0..) |kd_available_space, index| {
+                    if (kd_available_space != key.kd_available_space) continue;
+                    const entry_key = self.measureKey(index) orelse continue;
+                    if (std.meta.eql(entry_key.known_dimensions_are_definite, key.known_dimensions_are_definite) and
+                        (entry_key.xAxisParentSize() == key.xAxisParentSize()) and
+                        entry_key.sizeIsValidFor(key))
                     {
                         self.recently_used_entries |= @as(u16, 1) << @intCast(index);
-                        return LayoutOutput.fromOuterSize(entry.content);
+                        return LayoutOutput.fromOuterSize(self.measure_sizes[index]);
                     }
                 }
 
@@ -227,7 +257,9 @@ pub const Cache = struct {
         switch (input.run_mode) {
             .perform_layout => {
                 self.is_empty = false;
-                self.final_layout_entry = .{ .key = key, .content = output };
+                self.has_final_layout = true;
+                self.final_layout_key = key;
+                self.final_layout = output;
             },
             .compute_size => {
                 // Only the size is stored
@@ -242,13 +274,13 @@ pub const Cache = struct {
                     return;
                 }
                 self.is_empty = false;
-                for (&self.measure_entries, 0..) |*maybe_entry, index| {
-                    if (maybe_entry.*) |*entry| {
-                        if (entry.key.eql(key)) {
-                            entry.content = output.size;
-                            self.recently_used_entries |= @as(u16, 1) << @intCast(index);
-                            return;
-                        }
+                for (self.measure_kd_available_space, 0..) |kd_available_space, index| {
+                    if (kd_available_space != key.kd_available_space) continue;
+                    const entry_key = self.measureKey(index) orelse continue;
+                    if (entry_key.eql(key)) {
+                        self.measure_sizes[index] = output.size;
+                        self.recently_used_entries |= @as(u16, 1) << @intCast(index);
+                        return;
                     }
                 }
                 while (self.recently_used_entries & (@as(u16, 1) << @intCast(self.next_measure_entry)) != 0) {
@@ -259,7 +291,7 @@ pub const Cache = struct {
                     }
                 }
                 const entry_index: usize = self.next_measure_entry;
-                self.measure_entries[entry_index] = .{ .key = key, .content = output.size };
+                self.setMeasureEntry(entry_index, key, output.size);
                 self.recently_used_entries |= @as(u16, 1) << @intCast(entry_index);
                 self.next_measure_entry += 1;
                 if (self.next_measure_entry == cache_size) {
@@ -276,8 +308,8 @@ pub const Cache = struct {
             return .already_empty;
         }
         self.is_empty = true;
-        self.final_layout_entry = null;
-        self.measure_entries = @splat(null);
+        self.has_final_layout = false;
+        self.occupied_entries = 0;
         self.recently_used_entries = 0;
         self.next_measure_entry = 0;
         return .cleared;
@@ -285,11 +317,7 @@ pub const Cache = struct {
 
     /// Returns true if all cache entries are null, else false
     pub fn isEmpty(self: *const Cache) bool {
-        if (self.final_layout_entry != null) return false;
-        for (self.measure_entries) |entry| {
-            if (entry != null) return false;
-        }
-        return true;
+        return !self.has_final_layout and self.occupied_entries == 0;
     }
 };
 
@@ -336,11 +364,7 @@ fn expectGet(cache: *Cache, in: LayoutInput, expected: ?LayoutOutput) !void {
 }
 
 fn countMeasureEntries(cache: *const Cache) usize {
-    var count: usize = 0;
-    for (cache.measure_entries) |entry| {
-        if (entry != null) count += 1;
-    }
-    return count;
+    return @popCount(cache.occupied_entries);
 }
 
 test "recently used measure entries get a second chance" {
@@ -386,10 +410,12 @@ test "retrieving a measurement only marks its slot as used" {
     cache.store(&testInput(1.0), testOutput(1.0));
     cache.store(&testInput(2.0), testOutput(2.0));
     cache.recently_used_entries = 0;
-    const entries = cache.measure_entries;
+    const sizes = cache.measure_sizes;
+    const occupied = cache.occupied_entries;
 
     try expectGet(&cache, testInput(1.0), testOutput(1.0));
-    try testing.expect(std.meta.eql(cache.measure_entries, entries));
+    try testing.expect(std.meta.eql(cache.measure_sizes, sizes));
+    try testing.expectEqual(occupied, cache.occupied_entries);
     try testing.expect(cache.recently_used_entries != 0);
 }
 
@@ -450,7 +476,7 @@ test "storing with a different mode drops the existing entries" {
 
         cache.store(&other, testOutput(3.0));
         try expectGet(&cache, other, testOutput(3.0));
-        try testing.expect(cache.final_layout_entry == null);
+        try testing.expect(!cache.has_final_layout);
         try testing.expectEqual(@as(usize, 1), countMeasureEntries(&cache));
 
         // The old entries are gone, even for inputs that have the mode that the cache had before
@@ -489,4 +515,9 @@ test "storing a final layout replaces the previous one" {
     try testing.expectEqual(ClearState.cleared, cache.clear());
     try testing.expectEqual(ClearState.already_empty, cache.clear());
     try testing.expect(cache.isEmpty());
+}
+
+test "the cache stays compact" {
+    // Every node of a tree holds one cache. Keep an eye on its size.
+    try testing.expect(@sizeOf(Cache) <= 352);
 }
