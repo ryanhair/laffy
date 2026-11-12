@@ -37,7 +37,7 @@ const tolerance: f32 = 0.1;
 /// Flip a flag when the algorithm lands in `TaffyTree` (the `TODO(milestone-N)` panics in
 /// `src/tree/taffy_tree.zig`).
 pub const ported = struct {
-    pub const flex = false;
+    pub const flex = true;
     pub const block = false;
     pub const grid = false;
 };

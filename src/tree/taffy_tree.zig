@@ -636,11 +636,7 @@ pub fn TaffyTree(comptime NodeContext: type) type {
                                     // (upstream `compute_block_layout(tree, node_id, inputs, None)`)
                                     @panic("block layout is not ported yet");
                                 },
-                                .flex => {
-                                    // TODO(milestone-2): replace this block with `try compute_mod.computeFlexboxLayout(tree, node_id, inputs)`
-                                    // (upstream `compute_flexbox_layout(tree, node_id, inputs)`)
-                                    @panic("flexbox layout is not ported yet");
-                                },
+                                .flex => try compute_mod.computeFlexboxLayout(tree, node_id, inputs),
                                 .grid => {
                                     // TODO(milestone-4): replace this block with `try compute_mod.computeGridLayout(tree, node_id, inputs)`
                                     // (upstream `compute_grid_layout(tree, node_id, inputs)`)
@@ -935,6 +931,28 @@ test "remove last node" {
 
     _ = taffy.remove(child);
     _ = taffy.remove(parent_node);
+}
+
+// Related to: https://github.com/DioxusLabs/taffy/issues/998
+test "remove node marks parent dirty" {
+    var taffy = try TaffyTree(void).init(testing.allocator);
+    defer taffy.deinit();
+
+    // The root's height comes entirely from its child's 1px bottom border
+    var child_style: Style = .{};
+    child_style.border = .{ .left = .length(0.0), .right = .length(0.0), .top = .length(0.0), .bottom = .length(1.0) };
+    const child = try taffy.newLeaf(child_style);
+    const root = try taffy.newWithChildren(.{}, &.{child});
+
+    try taffy.computeLayout(root, Size(AvailableSpace).min_content);
+    try testing.expectEqual(@as(f32, 1.0), taffy.layout(root).size.height);
+
+    _ = taffy.remove(child);
+    try testing.expect(taffy.dirty(root));
+
+    // The root no longer has any children, so its height should shrink back to zero
+    try taffy.computeLayout(root, Size(AvailableSpace).min_content);
+    try testing.expectEqual(@as(f32, 0.0), taffy.layout(root).size.height);
 }
 
 test "set measure" {
@@ -1237,6 +1255,31 @@ test "mark dirty on leaves" {
     try testing.expect(taffy.dirty(parent_node));
 }
 
+test "test mark dirty" {
+    var taffy = try TaffyTree(void).init(testing.allocator);
+    defer taffy.deinit();
+    const child0 = try taffy.newLeaf(.{});
+    const child1 = try taffy.newLeaf(.{});
+    const node = try taffy.newWithChildren(.{}, &.{ child0, child1 });
+
+    try taffy.computeLayout(node, Size(AvailableSpace).max_content);
+
+    try testing.expect(!taffy.dirty(child0));
+    try testing.expect(!taffy.dirty(child1));
+    try testing.expect(!taffy.dirty(node));
+
+    taffy.markDirty(node);
+    try testing.expect(!taffy.dirty(child0));
+    try testing.expect(!taffy.dirty(child1));
+    try testing.expect(taffy.dirty(node));
+
+    try taffy.computeLayout(node, Size(AvailableSpace).max_content);
+    taffy.markDirty(child0);
+    try testing.expect(taffy.dirty(child0));
+    try testing.expect(!taffy.dirty(child1));
+    try testing.expect(taffy.dirty(node));
+}
+
 test "compute layout should produce valid result" {
     var taffy = try TaffyTree(void).init(testing.allocator);
     defer taffy.deinit();
@@ -1245,6 +1288,34 @@ test "compute layout should produce valid result" {
     });
     try taffy.computeLayout(node, .{ .width = .{ .definite = 100.0 }, .height = .{ .definite = 100.0 } });
     try testing.expectEqual(Size(f32){ .width = 10.0, .height = 10.0 }, taffy.layout(node).size);
+}
+
+test "make sure layout location is top left" {
+    var taffy = try TaffyTree(void).init(testing.allocator);
+    defer taffy.deinit();
+
+    const node = try taffy.newLeaf(.{
+        .size = .{ .width = Dimension.fromPercent(1.0), .height = Dimension.fromPercent(1.0) },
+    });
+
+    const root = try taffy.newWithChildren(.{
+        .size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.fromLength(100.0) },
+        .padding = .{ .left = .length(10.0), .right = .length(20.0), .top = .length(30.0), .bottom = .length(40.0) },
+    }, &.{node});
+
+    try taffy.computeLayout(root, Size(AvailableSpace).max_content);
+
+    // If Layout.location represents top-left coord, 'node' location
+    // must be (due applied 'root' padding): {x: 10, y: 30}.
+    //
+    // It's important, since result will be different for each other
+    // coordinate space:
+    // - bottom-left:  {x: 10, y: 40}
+    // - top-right:    {x: 20, y: 30}
+    // - bottom-right: {x: 20, y: 40}
+    const l = taffy.layout(node);
+    try testing.expectEqual(@as(f32, 10.0), l.location.x);
+    try testing.expectEqual(@as(f32, 30.0), l.location.y);
 }
 
 test "set children reparents" {

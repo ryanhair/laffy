@@ -8,7 +8,7 @@
 //!
 //! | Function                 | Purpose                                                                                                                                                                                            |
 //! | ---                      | ---                                                                                                                                                                                                |
-//! | `computeFlexboxLayout`   | Layout a Flexbox container and it's direct children (not ported yet)                                                                                                                               |
+//! | `computeFlexboxLayout`   | Layout a Flexbox container and it's direct children                                                                                                                                                |
 //! | `computeGridLayout`      | Layout a CSS Grid container and it's direct children (not ported yet)                                                                                                                              |
 //! | `computeBlockLayout`     | Layout a Block container and it's direct children (not ported yet)                                                                                                                                 |
 //! | `computeLeafLayout`      | Applies common properties like padding/border/aspect-ratio to a node before deferring to a passed measure function to determine it's size. Can be applied to nodes like text or image nodes.      |
@@ -61,9 +61,11 @@ pub const common = struct {
     pub const scrollable_overflow = @import("compute/common/scrollable_overflow.zig");
     pub const sizing_keyword = @import("compute/common/sizing_keyword.zig");
 };
+pub const flexbox = @import("compute/flexbox.zig");
 pub const leaf = @import("compute/leaf.zig");
 pub const oof = @import("compute/oof.zig");
 
+pub const computeFlexboxLayout = flexbox.computeFlexboxLayout;
 pub const computeLeafLayout = leaf.computeLeafLayout;
 pub const computeOofLayout = oof.computeOofLayout;
 pub const computeOofLayoutForArea = oof.computeOofLayoutForArea;

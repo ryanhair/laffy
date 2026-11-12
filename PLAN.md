@@ -65,6 +65,8 @@ decisions behind the port and the milestone roadmap.
 
 - Flexbox algorithm, out-of-flow positioning, alignment, scrollable overflow.
 - Gate: `flex` 2,760/2,760.
+- Status: algorithm done. `flex` 2,696 pass, 0 fail; `leaf` 60/60. The other 64 flex fixtures
+  contain block or grid containers and run once those are ported.
 
 ### 3. Block and float
 

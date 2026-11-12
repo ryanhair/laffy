@@ -98,6 +98,7 @@ pub const resolveOrZero = util.resolveOrZero;
 
 // compute (upstream `pub use crate::compute::{...}`)
 pub const computeCachedLayout = compute.computeCachedLayout;
+pub const computeFlexboxLayout = compute.computeFlexboxLayout;
 pub const computeHiddenLayout = compute.computeHiddenLayout;
 pub const computeLeafLayout = compute.computeLeafLayout;
 pub const computeOofLayout = compute.computeOofLayout;
