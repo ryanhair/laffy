@@ -9,7 +9,7 @@
 //! | Function                 | Purpose                                                                                                                                                                                            |
 //! | ---                      | ---                                                                                                                                                                                                |
 //! | `computeFlexboxLayout`   | Layout a Flexbox container and it's direct children                                                                                                                                                |
-//! | `computeGridLayout`      | Layout a CSS Grid container and it's direct children (not ported yet)                                                                                                                              |
+//! | `computeGridLayout`      | Layout a CSS Grid container and it's direct children                                                                                                                                               |
 //! | `computeBlockLayout`     | Layout a Block container and it's direct children                                                                                                                                                  |
 //! | `computeLeafLayout`      | Applies common properties like padding/border/aspect-ratio to a node before deferring to a passed measure function to determine it's size. Can be applied to nodes like text or image nodes.      |
 //! | `computeRootLayout`      | Layout the root node of a tree (regardless of it's layout mode). This function is typically called once to begin a layout run.                                                                     |
@@ -64,6 +64,7 @@ pub const common = struct {
 pub const block = @import("compute/block.zig");
 pub const flexbox = @import("compute/flexbox.zig");
 pub const float = @import("compute/float.zig");
+pub const grid = @import("compute/grid.zig");
 pub const leaf = @import("compute/leaf.zig");
 pub const oof = @import("compute/oof.zig");
 
@@ -77,6 +78,7 @@ pub const ContentSlot = float.ContentSlot;
 pub const FloatContext = float.FloatContext;
 pub const FloatIntrinsicWidthCalculator = float.FloatIntrinsicWidthCalculator;
 pub const computeFlexboxLayout = flexbox.computeFlexboxLayout;
+pub const computeGridLayout = grid.computeGridLayout;
 pub const computeLeafLayout = leaf.computeLeafLayout;
 pub const computeOofLayout = oof.computeOofLayout;
 pub const computeOofLayoutForArea = oof.computeOofLayoutForArea;
@@ -85,8 +87,11 @@ pub const OofLayoutResult = oof.OofLayoutResult;
 
 /// A module for unified re-exports of detailed layout info structs, used by low level API
 pub const detailed_info = struct {
-    // TODO(milestone-4): re-export `DetailedGridInfo`, `DetailedGridItemsInfo`,
-    // `DetailedGridTracksInfo`, `GridLineNames` from `compute/grid.zig`.
+    pub const DetailedGridInfo = grid.DetailedGridInfo;
+    pub const DetailedGridItemsInfo = grid.DetailedGridItemsInfo;
+    pub const DetailedGridTracksInfo = grid.DetailedGridTracksInfo;
+    pub const GridLineNames = grid.GridLineNames;
+    pub const GridLineNamesIter = grid.GridLineNamesIter;
 };
 
 /// Compute layout for the root node in the tree

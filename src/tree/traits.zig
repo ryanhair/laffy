@@ -152,11 +152,14 @@
 //!   - `getGridContainerStyle(self, node_id: NodeId) GridContainerStyle`: required.
 //!   - `getGridChildStyle(self, child_node_id: NodeId) GridItemStyle`: required. Interpreted in
 //!     the container's axes.
-//!   - `setDetailedGridInfo(self, node_id: NodeId, detailed_grid_info: DetailedGridInfo) void`:
+//!   - `setDetailedGridInfo(self, node_id: NodeId, detailed_grid_info: DetailedGridInfo) LayoutError!void`:
 //!     default (`LayoutGridContainerDefaults.setDetailedGridInfo`, discards the info). Optional
 //!     upstream; implementing it gives access to the computed size of each grid track and the
-//!     placement of each grid item. `DetailedGridInfo` (and whether this needs an allocator or
-//!     an error union) is defined by the grid milestone; until then the default takes `anytype`.
+//!     placement of each grid item. The tree takes ownership of `detailed_grid_info` (allocated
+//!     with `self.allocator()`) in all cases, including when it returns an error: it must free
+//!     the info with `DetailedGridInfo.deinit` when discarding or replacing it. (Upstream boxes
+//!     the info, which is why storing it may need an allocation.) The info borrows line and
+//!     area names from the grid container's style.
 //!
 //! ## LayoutBlockContainer (requires LayoutPartialTree)
 //!
@@ -188,6 +191,7 @@ const SizingMode = layout.SizingMode;
 const RequestedAxis = layout.RequestedAxis;
 const NodeId = @import("node.zig").NodeId;
 const BlockContext = @import("../compute/block.zig").BlockContext;
+const DetailedGridInfo = @import("../compute/grid.zig").DetailedGridInfo;
 
 // --- Default method bodies
 
@@ -218,11 +222,11 @@ pub const LayoutContainingBlockDefaults = struct {
 
 /// Default methods of `LayoutGridContainer`
 pub const LayoutGridContainerDefaults = struct {
-    /// Set the node's detailed grid information (default: discard it)
-    pub fn setDetailedGridInfo(self: anytype, node_id: NodeId, detailed_grid_info: anytype) void {
-        _ = self;
+    /// Set the node's detailed grid information (default: discard (free) it)
+    pub fn setDetailedGridInfo(self: anytype, node_id: NodeId, detailed_grid_info: DetailedGridInfo) LayoutError!void {
         _ = node_id;
-        _ = detailed_grid_info;
+        var info = detailed_grid_info;
+        info.deinit(self.allocator());
     }
 };
 
@@ -380,12 +384,18 @@ test "interface method lists" {
         pub const resolveCalcValue = LayoutPartialTreeDefaults.resolveCalcValue;
         pub const getDetailedLayoutInfo = LayoutContainingBlockDefaults.getDetailedLayoutInfo;
         pub const setDetailedGridInfo = LayoutGridContainerDefaults.setDetailedGridInfo;
+        pub fn allocator(_: *const @This()) std.mem.Allocator {
+            return std.testing.allocator;
+        }
     };
     var dummy: Dummy = .{};
     var x: u8 = 0;
     try std.testing.expectEqual(@as(f32, 0.0), dummy.resolveCalcValue(@ptrCast(&x), 10.0));
     try std.testing.expectEqual(@as(f32, 0.0), calc(&dummy, @ptrCast(&x), 10.0));
     try std.testing.expect(dummy.getDetailedLayoutInfo(NodeId.new(0)).* == .none);
-    dummy.setDetailedGridInfo(NodeId.new(0), {});
+    // The default takes ownership of the info and frees it
+    var info: DetailedGridInfo = .{};
+    info.items = try std.testing.allocator.alloc(@import("../compute/grid.zig").DetailedGridItemsInfo, 1);
+    try dummy.setDetailedGridInfo(NodeId.new(0), info);
     try std.testing.expect(TreeType(*Dummy) == Dummy);
 }

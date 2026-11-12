@@ -25,6 +25,7 @@ const Display = style_mod.Display;
 const Style = style_mod.Style;
 const layout_mod = @import("layout.zig");
 const DetailedLayoutInfo = layout_mod.DetailedLayoutInfo;
+const DetailedGridInfo = @import("../compute/grid.zig").DetailedGridInfo;
 const Layout = layout_mod.Layout;
 const LayoutError = layout_mod.LayoutError;
 const LayoutInput = layout_mod.LayoutInput;
@@ -127,6 +128,7 @@ pub fn TaffyTree(comptime NodeContext: type) type {
                 self.children.deinit(gpa);
                 self.hoisted_children.deinit(gpa);
                 self.cache.deinit(gpa);
+                self.detailed_layout_info.deinit(gpa);
             }
         };
 
@@ -628,11 +630,7 @@ pub fn TaffyTree(comptime NodeContext: type) type {
                             .block => try compute_mod.computeBlockLayout(tree, node_id, inputs, uncached.block_ctx),
                             .flow_root => try compute_mod.computeBlockLayout(tree, node_id, inputs, null),
                             .flex => try compute_mod.computeFlexboxLayout(tree, node_id, inputs),
-                            .grid => {
-                                // TODO(milestone-4): replace this block with `try compute_mod.computeGridLayout(tree, node_id, inputs)`
-                                // (upstream `compute_grid_layout(tree, node_id, inputs)`)
-                                @panic("grid layout is not ported yet");
-                            },
+                            .grid => try compute_mod.computeGridLayout(tree, node_id, inputs),
                             .none => unreachable,
                         } else blk: {
                             const node_context: ?*NodeContext = if (node.context) |*context| context else null;
@@ -758,9 +756,20 @@ pub fn TaffyTree(comptime NodeContext: type) type {
                     return &self.taffy.nodeData(child_node_id).style;
                 }
 
-                // TODO(milestone-4): store the info as `DetailedLayoutInfo.grid` (upstream
-                // `DetailedLayoutInfo::Grid(Box::new(detailed_grid_info))`).
-                pub const setDetailedGridInfo = @import("traits.zig").LayoutGridContainerDefaults.setDetailedGridInfo;
+                /// Store the node's detailed grid info (upstream `DetailedLayoutInfo::Grid(Box::new(detailed_grid_info))`),
+                /// freeing any previously stored info. Takes ownership of `detailed_grid_info` even on error.
+                pub fn setDetailedGridInfo(self: *ViewSelf, node_id: NodeId, detailed_grid_info: DetailedGridInfo) LayoutError!void {
+                    const gpa = self.taffy.gpa;
+                    var info = detailed_grid_info;
+                    const boxed = gpa.create(DetailedGridInfo) catch |err| {
+                        info.deinit(gpa);
+                        return err;
+                    };
+                    boxed.* = info;
+                    const data = self.taffy.nodeData(node_id);
+                    data.detailed_layout_info.deinit(gpa);
+                    data.detailed_layout_info = .{ .grid = boxed };
+                }
 
                 // RoundTree
 
@@ -1421,7 +1430,13 @@ test "the layout view implements every interface method" {
     try testing.expect(view.getGridChildStyle(child) == taffy.style(child));
     try testing.expect(view.getOofItemStyle(child) == taffy.style(child));
     try testing.expect(view.getDetailedLayoutInfo(root).* == .none);
-    view.setDetailedGridInfo(root, {});
+    // Detailed grid info is stored (replacing and freeing any previous info) and freed with the node
+    try view.setDetailedGridInfo(root, .{});
+    try testing.expect(view.getDetailedLayoutInfo(root).* == .grid);
+    var info: DetailedGridInfo = .{};
+    info.items = try testing.allocator.alloc(@import("../compute/grid.zig").DetailedGridItemsInfo, 2);
+    try view.setDetailedGridInfo(root, info);
+    try testing.expectEqual(@as(usize, 2), taffy.detailedLayoutInfo(root).grid.items.len);
     try testing.expectEqual(@as(f32, 0.0), traits.calc(&view, @ptrCast(&view), 1.0));
     try testing.expect(!view.isOutOfFlow(child));
 

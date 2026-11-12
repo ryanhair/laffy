@@ -8,7 +8,8 @@
 //!   - node ids, `location` and `size` agree within 0.1 on every axis;
 //!   - `scroll_width`/`scroll_height` are compared (within 0.1) only when the fixture gives both;
 //!   - `resolved-rows`/`resolved-columns` are compared only when the fixture gives them and the
-//!     tree reports them (grid detailed layout info is not ported yet, so they are skipped);
+//!     tree reports them (grid containers, through their detailed grid info): line names exactly,
+//!     track sizes within 0.1;
 //!   - children are compared pairwise and must have the same length.
 //!
 //! The actual tree is read through `TaffyTree.children`, exactly like upstream, so hoisted
@@ -39,7 +40,7 @@ const tolerance: f32 = 0.1;
 pub const ported = struct {
     pub const flex = true;
     pub const block = true;
-    pub const grid = false;
+    pub const grid = true;
 };
 
 /// Directory holding the fixtures, relative to the project root.
@@ -314,12 +315,15 @@ const Builder = struct {
         const scroll_size: Size(f32) = .{ .width = layout.scrollWidth(), .height = layout.scrollHeight() };
         var rows: ?[]const u8 = null;
         var columns: ?[]const u8 = null;
+        // Upstream `get_resolved_track_lists`: the resolved value of grid-template-rows/columns for
+        // grid containers, as exposed through `DetailedGridInfo`
         switch (self.tree.detailedLayoutInfo(node_id).*) {
-            // TODO(milestone-4): `.grid` => rows/columns from `grid_template_rows(1.0)` / `grid_template_columns(1.0)`
+            .grid => |info| {
+                rows = try info.gridTemplateRows(self.arena, 1.0);
+                columns = try info.gridTemplateColumns(self.arena, 1.0);
+            },
             .none => {},
         }
-        _ = &rows;
-        _ = &columns;
         var output: OutputNode = .{
             .node_id = node_id,
             .location = layout.location,

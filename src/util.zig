@@ -8,6 +8,8 @@ pub const resolve = @import("util/resolve.zig");
 pub const sys = @import("util/sys.zig");
 pub const print = @import("util/print.zig");
 pub const slot_map = @import("util/slot_map.zig");
+pub const front_back_vec_builder = @import("util/front_back_vec_builder.zig");
+pub const FrontBackVecBuilder = front_back_vec_builder.FrontBackVecBuilder;
 
 pub const maybeMin = math.maybeMin;
 pub const maybeMax = math.maybeMax;
@@ -30,4 +32,5 @@ test {
     _ = sys;
     _ = print;
     _ = slot_map;
+    _ = front_back_vec_builder;
 }

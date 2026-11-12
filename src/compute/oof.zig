@@ -539,15 +539,26 @@ pub fn layoutOofBox(
     // If the current node is a grid container then the box is positioned relative to the
     // grid area determined by its grid-placement properties (which falls back to the passed
     // area for `auto` placement)
-    // (`var` once the grid branch below is ported)
-    const area_size = passed_area_size;
-    const area_offset = passed_area_offset;
+    var area_size = passed_area_size;
+    var area_offset = passed_area_offset;
     if (grid_owner) |owner| {
         switch (tree.getDetailedLayoutInfo(owner).*) {
-            // TODO(milestone-4): handle `.grid` (upstream `DetailedLayoutInfo::Grid`): build
-            // `area_rect` from `area_offset`/`area_size`, call
-            // `grid_info.resolveAbsoluteGridArea(child_style.getGridRow(), child_style.getGridColumn(), direction, area_rect)`
-            // and use the resulting rectangle's size and top-left corner as `area_size`/`area_offset`.
+            .grid => |grid_info| {
+                const area_rect: Rect(f32) = .{
+                    .left = area_offset.x,
+                    .right = area_offset.x + area_size.width,
+                    .top = area_offset.y,
+                    .bottom = area_offset.y + area_size.height,
+                };
+                const grid_area = grid_info.resolveAbsoluteGridArea(
+                    child_style.getGridRow(),
+                    child_style.getGridColumn(),
+                    direction,
+                    area_rect,
+                );
+                area_size = .{ .width = grid_area.right - grid_area.left, .height = grid_area.bottom - grid_area.top };
+                area_offset = .{ .x = grid_area.left, .y = grid_area.top };
+            },
             .none => {},
         }
     }

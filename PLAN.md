@@ -58,27 +58,25 @@ decisions behind the port and the milestone roadmap.
 - Harness: minimal XML reader, CSS value parser, port of the test measure function (Ahem text,
   fixed and aspect-ratio nodes), runner that reports pass counts per group.
 - Gate: `leaf` 60/60.
-- Status: done. `leaf` is 56/60; the remaining 4 fixtures have a flex container and run once
-  flexbox is ported.
+- Status: done. `leaf` 60/60.
 
 ### 2. Flexbox
 
 - Flexbox algorithm, out-of-flow positioning, alignment, scrollable overflow.
 - Gate: `flex` 2,760/2,760.
-- Status: algorithm done. `flex` 2,696 pass, 0 fail; `leaf` 60/60. The other 64 flex fixtures
-  contain block or grid containers and run once those are ported.
+- Status: done. `flex` 2,760/2,760.
 
 ### 3. Block and float
 
 - Gate: `block` 1,124, `float` 192, `blockflex` 52.
-- Status: algorithms done. `block` 1,116, `float` 184, `blockflex` 52/52, `contain` 32/32, 0 fail.
-  The 16 skipped block and float fixtures contain grid containers.
+- Status: done. `block` 1,124/1,124, `float` 192/192, `blockflex` 52/52.
 
 ### 4. Grid
 
 - Placement, explicit and implicit grid, named lines and areas, track sizing, alignment, detailed
   grid info.
 - Gate: `grid` 2,368, `blockgrid` 56, `gridflex` 44, `contain` 32.
+- Status: done. All four groups pass in full; all 6,688 fixtures pass.
 
 ### 5. Hand-written tests
 

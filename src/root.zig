@@ -101,6 +101,7 @@ pub const computeBlockAlignContentOffset = compute.computeBlockAlignContentOffse
 pub const computeBlockLayout = compute.computeBlockLayout;
 pub const computeCachedLayout = compute.computeCachedLayout;
 pub const computeFlexboxLayout = compute.computeFlexboxLayout;
+pub const computeGridLayout = compute.computeGridLayout;
 pub const computeHiddenLayout = compute.computeHiddenLayout;
 pub const computeLeafLayout = compute.computeLeafLayout;
 pub const computeOofLayout = compute.computeOofLayout;
@@ -117,6 +118,11 @@ pub const ContentSlot = compute.ContentSlot;
 pub const FloatContext = compute.FloatContext;
 pub const FloatIntrinsicWidthCalculator = compute.FloatIntrinsicWidthCalculator;
 pub const detailed_info = compute.detailed_info;
+pub const DetailedGridInfo = compute.detailed_info.DetailedGridInfo;
+pub const DetailedGridItemsInfo = compute.detailed_info.DetailedGridItemsInfo;
+pub const DetailedGridTracksInfo = compute.detailed_info.DetailedGridTracksInfo;
+pub const GridLineNames = compute.detailed_info.GridLineNames;
+pub const GridLineNamesIter = compute.detailed_info.GridLineNamesIter;
 
 // tree (upstream `pub use crate::tree::*` and `pub use crate::tree::traits::*`)
 pub const traits = tree.traits;

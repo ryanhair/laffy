@@ -801,12 +801,30 @@ pub const Layout = struct {
 /// The additional information from layout algorithm
 ///
 /// Upstream is generic over the custom identifier string type; laffy uses `[]const u8` names.
-// TODO(milestone-4): add the `grid` variant (upstream `Grid(Box<DetailedGridInfo>)`) when the
-// grid algorithm is ported, together with its ownership rules.
+///
+/// Ownership: the `grid` variant owns its boxed `DetailedGridInfo` (allocated with the tree's
+/// allocator, see `LayoutGridContainer.setDetailedGridInfo` in `traits.zig`); free it with
+/// `deinit`. The line and area names it holds are borrowed from the grid container's style.
 pub const DetailedLayoutInfo = union(enum) {
     /// For node that hasn't had any detailed information yet
     none,
+    /// Enum variant for `DetailedGridInfo`
+    grid: *DetailedGridInfo,
+
+    /// Free the info's memory (and reset it to `.none`)
+    pub fn deinit(self: *DetailedLayoutInfo, gpa: Allocator) void {
+        switch (self.*) {
+            .none => {},
+            .grid => |info| {
+                info.deinit(gpa);
+                gpa.destroy(info);
+            },
+        }
+        self.* = .none;
+    }
 };
+
+const DetailedGridInfo = @import("../compute/grid.zig").DetailedGridInfo;
 
 // ---------------------------------------------------------------------------------------------
 // Tests
