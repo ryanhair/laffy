@@ -21,8 +21,6 @@ const FlexWrap = laffy.FlexWrap;
 const Dimension = laffy.Dimension;
 const LengthPercentageAuto = laffy.LengthPercentageAuto;
 const AvailableSpace = laffy.AvailableSpace;
-const length = laffy.style_helpers.length;
-const auto = laffy.style_helpers.auto;
 const TaffyTree = laffy.TaffyTree(measure.TestNodeContext);
 
 const CONTAINER: f32 = 200.0;
@@ -33,7 +31,7 @@ const directions = [_]Direction{ .ltr, .rtl };
 const flex_directions = [_]FlexDirection{ .row, .row_reverse, .column, .column_reverse };
 
 fn dim(v: f32) Dimension {
-    return length(Dimension, v);
+    return Dimension.fromLength(v);
 }
 
 fn lpa(v: f32) LengthPercentageAuto {
@@ -144,10 +142,10 @@ fn containerWithAbsoluteChild(
     const child = try tree.newLeaf(.{
         .position = .absolute,
         .inset = .{
-            .left = if (inset_left) |v| lpa(v) else auto(LengthPercentageAuto),
-            .right = if (inset_right) |v| lpa(v) else auto(LengthPercentageAuto),
+            .left = if (inset_left) |v| lpa(v) else LengthPercentageAuto.auto,
+            .right = if (inset_right) |v| lpa(v) else LengthPercentageAuto.auto,
             .top = lpa(0.0),
-            .bottom = auto(LengthPercentageAuto),
+            .bottom = LengthPercentageAuto.auto,
         },
         .size = size(CHILD, CHILD),
     });
@@ -214,7 +212,7 @@ test "absolute_only_containers_include_scroll_container_end_padding" {
         defer tree.deinit();
         const abs = try tree.newLeaf(.{
             .position = .absolute,
-            .inset = .{ .left = lpa(0.0), .right = auto(LengthPercentageAuto), .top = lpa(0.0), .bottom = auto(LengthPercentageAuto) },
+            .inset = .{ .left = lpa(0.0), .right = LengthPercentageAuto.auto, .top = lpa(0.0), .bottom = LengthPercentageAuto.auto },
             .size = size(5.0, 5.0),
         });
         const node = try tree.newWithChildren(
@@ -247,7 +245,7 @@ fn nestedOverflowLayout(display: Display, child_overflow: Point(Overflow)) !Layo
     // Grandchild overflowing the child in the y axis (extends to y=300 in a 200-high child)
     const grandchild = try tree.newLeaf(.{
         .position = .absolute,
-        .inset = .{ .left = lpa(0.0), .right = auto(LengthPercentageAuto), .top = lpa(CONTAINER), .bottom = auto(LengthPercentageAuto) },
+        .inset = .{ .left = lpa(0.0), .right = LengthPercentageAuto.auto, .top = lpa(CONTAINER), .bottom = LengthPercentageAuto.auto },
         .size = size(CHILD, CHILD),
     });
     const child = try tree.newWithChildren(
@@ -452,8 +450,8 @@ test "reversed_flex_origins_clip_unreachable_absolute_overflow" {
                 .inset = .{
                     .left = lpa(if (row) offset else 0.0),
                     .top = lpa(if (row) 0.0 else offset),
-                    .right = auto(LengthPercentageAuto),
-                    .bottom = auto(LengthPercentageAuto),
+                    .right = LengthPercentageAuto.auto,
+                    .bottom = LengthPercentageAuto.auto,
                 },
                 .size = size(CHILD, CHILD),
             });

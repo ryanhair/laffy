@@ -16,7 +16,6 @@ const Overflow = laffy.Overflow;
 const Dimension = laffy.Dimension;
 const LengthPercentage = laffy.LengthPercentage;
 const AvailableSpace = laffy.AvailableSpace;
-const length = laffy.style_helpers.length;
 const TestNodeContext = measure.TestNodeContext;
 const TaffyTree = laffy.TaffyTree(TestNodeContext);
 
@@ -30,12 +29,12 @@ const displays = [_]Display{ .block, .flex, .grid };
 fn scrollerWithPadding(display: Display, border: Rect(LengthPercentage), padding: Rect(LengthPercentage)) !Layout {
     var tree = try TaffyTree.init(testing.allocator);
     defer tree.deinit();
-    const child = try tree.newLeaf(.{ .size = .{ .width = length(Dimension, 100.0), .height = length(Dimension, CONTENT) } });
+    const child = try tree.newLeaf(.{ .size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.fromLength(CONTENT) } });
     const node = try tree.newWithChildren(
         .{
             .display = display,
             .box_sizing = .border_box,
-            .size = .{ .width = length(Dimension, 300.0), .height = length(Dimension, CONTAINER) },
+            .size = .{ .width = Dimension.fromLength(300.0), .height = Dimension.fromLength(CONTAINER) },
             .border = border,
             .padding = padding,
             .overflow = .{ .x = .scroll, .y = .scroll },
@@ -118,12 +117,12 @@ test "scrollable_overflow_excludes_the_own_padding_of_a_non_scroll_container" {
             const bottom = pair[1];
             var tree = try TaffyTree.init(testing.allocator);
             defer tree.deinit();
-            const child = try tree.newLeaf(.{ .size = .{ .width = length(Dimension, 100.0), .height = length(Dimension, CONTENT) } });
+            const child = try tree.newLeaf(.{ .size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.fromLength(CONTENT) } });
             const node = try tree.newWithChildren(
                 .{
                     .display = display,
                     .box_sizing = .border_box,
-                    .size = .{ .width = length(Dimension, 300.0), .height = length(Dimension, CONTAINER) },
+                    .size = .{ .width = Dimension.fromLength(300.0), .height = Dimension.fromLength(CONTAINER) },
                     .padding = edge(top, bottom),
                 },
                 &.{child},
@@ -145,7 +144,7 @@ fn measuredLeaf(overflow: Overflow, padding: Rect(LengthPercentage)) !Layout {
     const node = try tree.newLeafWithContext(
         .{
             .box_sizing = .border_box,
-            .size = .{ .width = length(Dimension, 300.0), .height = length(Dimension, CONTAINER) },
+            .size = .{ .width = Dimension.fromLength(300.0), .height = Dimension.fromLength(CONTAINER) },
             .padding = padding,
             .overflow = .{ .x = overflow, .y = overflow },
         },
@@ -198,13 +197,13 @@ test "scroll_height_accounts_for_the_containers_own_padding" {
 test "grid_scrollable_overflow_includes_item_positions_in_overflowing_tracks" {
     var tree = try TaffyTree.init(testing.allocator);
     defer tree.deinit();
-    const child_style: Style = .{ .size = .{ .width = length(Dimension, 100.0), .height = length(Dimension, 500.0) } };
+    const child_style: Style = .{ .size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.fromLength(500.0) } };
     const c1 = try tree.newLeaf(child_style);
     const c2 = try tree.newLeaf(child_style);
     const node = try tree.newWithChildren(
         .{
             .display = .grid,
-            .size = .{ .width = length(Dimension, 300.0), .height = length(Dimension, CONTAINER) },
+            .size = .{ .width = Dimension.fromLength(300.0), .height = Dimension.fromLength(CONTAINER) },
             .overflow = .{ .x = .scroll, .y = .scroll },
         },
         &.{ c1, c2 },

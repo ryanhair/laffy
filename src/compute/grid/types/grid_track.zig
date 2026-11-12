@@ -137,7 +137,7 @@ pub const GridTrack = struct {
 
     /// Returns the track's growth limit, capped by its `fit-content()` limit (if any)
     pub inline fn fitContentLimitedGrowthLimit(self: *const GridTrack) f32 {
-        return sys.f32Min(self.growth_limit, self.fit_content_limit);
+        return @min(self.growth_limit, self.fit_content_limit);
     }
 
     /// Returns the track's flex factor if it is a flex track, else 0.

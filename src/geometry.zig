@@ -13,7 +13,7 @@
 //! where a closure would capture state, write the code explicitly at the call site instead.
 const std = @import("std");
 const sys = @import("util/sys.zig");
-const style_helpers = @import("style_helpers.zig");
+const toF32 = @import("style/compact_length.zig").toF32;
 const FlexDirection = @import("style/flex.zig").FlexDirection;
 const LengthPercentage = @import("style/dimension.zig").LengthPercentage;
 
@@ -271,21 +271,21 @@ pub fn Rect(comptime T: type) type {
         // FromLength, FromPercent)
 
         /// A Rect where all sides are the zero value of the contained type (e.g. 0.0, 0.0 or Dimension.zero)
-        pub const zero: Self = all(style_helpers.zero(T));
+        pub const zero: Self = all(elementZero(T));
         /// A Rect where all sides are the auto value of the contained type
-        pub const auto: Self = all(style_helpers.auto(T));
+        pub const auto: Self = all(elementAuto(T));
         /// A Rect where all sides are the min_content value of the contained type
-        pub const min_content: Self = all(style_helpers.minContent(T));
+        pub const min_content: Self = all(elementMinContent(T));
         /// A Rect where all sides are the max_content value of the contained type
-        pub const max_content: Self = all(style_helpers.maxContent(T));
+        pub const max_content: Self = all(elementMaxContent(T));
 
         /// A Rect where all sides are the same `fit-content(…)` value with the given argument
         pub inline fn fitContent(argument: LengthPercentage) Self {
-            return all(style_helpers.fitContent(T, argument));
+            return all(elementFitContent(T, argument));
         }
         /// A Rect where all sides are the same given absolute length (upstream `FromLength`)
         pub inline fn fromLength(value: anytype) Self {
-            return all(style_helpers.length(T, value));
+            return all(elementLength(T, value));
         }
         /// A Rect where all sides are the same given absolute length (upstream `Rect::length`)
         pub inline fn length(value: anytype) Self {
@@ -293,7 +293,7 @@ pub fn Rect(comptime T: type) type {
         }
         /// A Rect where all sides are the same given percentage (upstream `FromPercent`)
         pub inline fn fromPercent(value: anytype) Self {
-            return all(style_helpers.percent(T, value));
+            return all(elementPercent(T, value));
         }
         /// A Rect where all sides are the same given percentage (upstream `Rect::percent`)
         pub inline fn percent(value: anytype) Self {
@@ -338,21 +338,21 @@ pub fn Line(comptime T: type) type {
         // style_helpers
 
         /// A Line where both start and end are the zero value of the contained type
-        pub const zero: Self = both(style_helpers.zero(T));
+        pub const zero: Self = both(elementZero(T));
         /// A Line where both start and end are the auto value of the contained type
-        pub const auto: Self = both(style_helpers.auto(T));
+        pub const auto: Self = both(elementAuto(T));
         /// A Line where both start and end are the min_content value of the contained type
-        pub const min_content: Self = both(style_helpers.minContent(T));
+        pub const min_content: Self = both(elementMinContent(T));
         /// A Line where both start and end are the max_content value of the contained type
-        pub const max_content: Self = both(style_helpers.maxContent(T));
+        pub const max_content: Self = both(elementMaxContent(T));
 
         /// A Line with start and end set to the same `fit-content(…)` value with the given argument
         pub inline fn fitContent(argument: LengthPercentage) Self {
-            return both(style_helpers.fitContent(T, argument));
+            return both(elementFitContent(T, argument));
         }
         /// A Line where both start and end are the same given absolute length (upstream `FromLength`)
         pub inline fn fromLength(value: anytype) Self {
-            return both(style_helpers.length(T, value));
+            return both(elementLength(T, value));
         }
         /// A Line where both start and end are the same given absolute length (upstream `Line::length`)
         pub inline fn length(value: anytype) Self {
@@ -360,7 +360,7 @@ pub fn Line(comptime T: type) type {
         }
         /// A Line where both start and end are the same given percentage (upstream `FromPercent`)
         pub inline fn fromPercent(value: anytype) Self {
-            return both(style_helpers.percent(T, value));
+            return both(elementPercent(T, value));
         }
         /// A Line where both start and end are the same given percentage (upstream `Line::percent`)
         pub inline fn percent(value: anytype) Self {
@@ -458,7 +458,7 @@ pub const FloatInsets = struct {
 
     /// The larger of the two insets on each side
     pub inline fn max(self: FloatInsets, other: FloatInsets) FloatInsets {
-        return .{ .left = sys.f32Max(self.left, other.left), .right = sys.f32Max(self.right, other.right) };
+        return .{ .left = @max(self.left, other.left), .right = @max(self.right, other.right) };
     }
 
     /// Component-wise addition (upstream `Add` impl)
@@ -655,14 +655,14 @@ pub fn Size(comptime T: type) type {
 
         // `Size<f32>` helpers
 
-        /// Applies f32Max to each component separately (`Size(f32)` only)
-        pub inline fn f32Max(self: Self, rhs: Self) Self {
-            return .{ .width = sys.f32Max(self.width, rhs.width), .height = sys.f32Max(self.height, rhs.height) };
+        /// Applies `@max` to each component separately (`Size(f32)` only)
+        pub inline fn max(self: Self, rhs: Self) Self {
+            return .{ .width = @max(self.width, rhs.width), .height = @max(self.height, rhs.height) };
         }
 
-        /// Applies f32Min to each component separately (`Size(f32)` only)
-        pub inline fn f32Min(self: Self, rhs: Self) Self {
-            return .{ .width = sys.f32Min(self.width, rhs.width), .height = sys.f32Min(self.height, rhs.height) };
+        /// Applies `@min` to each component separately (`Size(f32)` only)
+        pub inline fn min(self: Self, rhs: Self) Self {
+            return .{ .width = @min(self.width, rhs.width), .height = @min(self.height, rhs.height) };
         }
 
         /// Return true if both width and height are greater than 0 else false (`Size(f32)` only)
@@ -754,21 +754,21 @@ pub fn Size(comptime T: type) type {
         // style_helpers
 
         /// A Size where both components are the zero value of the contained type
-        pub const zero: Self = both(style_helpers.zero(T));
+        pub const zero: Self = both(elementZero(T));
         /// A Size where both components are the auto value of the contained type
-        pub const auto: Self = both(style_helpers.auto(T));
+        pub const auto: Self = both(elementAuto(T));
         /// A Size where both components are the min_content value of the contained type
-        pub const min_content: Self = both(style_helpers.minContent(T));
+        pub const min_content: Self = both(elementMinContent(T));
         /// A Size where both components are the max_content value of the contained type
-        pub const max_content: Self = both(style_helpers.maxContent(T));
+        pub const max_content: Self = both(elementMaxContent(T));
 
         /// A Size with width and height set to the same `fit-content(…)` value with the given argument
         pub inline fn fitContent(argument: LengthPercentage) Self {
-            return both(style_helpers.fitContent(T, argument));
+            return both(elementFitContent(T, argument));
         }
         /// A Size where both components are the same given absolute length (upstream `FromLength`)
         pub inline fn fromLength(value: anytype) Self {
-            return both(style_helpers.length(T, value));
+            return both(elementLength(T, value));
         }
         /// A Size where both components are the same given absolute length (upstream `Size::length`)
         pub inline fn length(value: anytype) Self {
@@ -776,7 +776,7 @@ pub fn Size(comptime T: type) type {
         }
         /// A Size where both components are the same given percentage (upstream `FromPercent`)
         pub inline fn fromPercent(value: anytype) Self {
-            return both(style_helpers.percent(T, value));
+            return both(elementPercent(T, value));
         }
         /// A Size where both components are the same given percentage (upstream `Size::percent`)
         pub inline fn percent(value: anytype) Self {
@@ -866,21 +866,21 @@ pub fn Point(comptime T: type) type {
         // style_helpers
 
         /// A Point where both x and y are the zero value of the contained type (`Point(f32)`: the origin)
-        pub const zero: Self = both(style_helpers.zero(T));
+        pub const zero: Self = both(elementZero(T));
         /// A Point where both x and y are the auto value of the contained type
-        pub const auto: Self = both(style_helpers.auto(T));
+        pub const auto: Self = both(elementAuto(T));
         /// A Point where both x and y are the min_content value of the contained type
-        pub const min_content: Self = both(style_helpers.minContent(T));
+        pub const min_content: Self = both(elementMinContent(T));
         /// A Point where both x and y are the max_content value of the contained type
-        pub const max_content: Self = both(style_helpers.maxContent(T));
+        pub const max_content: Self = both(elementMaxContent(T));
 
         /// A Point with x and y set to the same `fit-content(…)` value with the given argument
         pub inline fn fitContent(argument: LengthPercentage) Self {
-            return both(style_helpers.fitContent(T, argument));
+            return both(elementFitContent(T, argument));
         }
         /// A Point where x and y are the same given absolute length (upstream `FromLength`)
         pub inline fn fromLength(value: anytype) Self {
-            return both(style_helpers.length(T, value));
+            return both(elementLength(T, value));
         }
         /// A Point where x and y are the same given absolute length (upstream `Point::length`)
         pub inline fn length(value: anytype) Self {
@@ -888,7 +888,7 @@ pub fn Point(comptime T: type) type {
         }
         /// A Point where x and y are the same given percentage (upstream `FromPercent`)
         pub inline fn fromPercent(value: anytype) Self {
-            return both(style_helpers.percent(T, value));
+            return both(elementPercent(T, value));
         }
         /// A Point where x and y are the same given percentage (upstream `Point::percent`)
         pub inline fn percent(value: anytype) Self {
@@ -922,6 +922,71 @@ pub fn isRect(comptime T: type) bool {
 }
 
 const testing = std.testing;
+
+// Element-wise constructors. `f32` and optionals have no declarations of their own, so they are
+// handled here: `elementZero(f32)` is `0.0` and an optional forwards to its child type.
+
+/// Returns the zero value for that type
+fn elementZero(comptime T: type) T {
+    if (T == f32) {
+        return 0.0;
+    } else if (@typeInfo(T) == .optional) {
+        return elementZero(@typeInfo(T).optional.child);
+    } else {
+        return T.zero;
+    }
+}
+
+/// Returns the auto value for that type
+fn elementAuto(comptime T: type) T {
+    if (@typeInfo(T) == .optional) {
+        return elementAuto(@typeInfo(T).optional.child);
+    } else {
+        return T.auto;
+    }
+}
+
+/// Returns the min-content value for that type
+fn elementMinContent(comptime T: type) T {
+    if (@typeInfo(T) == .optional) {
+        return elementMinContent(@typeInfo(T).optional.child);
+    } else {
+        return T.min_content;
+    }
+}
+
+/// Returns the max-content value for that type
+fn elementMaxContent(comptime T: type) T {
+    if (@typeInfo(T) == .optional) {
+        return elementMaxContent(@typeInfo(T).optional.child);
+    } else {
+        return T.max_content;
+    }
+}
+
+/// Returns a value of the requested type which represent a `fit-content(…)` value
+/// with the given argument.
+fn elementFitContent(comptime T: type, argument: LengthPercentage) T {
+    return T.fitContent(argument);
+}
+
+/// Returns a value of the requested type which represent an absolute length
+fn elementLength(comptime T: type, value: anytype) T {
+    if (T == f32 or T == ?f32) {
+        return toF32(value);
+    } else {
+        return T.fromLength(value);
+    }
+}
+
+/// Returns a value of the requested type which represent a percentage
+fn elementPercent(comptime T: type, value: anytype) T {
+    if (T == f32 or T == ?f32) {
+        return toF32(value);
+    } else {
+        return T.fromPercent(value);
+    }
+}
 
 test "AbsoluteAxis and AbstractAxis" {
     try testing.expectEqual(AbsoluteAxis.vertical, AbsoluteAxis.horizontal.otherAxis());
@@ -1011,8 +1076,8 @@ test "Size helpers" {
     try testing.expectEqual(Size(f32){ .width = -5, .height = -7 }, s.map(f32, neg));
     try testing.expectEqual(Size(f32){ .width = 10, .height = 14 }, s.add(s));
     try testing.expectEqual(Size(f32){ .width = 0, .height = 0 }, s.sub(s));
-    try testing.expectEqual(Size(f32){ .width = 5, .height = 1 }, s.f32Min(.{ .width = 9, .height = 1 }));
-    try testing.expectEqual(Size(f32){ .width = 9, .height = 7 }, s.f32Max(.{ .width = 9, .height = 1 }));
+    try testing.expectEqual(Size(f32){ .width = 5, .height = 1 }, s.min(.{ .width = 9, .height = 1 }));
+    try testing.expectEqual(Size(f32){ .width = 9, .height = 7 }, s.max(.{ .width = 9, .height = 1 }));
     try testing.expect(s.hasNonZeroArea());
     try testing.expect(!Size(f32).zero.hasNonZeroArea());
     const add = struct {

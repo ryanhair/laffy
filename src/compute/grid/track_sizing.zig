@@ -19,8 +19,6 @@ const math = @import("../../util/math.zig");
 const maybeMin = math.maybeMin;
 const resolveOrZero = @import("../../util/resolve.zig").resolveOrZero;
 const sys = @import("../../util/sys.zig");
-const f32Max = sys.f32Max;
-const f32Min = sys.f32Min;
 const FrontBackVecBuilder = @import("../../util/front_back_vec_builder.zig").FrontBackVecBuilder;
 const childFirstBaseline = @import("../common/alignment.zig").childFirstBaseline;
 const types = @import("types.zig");
@@ -221,7 +219,7 @@ pub fn computeAlignmentGutterAdjustment(
             for (tracks) |*track| {
                 track_size_sum += get_track_size_estimate.estimate(track, inner_size, tree) orelse break :blk 0.0;
             }
-            break :blk f32Max(0.0, inner_size - track_size_sum);
+            break :blk @max(0.0, inner_size - track_size_sum);
         };
 
         const weighted_track_count = (((tracks.len - 3) / 2) * inner_gutter_weight) + (2 * outer_gutter_weight);
@@ -611,9 +609,9 @@ fn resolveIntrinsicTrackSizes(
                 // Handle base sizes
                 const min_tag = track.min_track_sizing_function.inner.tag();
                 const new_base_size: f32 = if (min_tag == CompactLength.min_content_tag)
-                    f32Max(track.base_size, try item_sizer.minContentContribution(item, axis_tracks))
+                    @max(track.base_size, try item_sizer.minContentContribution(item, axis_tracks))
                 else if (min_tag == CompactLength.max_content_tag)
-                    f32Max(track.base_size, try item_sizer.maxContentContribution(item, axis_tracks))
+                    @max(track.base_size, try item_sizer.maxContentContribution(item, axis_tracks))
                     // If the container size is indefinite and has not yet been resolved then percentage sized
                     // tracks are treated as auto
                 else if (track.min_track_sizing_function.behavesAsAuto(axis_inner_node_size)) blk: {
@@ -631,9 +629,9 @@ fn resolveIntrinsicTrackSizes(
                         const axis_minimum_size = try item_sizer.minimumContribution(item, axis_tracks);
                         const axis_min_content_size = try item_sizer.minContentContribution(item, axis_tracks);
                         const limit = track.max_track_sizing_function.definiteLimit(axis_inner_node_size, tree);
-                        break :inner f32Max(maybeMin(axis_min_content_size, limit), axis_minimum_size);
+                        break :inner @max(maybeMin(axis_min_content_size, limit), axis_minimum_size);
                     } else try item_sizer.minimumContribution(item, axis_tracks);
-                    break :blk f32Max(track.base_size, space);
+                    break :blk @max(track.base_size, space);
                 }
                     // Do nothing as it's not an intrinsic track sizing function
                     else track.base_size;
@@ -654,13 +652,13 @@ fn resolveIntrinsicTrackSizes(
                 const planned_increase: ?f32 = if (max_track_sizing_function.isFitContent()) blk: {
                     // Always increase the growth limit to at least the size of the *fit-content limited*
                     // max-content contribution
-                    const max_content_contribution = f32Min(try item_sizer.maxContentContribution(item, axis_tracks), fit_content_limit);
+                    const max_content_contribution = @min(try item_sizer.maxContentContribution(item, axis_tracks), fit_content_limit);
 
                     // If item is not a scroll container, then increase the growth limit to at least the
                     // size of the min-content contribution
                     if (min_content_contribution) |min_content| {
                         if (!item.overflow.get(axis).isScrollContainer()) {
-                            break :blk f32Max(min_content, max_content_contribution);
+                            break :blk @max(min_content, max_content_contribution);
                         }
                     }
                     break :blk max_content_contribution;
@@ -675,7 +673,7 @@ fn resolveIntrinsicTrackSizes(
                     null;
                 if (planned_increase) |increase| {
                     const t = &axis_tracks[track_index];
-                    t.growth_limit_planned_increase = f32Max(t.growth_limit_planned_increase, increase);
+                    t.growth_limit_planned_increase = @max(t.growth_limit_planned_increase, increase);
                 }
             }
 
@@ -684,7 +682,7 @@ fn resolveIntrinsicTrackSizes(
                     track.growth_limit = if (track.growth_limit == inf)
                         track.growth_limit_planned_increase
                     else
-                        f32Max(track.growth_limit, track.growth_limit_planned_increase);
+                        @max(track.growth_limit, track.growth_limit_planned_increase);
                 }
                 track.infinitely_growable = false;
                 track.growth_limit_planned_increase = 0.0;
@@ -715,7 +713,7 @@ fn resolveIntrinsicTrackSizes(
                 const axis_minimum_size = try item_sizer.minimumContribution(item, axis_tracks);
                 const axis_min_content_size = try item_sizer.minContentContribution(item, axis_tracks);
                 const limit = item.spannedTrackLimit(axis, axis_tracks, axis_inner_node_size, tree);
-                const limited_min_content = f32Max(maybeMin(axis_min_content_size, limit), axis_minimum_size);
+                const limited_min_content = @max(maybeMin(axis_min_content_size, limit), axis_minimum_size);
 
                 // For items crossing flexible tracks, browsers hand the content-derived contribution to
                 // the flexible tracks only in proportion to the crossed flex factor sum, clamped at one
@@ -728,9 +726,9 @@ fn resolveIntrinsicTrackSizes(
                 if (is_flex) {
                     const spanned_tracks = item.spannedTracks(axis, @as([]const GridTrack, axis_tracks));
                     const inflexible_sizes = inflexibleBaseSizeSum(spanned_tracks);
-                    const scale = f32Min(crossedFlexFactorSum(spanned_tracks), 1.0);
-                    const excess = f32Max(limited_min_content - inflexible_sizes, 0.0);
-                    break :blk f32Max(axis_minimum_size, inflexible_sizes + excess * scale);
+                    const scale = @min(crossedFlexFactorSum(spanned_tracks), 1.0);
+                    const excess = @max(limited_min_content - inflexible_sizes, 0.0);
+                    break :blk @max(axis_minimum_size, inflexible_sizes + excess * scale);
                 } else {
                     break :blk limited_min_content;
                 }
@@ -795,8 +793,8 @@ fn resolveIntrinsicTrackSizes(
                 if (is_flex) {
                     const spanned_tracks = item.spannedTracks(axis, @as([]const GridTrack, axis_tracks));
                     const inflexible_sizes = inflexibleBaseSizeSum(spanned_tracks);
-                    const scale = f32Min(crossedFlexFactorSum(spanned_tracks), 1.0);
-                    space = inflexible_sizes + f32Max(space - inflexible_sizes, 0.0) * scale;
+                    const scale = @min(crossedFlexFactorSum(spanned_tracks), 1.0);
+                    space = inflexible_sizes + @max(space - inflexible_sizes, 0.0) * scale;
                 }
                 const tracks = item.spannedTracks(axis, axis_tracks);
                 if (space > 0.0) {
@@ -1167,7 +1165,7 @@ fn distributeItemSpaceToBaseSizeInner(
     // 1. Find the space to distribute
     var track_sizes: f32 = -0.0;
     for (tracks) |*track| track_sizes += track.base_size;
-    const extra_space: f32 = f32Max(0.0, space - track_sizes);
+    const extra_space: f32 = @max(0.0, space - track_sizes);
 
     // 2. Distribute space up to limits:
     // Note: there are two exit conditions to this loop:
@@ -1234,7 +1232,7 @@ fn distributeItemSpaceToGrowthLimit(space: f32, tracks: []GridTrack, track_is_af
     for (tracks) |*track| {
         track_sizes += if (track.growth_limit == inf) track.base_size else track.growth_limit;
     }
-    const extra_space: f32 = f32Max(0.0, space - track_sizes);
+    const extra_space: f32 = @max(0.0, space - track_sizes);
 
     // 2. Distribute space up to limits:
     // For growth limits the limit is the growth limit itself unless the track is marked infinitely growable (or its
@@ -1341,7 +1339,7 @@ inline fn expandFlexibleTracks(
                 const tracks = item.spannedTracks(axis, @as([]const GridTrack, axis_tracks));
                 item_fraction.add(findSizeOfFr(tracks, max_content_contribution));
             }
-            const flex_fraction = f32Max(track_fraction.best orelse 0.0, item_fraction.best orelse 0.0);
+            const flex_fraction = @max(track_fraction.best orelse 0.0, item_fraction.best orelse 0.0);
 
             // If using this flex fraction would cause the grid to be smaller than the grid container’s min-width/height (or larger than the
             // grid container’s max-width/height), then redo this step, treating the free space as definite and the available grid space as equal
@@ -1351,7 +1349,7 @@ inline fn expandFlexibleTracks(
             for (axis_tracks) |*track| {
                 hypothetical_grid_size += if (track.max_track_sizing_function.isFr()) inner: {
                     const track_flex_factor = track.max_track_sizing_function.inner.value();
-                    break :inner f32Max(track.base_size, track_flex_factor * flex_fraction);
+                    break :inner @max(track.base_size, track_flex_factor * flex_fraction);
                 } else track.base_size;
             }
             const min_size = axis_min_size orelse 0.0;
@@ -1371,7 +1369,7 @@ inline fn expandFlexibleTracks(
     for (axis_tracks) |*track| {
         if (!track.max_track_sizing_function.isFr()) continue;
         const track_flex_factor = track.max_track_sizing_function.inner.value();
-        track.base_size = f32Max(track.base_size, track_flex_factor * flex_fraction);
+        track.base_size = @max(track.base_size, track_flex_factor * flex_fraction);
     }
 }
 
@@ -1413,7 +1411,7 @@ inline fn findSizeOfFr(tracks: []const GridTrack, space_to_fill: f32) f32 {
             }
         }
         const leftover_space = space_to_fill - used_space;
-        const flex_factor = f32Max(naive_flex_factor_sum, 1.0);
+        const flex_factor = @max(naive_flex_factor_sum, 1.0);
 
         // Let the hypothetical fr size be the leftover space divided by the flex factor sum.
         previous_iter_hypothetical_fr_size = hypothetical_fr_size;
@@ -1510,7 +1508,7 @@ inline fn distributeSpaceUpToLimits(
             }
         }
         // We will never pass an empty track list to this function
-        const iteration_item_incurred_increase = f32Min(min_increase_limit.best.?, space_to_distribute / track_distribution_proportion_sum);
+        const iteration_item_incurred_increase = @min(min_increase_limit.best.?, space_to_distribute / track_distribution_proportion_sum);
 
         for (tracks) |*track| {
             if (!track_is_affected.call(track)) continue;

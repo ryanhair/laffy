@@ -7,7 +7,6 @@ const Size = laffy.Size;
 const Dimension = laffy.Dimension;
 const JustifyContent = laffy.JustifyContent;
 const AvailableSpace = laffy.AvailableSpace;
-const length = laffy.style_helpers.length;
 const TaffyTree = laffy.TaffyTree(measure.TestNodeContext);
 
 test "rounding_doesnt_leave_gaps" {
@@ -15,13 +14,13 @@ test "rounding_doesnt_leave_gaps" {
     var taffy = try TaffyTree.init(testing.allocator);
     defer taffy.deinit();
 
-    const w_square: Size(Dimension) = .{ .width = length(Dimension, 100.3), .height = length(Dimension, 100.3) };
+    const w_square: Size(Dimension) = .{ .width = Dimension.fromLength(100.3), .height = Dimension.fromLength(100.3) };
     const child_a = try taffy.newLeaf(.{ .size = w_square });
     const child_b = try taffy.newLeaf(.{ .size = w_square });
 
     const root_node = try taffy.newWithChildren(
         .{
-            .size = .{ .width = length(Dimension, 963.3333), .height = length(Dimension, 1000.0) },
+            .size = .{ .width = Dimension.fromLength(963.3333), .height = Dimension.fromLength(1000.0) },
             .justify_content = JustifyContent.center,
         },
         &.{ child_a, child_b },

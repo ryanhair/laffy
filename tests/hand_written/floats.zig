@@ -15,9 +15,6 @@ const Dimension = laffy.Dimension;
 const LengthPercentage = laffy.LengthPercentage;
 const LengthPercentageAuto = laffy.LengthPercentageAuto;
 const AvailableSpace = laffy.AvailableSpace;
-const length = laffy.style_helpers.length;
-const zero = laffy.style_helpers.zero;
-const auto = laffy.style_helpers.auto;
 const TaffyTree = laffy.TaffyTree(measure.TestNodeContext);
 
 fn point(x: f32, y: f32) Point(f32) {
@@ -43,7 +40,7 @@ test "float_no_higher_than_earlier_floats" {
     const root = try taffy.newWithChildren(
         .{
             .display = .block,
-            .size = .{ .width = length(Dimension, 400.0), .height = auto(Dimension) },
+            .size = .{ .width = Dimension.fromLength(400.0), .height = Dimension.auto },
         },
         &.{ spacer, float_a, float_b, float_c },
     );
@@ -75,17 +72,17 @@ test "clear_past_zero_width_float" {
     const floated = try taffy.newLeaf(.{
         .display = .block,
         .float = .left,
-        .size = .{ .width = auto(Dimension), .height = length(Dimension, 1.0) },
+        .size = .{ .width = Dimension.auto, .height = Dimension.fromLength(1.0) },
     });
     const cleared = try taffy.newLeaf(.{ .display = .block, .clear = .left });
     var sibling_margin = Rect(LengthPercentageAuto).zero;
-    sibling_margin.top = length(LengthPercentageAuto, 99.0);
+    sibling_margin.top = LengthPercentageAuto.fromLength(99.0);
     const sibling = try taffy.newLeaf(.{ .display = .block, .margin = sibling_margin });
 
     const container = try taffy.newWithChildren(
         .{
             .display = .block,
-            .size = .{ .width = length(Dimension, 100.0), .height = auto(Dimension) },
+            .size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.auto },
         },
         &.{ floated, cleared, sibling },
     );
@@ -103,12 +100,12 @@ fn floatBlock(width: f32, height: f32, float: Float) Style {
     return .{
         .display = .block,
         .float = float,
-        .size = .{ .width = length(Dimension, width), .height = length(Dimension, height) },
+        .size = .{ .width = Dimension.fromLength(width), .height = Dimension.fromLength(height) },
     };
 }
 
 fn rootStyle(width: f32) Style {
-    return .{ .display = .block, .size = .{ .width = length(Dimension, width), .height = auto(Dimension) } };
+    return .{ .display = .block, .size = .{ .width = Dimension.fromLength(width), .height = Dimension.auto } };
 }
 
 // Regression test for <https://wpt.live/css/CSS2/floats/floats-rule3-outside-left-001.xht>
@@ -168,12 +165,12 @@ test "auto_margins_include_float_avoidance_offsets" {
                 boxes[i] = try taffy.newLeaf(.{
                     .display = .flow_root,
                     .direction = direction,
-                    .size = .{ .width = length(Dimension, 40.0), .height = length(Dimension, 10.0) },
+                    .size = .{ .width = Dimension.fromLength(40.0), .height = Dimension.fromLength(10.0) },
                     .margin = .{
-                        .left = if (left_auto) auto(LengthPercentageAuto) else zero(LengthPercentageAuto),
-                        .right = if (right_auto) auto(LengthPercentageAuto) else zero(LengthPercentageAuto),
-                        .top = auto(LengthPercentageAuto),
-                        .bottom = auto(LengthPercentageAuto),
+                        .left = if (left_auto) LengthPercentageAuto.auto else LengthPercentageAuto.zero,
+                        .right = if (right_auto) LengthPercentageAuto.auto else LengthPercentageAuto.zero,
+                        .top = LengthPercentageAuto.auto,
+                        .bottom = LengthPercentageAuto.auto,
                     },
                 });
             }
@@ -182,7 +179,7 @@ test "auto_margins_include_float_avoidance_offsets" {
                 .{
                     .display = .flow_root,
                     .direction = direction,
-                    .size = .{ .width = length(Dimension, 100.0), .height = auto(Dimension) },
+                    .size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.auto },
                     .padding = Rect(LengthPercentage).length(5.0),
                 },
                 &children,
@@ -222,16 +219,16 @@ test "float_avoiding_auto_margins_in_nested_block_ignore_relative_insets_and_cle
         const box_style: Style = .{
             .display = .flow_root,
             .direction = direction,
-            .size = .{ .width = length(Dimension, 40.0), .height = length(Dimension, 10.0) },
+            .size = .{ .width = Dimension.fromLength(40.0), .height = Dimension.fromLength(10.0) },
             .margin = .{
-                .left = auto(LengthPercentageAuto),
-                .right = auto(LengthPercentageAuto),
-                .top = zero(LengthPercentageAuto),
-                .bottom = zero(LengthPercentageAuto),
+                .left = LengthPercentageAuto.auto,
+                .right = LengthPercentageAuto.auto,
+                .top = LengthPercentageAuto.zero,
+                .bottom = LengthPercentageAuto.zero,
             },
         };
         var relative_inset = Rect(LengthPercentageAuto).auto;
-        relative_inset.left = length(LengthPercentageAuto, 7.0);
+        relative_inset.left = LengthPercentageAuto.fromLength(7.0);
         var relative_style = box_style;
         relative_style.position = .relative;
         relative_style.inset = relative_inset;
@@ -241,14 +238,14 @@ test "float_avoiding_auto_margins_in_nested_block_ignore_relative_insets_and_cle
         const cleared_box = try taffy.newLeaf(cleared_style);
 
         var nested_margin = Rect(LengthPercentageAuto).zero;
-        nested_margin.left = length(LengthPercentageAuto, 20.0);
-        nested_margin.right = length(LengthPercentageAuto, 30.0);
+        nested_margin.left = LengthPercentageAuto.fromLength(20.0);
+        nested_margin.right = LengthPercentageAuto.fromLength(30.0);
         var nested_padding = Rect(LengthPercentage).zero;
-        nested_padding.left = length(LengthPercentage, 5.0);
-        nested_padding.right = length(LengthPercentage, 7.0);
+        nested_padding.left = LengthPercentage.fromLength(5.0);
+        nested_padding.right = LengthPercentage.fromLength(7.0);
         var nested_border = Rect(LengthPercentage).zero;
-        nested_border.left = length(LengthPercentage, 3.0);
-        nested_border.right = length(LengthPercentage, 5.0);
+        nested_border.left = LengthPercentage.fromLength(3.0);
+        nested_border.right = LengthPercentage.fromLength(5.0);
         const nested = try taffy.newWithChildren(
             .{
                 .display = .block,
@@ -263,7 +260,7 @@ test "float_avoiding_auto_margins_in_nested_block_ignore_relative_insets_and_cle
             .{
                 .display = .flow_root,
                 .direction = direction,
-                .size = .{ .width = length(Dimension, 200.0), .height = auto(Dimension) },
+                .size = .{ .width = Dimension.fromLength(200.0), .height = Dimension.auto },
                 .padding = Rect(LengthPercentage).length(10.0),
             },
             &.{ left_float, right_float, nested },

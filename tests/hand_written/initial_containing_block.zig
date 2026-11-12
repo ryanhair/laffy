@@ -13,9 +13,6 @@ const Dimension = laffy.Dimension;
 const LengthPercentage = laffy.LengthPercentage;
 const LengthPercentageAuto = laffy.LengthPercentageAuto;
 const AvailableSpace = laffy.AvailableSpace;
-const length = laffy.style_helpers.length;
-const percent = laffy.style_helpers.percent;
-const auto = laffy.style_helpers.auto;
 const TaffyTree = laffy.TaffyTree(void);
 
 const VIEWPORT: Size(AvailableSpace) = .{ .width = .{ .definite = 800.0 }, .height = .{ .definite = 600.0 } };
@@ -28,10 +25,10 @@ fn rootStyle() Style {
     return .{
         .display = .block,
         .margin = .{
-            .left = length(LengthPercentageAuto, 10.0),
-            .right = length(LengthPercentageAuto, 10.0),
-            .top = length(LengthPercentageAuto, 20.0),
-            .bottom = length(LengthPercentageAuto, 20.0),
+            .left = LengthPercentageAuto.fromLength(10.0),
+            .right = LengthPercentageAuto.fromLength(10.0),
+            .top = LengthPercentageAuto.fromLength(20.0),
+            .bottom = LengthPercentageAuto.fromLength(20.0),
         },
         .border = Rect(LengthPercentage).length(5.0),
     };
@@ -74,12 +71,12 @@ test "bottom_right_insets_resolve_against_viewport" {
         const oof = try tree.newLeaf(oofStyle(
             position,
             .{
-                .left = auto(LengthPercentageAuto),
-                .top = auto(LengthPercentageAuto),
-                .right = length(LengthPercentageAuto, 0.0),
-                .bottom = length(LengthPercentageAuto, 0.0),
+                .left = LengthPercentageAuto.auto,
+                .top = LengthPercentageAuto.auto,
+                .right = LengthPercentageAuto.fromLength(0.0),
+                .bottom = LengthPercentageAuto.fromLength(0.0),
             },
-            .{ .width = length(Dimension, 50.0), .height = length(Dimension, 50.0) },
+            .{ .width = Dimension.fromLength(50.0), .height = Dimension.fromLength(50.0) },
         ));
         // The root has no in-flow content, so its border box is much shorter than the viewport
         const root = try tree.newWithChildren(rootStyle(), &.{oof});
@@ -96,7 +93,7 @@ test "static_position_is_unaffected" {
     const oof = try tree.newLeaf(oofStyle(
         .absolute,
         Rect(LengthPercentageAuto).auto,
-        .{ .width = length(Dimension, 50.0), .height = length(Dimension, 50.0) },
+        .{ .width = Dimension.fromLength(50.0), .height = Dimension.fromLength(50.0) },
     ));
     const root = try tree.newWithChildren(rootStyle(), &.{oof});
     try tree.computeLayout(root, VIEWPORT);
@@ -114,12 +111,12 @@ test "fixed_root_is_positioned_by_its_insets" {
         .display = .block,
         .position = .fixed,
         .inset = .{
-            .left = auto(LengthPercentageAuto),
-            .top = percent(LengthPercentageAuto, 0.1),
-            .right = length(LengthPercentageAuto, 10.0),
-            .bottom = auto(LengthPercentageAuto),
+            .left = LengthPercentageAuto.auto,
+            .top = LengthPercentageAuto.fromPercent(0.1),
+            .right = LengthPercentageAuto.fromLength(10.0),
+            .bottom = LengthPercentageAuto.auto,
         },
-        .size = .{ .width = length(Dimension, 100.0), .height = length(Dimension, 50.0) },
+        .size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.fromLength(50.0) },
     });
     try tree.computeLayout(root, VIEWPORT);
 

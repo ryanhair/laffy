@@ -71,15 +71,15 @@ pub inline fn computeScrollableOverflowContribution(
         .y = !is_scroll_container and !overflow_is_contained and overflow.y == .visible,
     };
     const end_extent: Size(f32) = .{
-        .width = if (propagates.x) sys.f32Max(size.width, scrollable_overflow_rect.right) else size.width,
-        .height = if (propagates.y) sys.f32Max(size.height, scrollable_overflow_rect.bottom) else size.height,
+        .width = if (propagates.x) @max(size.width, scrollable_overflow_rect.right) else size.width,
+        .height = if (propagates.y) @max(size.height, scrollable_overflow_rect.bottom) else size.height,
     };
     if (end_extent.width <= 0.0 or end_extent.height <= 0.0) {
         return Rect(f32).zero;
     }
     const start_extent: Point(f32) = .{
-        .x = if (propagates.x) sys.f32Min(0.0, scrollable_overflow_rect.left) else 0.0,
-        .y = if (propagates.y) sys.f32Min(0.0, scrollable_overflow_rect.top) else 0.0,
+        .x = if (propagates.x) @min(0.0, scrollable_overflow_rect.left) else 0.0,
+        .y = if (propagates.y) @min(0.0, scrollable_overflow_rect.top) else 0.0,
     };
     const contribution: Rect(f32) = .{
         .left = location.x + start_extent.x,
@@ -96,14 +96,14 @@ pub inline fn computeScrollableOverflowContribution(
         if (parent_is_scroll_container) {
             var padded = contribution;
             if (reversed.x) {
-                padded.left = sys.f32Min(padded.left, location.x - sys.f32Max(0.0, padding.left + margin.left));
+                padded.left = @min(padded.left, location.x - @max(0.0, padding.left + margin.left));
             } else {
-                padded.right = sys.f32Max(padded.right, location.x + size.width + sys.f32Max(0.0, padding.right + margin.right));
+                padded.right = @max(padded.right, location.x + size.width + @max(0.0, padding.right + margin.right));
             }
             if (reversed.y) {
-                padded.top = sys.f32Min(padded.top, location.y - sys.f32Max(0.0, padding.top + margin.top));
+                padded.top = @min(padded.top, location.y - @max(0.0, padding.top + margin.top));
             } else {
-                padded.bottom = sys.f32Max(padded.bottom, location.y + size.height + sys.f32Max(0.0, padding.bottom + margin.bottom));
+                padded.bottom = @max(padded.bottom, location.y + size.height + @max(0.0, padding.bottom + margin.bottom));
             }
             return padded;
         } else {
@@ -121,15 +121,15 @@ pub fn finalizeScrollableOverflow(
     is_scroll_container: bool,
 ) ScrollableOverflow {
     var result = rect;
-    const clamped_size: Size(f32) = .{ .width = sys.f32Max(size.width, 0.0), .height = sys.f32Max(size.height, 0.0) };
+    const clamped_size: Size(f32) = .{ .width = @max(size.width, 0.0), .height = @max(size.height, 0.0) };
     const final_reversed: Point(bool) = if (is_scroll_container) blk: {
         if (reversed.x) {
-            result.right = sys.f32Min(result.right, clamped_size.width);
+            result.right = @min(result.right, clamped_size.width);
         } else {
             result.left = 0.0;
         }
         if (reversed.y) {
-            result.bottom = sys.f32Min(result.bottom, clamped_size.height);
+            result.bottom = @min(result.bottom, clamped_size.height);
         } else {
             result.top = 0.0;
         }

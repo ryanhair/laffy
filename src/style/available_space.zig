@@ -66,30 +66,9 @@ pub const AvailableSpace = union(enum) {
         };
     }
 
-    /// Return self if definite or the result of the default value callback
-    pub inline fn orElse(self: AvailableSpace, comptime default_cb: fn () AvailableSpace) AvailableSpace {
-        return switch (self) {
-            .definite => self,
-            else => default_cb(),
-        };
-    }
-
-    /// Return the definite value or the result of the default value callback
-    pub inline fn unwrapOrElse(self: AvailableSpace, comptime default_cb: fn () f32) f32 {
-        return self.intoOption() orelse default_cb();
-    }
-
     /// If passed value is non-null then return `.definite` containing that value, else return self
     pub inline fn maybeSet(self: AvailableSpace, value: ?f32) AvailableSpace {
         return if (value) |v| .{ .definite = v } else self;
-    }
-
-    /// If self is definite, map its value with the passed function, else return self
-    pub inline fn mapDefiniteValue(self: AvailableSpace, comptime map_function: fn (f32) f32) AvailableSpace {
-        return switch (self) {
-            .definite => |value| .{ .definite = map_function(value) },
-            else => self,
-        };
     }
 
     /// Compute free_space given the passed used_space
@@ -106,7 +85,7 @@ pub const AvailableSpace = union(enum) {
     pub fn isRoughlyEqual(self: AvailableSpace, other: AvailableSpace) bool {
         return switch (self) {
             .definite => |a| switch (other) {
-                .definite => |b| sys.abs(a - b) < std.math.floatEps(f32),
+                .definite => |b| @abs(a - b) < std.math.floatEps(f32),
                 else => false,
             },
             .min_content => other == .min_content,
@@ -150,24 +129,6 @@ test "AvailableSpace helpers" {
     try testing.expect(!a.isRoughlyEqual(.max_content));
     try testing.expect(AvailableSpace.fromOption(null).eql(.max_content));
     try testing.expect(AvailableSpace.fromLength(4).eql(.{ .definite = 4.0 }));
-    const double = struct {
-        fn f(x: f32) f32 {
-            return x * 2;
-        }
-    }.f;
-    try testing.expect(a.mapDefiniteValue(double).eql(.{ .definite = 20.0 }));
-    const cb = struct {
-        fn f() AvailableSpace {
-            return .{ .definite = 1.0 };
-        }
-    }.f;
-    try testing.expect(min_content.orElse(cb).eql(.{ .definite = 1.0 }));
-    const cbf = struct {
-        fn f() f32 {
-            return 2.0;
-        }
-    }.f;
-    try testing.expectEqual(@as(f32, 2.0), min_content.unwrapOrElse(cbf));
 }
 
 test "Size(AvailableSpace) helpers" {

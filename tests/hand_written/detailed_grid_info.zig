@@ -22,8 +22,6 @@ const GridTemplateAreas = laffy.GridTemplateAreas;
 const GridTemplateRepetition = laffy.GridTemplateRepetition;
 const TrackSizingFunction = laffy.TrackSizingFunction;
 const DetailedGridInfo = laffy.DetailedGridInfo;
-const length = laffy.style_helpers.length;
-const line = laffy.style_helpers.line;
 const TestNodeContext = measure.TestNodeContext;
 const TaffyTree = laffy.TaffyTree(TestNodeContext);
 
@@ -38,7 +36,7 @@ fn dimSize(w: f32, h: f32) Size(Dimension) {
 }
 
 fn track(v: f32) GridTemplateComponent {
-    return length(GridTemplateComponent, v);
+    return GridTemplateComponent.fromLength(v);
 }
 
 fn getDetailedGridInfo(tree: *const TaffyTree, node: NodeId) *const DetailedGridInfo {
@@ -208,7 +206,7 @@ test "repeat_expansion_line_names" {
             .size = dimSize(100.0, 50.0),
             .grid_template_columns = &.{GridTemplateComponent{ .repeat = GridTemplateRepetition{
                 .count = .{ .count = 2 },
-                .tracks = &.{length(TrackSizingFunction, 50.0)},
+                .tracks = &.{TrackSizingFunction.fromLength(50.0)},
                 .line_names = &.{ &.{"col-start"}, &.{"col-end"} },
             } }},
             .grid_template_column_names = &.{ &.{"outer-start"}, &.{"outer-end"} },
@@ -269,16 +267,16 @@ test "item_grid_area" {
     defer tree.deinit();
     const child_a = try tree.newLeaf(Style{});
     const child_b = try tree.newLeaf(.{
-        .grid_row = line(Line(GridPlacement), 2),
-        .grid_column = .{ .start = line(GridPlacement, 1), .end = line(GridPlacement, 3) },
+        .grid_row = Line(GridPlacement).fromLineIndex(2),
+        .grid_column = .{ .start = GridPlacement.fromLineIndex(1), .end = GridPlacement.fromLineIndex(3) },
     });
     const container = try tree.newWithChildren(
         .{
             .display = .grid,
             .grid_template_columns = &.{ track(40.0), track(60.0) },
             .grid_template_rows = &.{ track(50.0), track(30.0) },
-            .gap = length(Size(LengthPercentage), 10.0),
-            .padding = length(Rect(LengthPercentage), 5.0),
+            .gap = Size(LengthPercentage).fromLength(10.0),
+            .padding = Rect(LengthPercentage).fromLength(5.0),
         },
         &.{ child_a, child_b },
     );
@@ -303,8 +301,8 @@ test "item_grid_area" {
     try testing.expectEqual(
         rect(5.0, 115.0, 5.0, 95.0),
         info.resolveAbsoluteGridArea(
-            lines(line(GridPlacement, 1), line(GridPlacement, 3)),
-            lines(line(GridPlacement, 1), line(GridPlacement, 3)),
+            lines(GridPlacement.fromLineIndex(1), GridPlacement.fromLineIndex(3)),
+            lines(GridPlacement.fromLineIndex(1), GridPlacement.fromLineIndex(3)),
             .ltr,
             rect(0.0, 120.0, 0.0, 100.0),
         ),
@@ -313,7 +311,7 @@ test "item_grid_area" {
         rect(0.0, 45.0, 0.0, 100.0),
         info.resolveAbsoluteGridArea(
             auto_line,
-            lines(auto_placement, line(GridPlacement, 2)),
+            lines(auto_placement, GridPlacement.fromLineIndex(2)),
             .ltr,
             rect(0.0, 120.0, 0.0, 100.0),
         ),
@@ -322,7 +320,7 @@ test "item_grid_area" {
         rect(115.0, 120.0, 0.0, 100.0),
         info.resolveAbsoluteGridArea(
             auto_line,
-            lines(line(GridPlacement, -1), auto_placement),
+            lines(GridPlacement.fromLineIndex(-1), auto_placement),
             .ltr,
             rect(0.0, 120.0, 0.0, 100.0),
         ),
@@ -334,7 +332,7 @@ test "item_grid_area" {
         rect(55.0, 120.0, 0.0, 100.0),
         info.resolveAbsoluteGridArea(
             auto_line,
-            lines(named("missing", 1), line(GridPlacement, 2)),
+            lines(named("missing", 1), GridPlacement.fromLineIndex(2)),
             .ltr,
             rect(0.0, 120.0, 0.0, 100.0),
         ),
@@ -425,7 +423,7 @@ test "rtl_line_names_are_logical_order" {
         rect(60.0, 100.0, 0.0, 50.0),
         info.resolveAbsoluteGridArea(
             auto_line,
-            lines(line(GridPlacement, 1), line(GridPlacement, 2)),
+            lines(GridPlacement.fromLineIndex(1), GridPlacement.fromLineIndex(2)),
             .rtl,
             rect(0.0, 100.0, 0.0, 50.0),
         ),
@@ -443,7 +441,7 @@ test "rtl_line_names_are_logical_order" {
         rect(0.0, 100.0, 0.0, 50.0),
         info.resolveAbsoluteGridArea(
             auto_line,
-            lines(line(GridPlacement, 1), auto_placement),
+            lines(GridPlacement.fromLineIndex(1), auto_placement),
             .rtl,
             rect(0.0, 100.0, 0.0, 50.0),
         ),

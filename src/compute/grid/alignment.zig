@@ -28,7 +28,6 @@ const resolve = @import("../../util/resolve.zig");
 const maybeResolve = resolve.maybeResolve;
 const resolveOrZero = resolve.resolveOrZero;
 const sys = @import("../../util/sys.zig");
-const f32Max = sys.f32Max;
 const common_alignment = @import("../common/alignment.zig");
 const applyAlignmentFallback = common_alignment.applyAlignmentFallback;
 const childFirstBaseline = common_alignment.childFirstBaseline;
@@ -214,8 +213,8 @@ pub fn alignAndPositionItem(
     };
 
     const grid_area_minus_item_margins_size: Size(f32) = .{
-        .width = f32Max(maybeSub(maybeSub(grid_area_size.width, margin.left), margin.right), 0.0),
-        .height = f32Max(maybeSub(maybeSub(grid_area_size.height, margin.top), margin.bottom) - baseline_shim, 0.0),
+        .width = @max(maybeSub(maybeSub(grid_area_size.width, margin.left), margin.right), 0.0),
+        .height = @max(maybeSub(maybeSub(grid_area_size.height, margin.top), margin.bottom) - baseline_shim, 0.0),
     };
 
     // A size that is a sizing keyword (min-content, max-content, fit-content,
@@ -258,7 +257,7 @@ pub fn alignAndPositionItem(
         if (position.isOutOfFlow()) {
             if (inset_horizontal.start) |left| {
                 if (inset_horizontal.end) |right| {
-                    break :blk f32Max(grid_area_minus_item_margins_size.width - left - right, 0.0);
+                    break :blk @max(grid_area_minus_item_margins_size.width - left - right, 0.0);
                 }
             }
         }
@@ -302,7 +301,7 @@ pub fn alignAndPositionItem(
         if (position.isOutOfFlow()) {
             if (inset_vertical.start) |top| {
                 if (inset_vertical.end) |bottom| {
-                    break :blk f32Max(grid_area_minus_item_margins_size.height - top - bottom, 0.0);
+                    break :blk @max(grid_area_minus_item_margins_size.height - top - bottom, 0.0);
                 }
             }
         }
@@ -468,8 +467,8 @@ pub fn alignItemWithinArea(
 ) AlignedItem {
     // Calculate grid area dimension in the axis
     const non_auto_margin: Line(f32) = .{ .start = (margin.start orelse 0.0) + baseline_shim, .end = margin.end orelse 0.0 };
-    const grid_area_size = f32Max(grid_area.end - grid_area.start, 0.0);
-    const free_space = f32Max(grid_area_size - resolved_size - non_auto_margin.sum(), 0.0);
+    const grid_area_size = @max(grid_area.end - grid_area.start, 0.0);
+    const free_space = @max(grid_area_size - resolved_size - non_auto_margin.sum(), 0.0);
 
     // Expand auto margins to fill available space
     const auto_margin_count: u8 = @as(u8, @intFromBool(margin.start == null)) + @as(u8, @intFromBool(margin.end == null));

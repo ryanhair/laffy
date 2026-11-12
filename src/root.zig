@@ -161,16 +161,6 @@ pub const printTree = util.printTree;
 pub const writeTree = util.writeTree;
 
 // style_helpers (upstream prelude)
-pub const zero = style_helpers.zero;
-pub const auto = style_helpers.auto;
-pub const minContent = style_helpers.minContent;
-pub const maxContent = style_helpers.maxContent;
-pub const fitContent = style_helpers.fitContent;
-pub const length = style_helpers.length;
-pub const percent = style_helpers.percent;
-pub const fr = style_helpers.fr;
-pub const line = style_helpers.line;
-pub const span = style_helpers.span;
 pub const minmax = style_helpers.minmax;
 pub const flex = style_helpers.flex;
 pub const repeat = style_helpers.repeat;

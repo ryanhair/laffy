@@ -15,12 +15,7 @@ const GridTemplateComponent = laffy.GridTemplateComponent;
 const MinTrackSizingFunction = laffy.MinTrackSizingFunction;
 const MaxTrackSizingFunction = laffy.MaxTrackSizingFunction;
 const JustifySelf = laffy.JustifySelf;
-const auto = laffy.style_helpers.auto;
-const length = laffy.style_helpers.length;
-const percent = laffy.style_helpers.percent;
-const line = laffy.style_helpers.line;
 const minmax = laffy.style_helpers.minmax;
-const fr = laffy.style_helpers.fr;
 const TestNodeContext = measure.TestNodeContext;
 const TaffyTree = laffy.TaffyTree(TestNodeContext);
 
@@ -45,7 +40,7 @@ fn dim(v: f32) Dimension {
 }
 
 fn gridCol(index: i16) Line(GridPlacement) {
-    return line(Line(GridPlacement), index);
+    return Line(GridPlacement).fromLineIndex(index);
 }
 
 test "measure_count_flexbox" {
@@ -94,7 +89,7 @@ test "measure_count_nested_grid" {
     const inner = try taffy.newWithChildren(style, &.{leaf});
     const middle = try taffy.newWithChildren(style, &.{inner});
     var outer_style = style;
-    outer_style.size = .{ .width = dim(50.0), .height = auto(Dimension) };
+    outer_style.size = .{ .width = dim(50.0), .height = Dimension.auto };
     const outer = try taffy.newWithChildren(outer_style, &.{middle});
 
     try compute(&taffy, outer);
@@ -110,7 +105,7 @@ test "measure_count_grid_item_with_known_width" {
     defer taffy.deinit();
 
     const leaf = try taffy.newLeafWithContext(
-        .{ .size = .{ .width = dim(40.0), .height = auto(Dimension) } },
+        .{ .size = .{ .width = dim(40.0), .height = Dimension.auto } },
         ahem(),
     );
     const grid = try taffy.newWithChildren(.{ .display = .grid }, &.{leaf});
@@ -136,7 +131,7 @@ test "measure_count_grid_item_in_fixed_track" {
         .size = .{ .width = dim(50.0), .height = dim(50.0) },
         .grid_column = gridCol(2),
     });
-    const columns = [_]GridTemplateComponent{ length(GridTemplateComponent, 100.0), auto(GridTemplateComponent) };
+    const columns = [_]GridTemplateComponent{ GridTemplateComponent.fromLength(100.0), GridTemplateComponent.auto };
     const grid = try taffy.newWithChildren(
         .{
             .display = .grid,
@@ -169,7 +164,7 @@ test "measure_count_flex_in_grid" {
         const grid = try taffy.newWithChildren(
             .{
                 .display = .grid,
-                .size = .{ .width = dim(50.0), .height = auto(Dimension) },
+                .size = .{ .width = dim(50.0), .height = Dimension.auto },
             },
             &.{flex},
         );
@@ -210,12 +205,12 @@ test "grid_block_item_height_not_polluted_by_width_measure" {
 
     // The `auto` column is required to trigger intrinsic (width) sizing of the
     // items before the row-sizing (height) pass.
-    const columns = [_]GridTemplateComponent{ percent(GridTemplateComponent, 0.6), auto(GridTemplateComponent) };
+    const columns = [_]GridTemplateComponent{ GridTemplateComponent.fromPercent(0.6), GridTemplateComponent.auto };
     const container = try taffy.newWithChildren(
         .{
             .display = .grid,
             .grid_template_columns = &columns,
-            .size = .{ .width = dim(1000.0), .height = auto(Dimension) },
+            .size = .{ .width = dim(1000.0), .height = Dimension.auto },
         },
         &.{ a, b, c },
     );
@@ -243,10 +238,10 @@ test "grid_item_spanning_only_unaffected_tracks_is_not_measured" {
     const leaf_style: Style = .{ .grid_column = .{ .start = GridPlacement.fromLineIndex(2), .end = GridPlacement.fromLineIndex(3) } };
     const leaf = try taffy.newLeafWithContext(leaf_style, text);
     const columns = [_]GridTemplateComponent{
-        length(GridTemplateComponent, 100.0),
+        GridTemplateComponent.fromLength(100.0),
         minmax(GridTemplateComponent, MinTrackSizingFunction.zero, MaxTrackSizingFunction.fromFr(1.0)),
     };
-    const rows = [_]GridTemplateComponent{length(GridTemplateComponent, 50.0)};
+    const rows = [_]GridTemplateComponent{GridTemplateComponent.fromLength(50.0)};
     const grid = try taffy.newWithChildren(
         .{
             .display = .grid,

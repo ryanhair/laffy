@@ -46,8 +46,6 @@ const resolve = @import("../util/resolve.zig");
 const maybeResolve = resolve.maybeResolve;
 const resolveOrZero = resolve.resolveOrZero;
 const sys = @import("../util/sys.zig");
-const f32Max = sys.f32Max;
-const f32Min = sys.f32Min;
 const scrollable_overflow = @import("common/scrollable_overflow.zig");
 const finalizeScrollableOverflow = scrollable_overflow.finalizeScrollableOverflow;
 const ScrollableOverflowContainer = scrollable_overflow.ScrollableOverflowContainer;
@@ -488,7 +486,7 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
     // measuring the height of every item), as column sizing is not re-run when only computing the container's size.
     // Note: the short-circuit above has already handled the case where the container's width is known.
     if (run_mode == .compute_size and inputs.axis == .horizontal) {
-        const width = f32Max(maybeClamp(initial_column_sum + content_box_inset.horizontalAxisSum(), min_size.width, max_size.width), padding_border_size.width);
+        const width = @max(maybeClamp(initial_column_sum + content_box_inset.horizontalAxisSum(), min_size.width, max_size.width), padding_border_size.width);
         return LayoutOutput.fromOuterSize(.{ .width = width, .height = 0.0 });
     }
 
@@ -515,18 +513,18 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
     // 6. Compute container size
     const resolved_style_size = known_dimensions.@"or"(preferred_size);
     var container_border_box: Size(f32) = .{
-        .width = f32Max(
+        .width = @max(
             maybeClamp(resolved_style_size.get(.@"inline") orelse initial_column_sum + content_box_inset.horizontalAxisSum(), min_size.width, max_size.width),
             padding_border_size.width,
         ),
-        .height = f32Max(
+        .height = @max(
             maybeClamp(resolved_style_size.get(.block) orelse initial_row_sum + content_box_inset.verticalAxisSum(), min_size.height, max_size.height),
             padding_border_size.height,
         ),
     };
     var container_content_box: Size(f32) = .{
-        .width = f32Max(0.0, container_border_box.width - content_box_inset.horizontalAxisSum()),
-        .height = f32Max(0.0, container_border_box.height - content_box_inset.verticalAxisSum()),
+        .width = @max(0.0, container_border_box.width - content_box_inset.horizontalAxisSum()),
+        .height = @max(0.0, container_border_box.height - content_box_inset.verticalAxisSum()),
     };
 
     // If only the container's size has been requested
@@ -671,19 +669,19 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
         const final_row_sum = baseSizeSum(rows.items);
 
         if (intrinsic_column_contribution_changed and !has_percentage_column) {
-            container_border_box.width = f32Max(
+            container_border_box.width = @max(
                 maybeClamp(resolved_style_size.get(.@"inline") orelse final_column_sum + content_box_inset.horizontalAxisSum(), min_size.width, max_size.width),
                 padding_border_size.width,
             );
-            container_content_box.width = f32Max(0.0, container_border_box.width - content_box_inset.horizontalAxisSum());
+            container_content_box.width = @max(0.0, container_border_box.width - content_box_inset.horizontalAxisSum());
         }
 
         if (intrinsic_row_contribution_changed and !has_percentage_row) {
-            container_border_box.height = f32Max(
+            container_border_box.height = @max(
                 maybeClamp(resolved_style_size.get(.block) orelse final_row_sum + content_box_inset.verticalAxisSum(), min_size.height, max_size.height),
                 padding_border_size.height,
             );
-            container_content_box.height = f32Max(0.0, container_border_box.height - content_box_inset.verticalAxisSum());
+            container_content_box.height = @max(0.0, container_border_box.height - content_box_inset.verticalAxisSum());
         }
     }
 
@@ -695,8 +693,8 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
     // 8. Track Alignment
 
     // Align columns
-    const inline_size_without_scrollbar = f32Max(container_border_box.width - padding_border_size.width, 0.0);
-    const inline_scrollbar_gutter_for_alignment = f32Min(scrollbar_gutter.x, inline_size_without_scrollbar);
+    const inline_size_without_scrollbar = @max(container_border_box.width - padding_border_size.width, 0.0);
+    const inline_scrollbar_gutter_for_alignment = @min(scrollbar_gutter.x, inline_size_without_scrollbar);
     alignTracks(
         container_content_box.get(.@"inline"),
         .{
@@ -886,10 +884,10 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
 
     // If there are no in-flow items then return the container size and the overflow (no baseline)
     if (items.items.len == 0) {
-        const client_width = f32Max(container_border_box.width - border.horizontalAxisSum() - scrollbar_gutter.x, 0.0);
+        const client_width = @max(container_border_box.width - border.horizontalAxisSum() - scrollbar_gutter.x, 0.0);
         const overflow_rect = if (is_scroll_container)
             item_overflow_rect.@"union"(.{
-                .left = if (direction.isRtl()) f32Min(client_width - padding.left, 0.0) else 0.0,
+                .left = if (direction.isRtl()) @min(client_width - padding.left, 0.0) else 0.0,
                 .right = if (direction.isRtl()) client_width else padding.right,
                 .top = 0.0,
                 .bottom = padding.bottom,
@@ -945,10 +943,10 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
     // overflow region, so it is included in the in-flow overflow rect. Boxes that are not
     // scroll containers do not extend their overflow region by their own padding.
     const scrollable_overflow_rect = blk: {
-        const client_width = f32Max(container_border_box.width - border.horizontalAxisSum() - scrollbar_gutter.x, 0.0);
+        const client_width = @max(container_border_box.width - border.horizontalAxisSum() - scrollbar_gutter.x, 0.0);
         const overflow_rect = if (is_scroll_container)
             item_overflow_rect.@"union"(.{
-                .left = if (direction.isRtl()) f32Min(client_width - padding.left, 0.0) else 0.0,
+                .left = if (direction.isRtl()) @min(client_width - padding.left, 0.0) else 0.0,
                 .right = if (direction.isRtl()) client_width else padding.right,
                 .top = 0.0,
                 .bottom = padding.bottom,
@@ -1203,8 +1201,8 @@ pub const DetailedGridInfo = struct {
         const item = self.items[item_index];
         const start_col = self.columns.positions.items[@as(usize, item.column_start) - 1];
         const end_col = self.columns.positions.items[@as(usize, item.column_end) - 2];
-        const left = f32Min(start_col.start, end_col.start);
-        const right = f32Max(start_col.end, end_col.end);
+        const left = @min(start_col.start, end_col.start);
+        const right = @max(start_col.end, end_col.end);
         const top = self.rows.positions.items[@as(usize, item.row_start) - 1].start;
         const bottom = self.rows.positions.items[@as(usize, item.row_end) - 2].end;
         return .{ .location = .{ .x = left, .y = top }, .size = .{ .width = right - left, .height = bottom - top } };
@@ -1306,9 +1304,9 @@ pub const DetailedGridTracksInfo = struct {
         // An area whose lines all fall within a collapsed run is zero-sized and anchored at its
         // logical start edge (as in Chrome; Gecko anchors it before the shared gutter instead).
         if (is_reversed) {
-            return .{ .start = f32Min(start_position, end_position), .end = start_position };
+            return .{ .start = @min(start_position, end_position), .end = start_position };
         } else {
-            return .{ .start = start_position, .end = f32Max(start_position, end_position) };
+            return .{ .start = start_position, .end = @max(start_position, end_position) };
         }
     }
 

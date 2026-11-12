@@ -165,7 +165,7 @@ pub fn computeLeafLayout(
     );
     const unpadded_size: Size(f32) = .{
         .width = clamped_size.width,
-        .height = sys.f32Max(clamped_size.height, if (aspect_ratio) |ratio| clamped_size.width / ratio else 0.0),
+        .height = @max(clamped_size.height, if (aspect_ratio) |ratio| clamped_size.width / ratio else 0.0),
     };
     const size = maybeMax(unpadded_size, someSize(padding_border.sumAxes()));
 

@@ -12,7 +12,6 @@ const LengthPercentageAuto = laffy.LengthPercentageAuto;
 const Display = laffy.Display;
 const Position = laffy.Position;
 const AvailableSpace = laffy.AvailableSpace;
-const auto = laffy.style_helpers.auto;
 const TaffyTree = laffy.TaffyTree(void);
 
 fn lpa(v: f32) LengthPercentageAuto {
@@ -34,7 +33,7 @@ fn leafWithInset(position: Position, display: Display) !LeafWithInset {
     const child = try taffy.newLeaf(.{
         .position = position,
         .size = .{ .width = dim(10.0), .height = dim(10.0) },
-        .inset = .{ .left = lpa(5.0), .right = auto(LengthPercentageAuto), .top = lpa(7.0), .bottom = auto(LengthPercentageAuto) },
+        .inset = .{ .left = lpa(5.0), .right = LengthPercentageAuto.auto, .top = lpa(7.0), .bottom = LengthPercentageAuto.auto },
     });
     const root = try taffy.newWithChildren(
         .{ .display = display, .size = .{ .width = dim(100.0), .height = dim(100.0) } },

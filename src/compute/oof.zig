@@ -201,7 +201,7 @@ const OofAxis = struct {
                     const center = (sp.area.start + sp.area.end) / 2.0;
                     const start_distance = center;
                     const end_distance = self.cb_size - center;
-                    if (sys.abs(start_distance) <= sys.abs(end_distance)) {
+                    if (@abs(start_distance) <= @abs(end_distance)) {
                         break :blk .{ .start = 0.0, .end = 2.0 * start_distance };
                     } else {
                         break :blk .{ .start = self.cb_size - 2.0 * end_distance, .end = self.cb_size };
@@ -232,7 +232,7 @@ const OofAxis = struct {
     /// margins are treated as zero) <https://www.w3.org/TR/css-position-3/#abspos-auto-size>
     fn stretchFitSize(self: *const OofAxis) f32 {
         const non_auto_margin_sum = (self.margin.start orelse 0.0) + (self.margin.end orelse 0.0);
-        return sys.f32Max(self.insetModifiedContainingBlockSize() - non_auto_margin_sum, 0.0);
+        return @max(self.insetModifiedContainingBlockSize() - non_auto_margin_sum, 0.0);
     }
 
     /// Whether an `auto` size in this axis is the stretch-fit size (rather than fit-content)
@@ -321,7 +321,7 @@ const OofAxis = struct {
                     // The overflow limit rect is the bounding rect of the IMCB and the
                     // containing block, extended to infinity in the scrollable direction
                     // of a scroll container
-                    var limit: Line(f32) = .{ .start = @min(imcb.start, 0.0), .end = sys.f32Max(imcb.end, self.cb_size) };
+                    var limit: Line(f32) = .{ .start = @min(imcb.start, 0.0), .end = @max(imcb.end, self.cb_size) };
                     if (self.is_scroll_axis) {
                         if (self.reversed) {
                             limit.start = -std.math.inf(f32);
@@ -333,7 +333,7 @@ const OofAxis = struct {
                         // 2. Fits within the overflow limit rect: cover the IMCB and align
                         // as specified as far as possible without overflowing the limit
                         const start = alignInLine(imcb, margin_box_size, edge);
-                        break :blk sys.f32Max(@min(start, limit.end - margin_box_size), limit.start);
+                        break :blk @max(@min(start, limit.end - margin_box_size), limit.start);
                     } else {
                         // 3. Start-align within the overflow limit rect
                         break :blk alignInLine(limit, margin_box_size, self.startEdge());
@@ -662,9 +662,9 @@ pub fn layoutOofBox(
             .top = margin.top orelse 0.0,
             .bottom = margin.bottom orelse 0.0,
         };
-        available_size = available_size.f32Min(.{
-            .width = sys.f32Max(area_width - non_auto_margin.horizontalAxisSum(), 0.0),
-            .height = sys.f32Max(area_height - non_auto_margin.verticalAxisSum(), 0.0),
+        available_size = available_size.min(.{
+            .width = @max(area_width - non_auto_margin.horizontalAxisSum(), 0.0),
+            .height = @max(area_height - non_auto_margin.verticalAxisSum(), 0.0),
         });
     }
     const clamped_available_size = maybeClamp(available_size, min_size, max_size);
@@ -706,7 +706,7 @@ pub fn layoutOofBox(
     if (stretch_width) {
         if (is_table) {
             // A table cannot be stretched smaller than its content: stretch-fit is a minimum
-            min_size.width = sys.f32Max(min_size.width orelse 0.0, stretch_fit_size.width);
+            min_size.width = @max(min_size.width orelse 0.0, stretch_fit_size.width);
         } else {
             known_dimensions.width = stretch_fit_size.width;
             known_dimensions = maybeClamp(known_dimensions.maybeApplyAspectRatio(stretch_aspect_ratio), min_size, max_size);
@@ -714,7 +714,7 @@ pub fn layoutOofBox(
     }
     if (known_dimensions.height == null and stretch_height) {
         if (is_table) {
-            min_size.height = sys.f32Max(min_size.height orelse 0.0, stretch_fit_size.height);
+            min_size.height = @max(min_size.height orelse 0.0, stretch_fit_size.height);
         } else {
             known_dimensions.height = stretch_fit_size.height;
             known_dimensions = maybeClamp(known_dimensions.maybeApplyAspectRatio(stretch_aspect_ratio), min_size, max_size);

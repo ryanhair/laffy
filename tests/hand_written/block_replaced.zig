@@ -15,10 +15,6 @@ const NodeId = laffy.NodeId;
 const Dimension = laffy.Dimension;
 const LengthPercentage = laffy.LengthPercentage;
 const LengthPercentageAuto = laffy.LengthPercentageAuto;
-const length = laffy.style_helpers.length;
-const percent = laffy.style_helpers.percent;
-const zero = laffy.style_helpers.zero;
-const auto = laffy.style_helpers.auto;
 const TestNodeContext = measure.TestNodeContext;
 const TaffyTree = laffy.TaffyTree(TestNodeContext);
 const AvailableSpace = laffy.AvailableSpace;
@@ -29,7 +25,7 @@ fn badge() TestNodeContext {
 }
 
 fn blockContainer(width: f32) Style {
-    return .{ .display = .block, .size = .{ .width = length(Dimension, width), .height = auto(Dimension) } };
+    return .{ .display = .block, .size = .{ .width = Dimension.fromLength(width), .height = Dimension.auto } };
 }
 
 fn layout(taffy: *TaffyTree, root: NodeId) !void {
@@ -65,7 +61,7 @@ test "explicit_width_is_used" {
         .{
             .display = .block,
             .item_is_replaced = true,
-            .size = .{ .width = length(Dimension, 300.0), .height = length(Dimension, 50.0) },
+            .size = .{ .width = Dimension.fromLength(300.0), .height = Dimension.fromLength(50.0) },
         },
         badge(),
     );
@@ -84,7 +80,7 @@ test "max_width_clamps_intrinsic_size" {
         .{
             .display = .block,
             .item_is_replaced = true,
-            .max_size = .{ .width = percent(LengthPercentageAuto, 1.0), .height = auto(LengthPercentageAuto) },
+            .max_size = .{ .width = LengthPercentageAuto.fromPercent(1.0), .height = LengthPercentageAuto.auto },
         },
         badge(),
     );
@@ -103,10 +99,10 @@ test "auto_margins_center_replaced_child" {
             .display = .block,
             .item_is_replaced = true,
             .margin = .{
-                .left = auto(LengthPercentageAuto),
-                .right = auto(LengthPercentageAuto),
-                .top = zero(LengthPercentageAuto),
-                .bottom = zero(LengthPercentageAuto),
+                .left = LengthPercentageAuto.auto,
+                .right = LengthPercentageAuto.auto,
+                .top = LengthPercentageAuto.zero,
+                .bottom = LengthPercentageAuto.zero,
             },
         },
         badge(),
@@ -141,7 +137,7 @@ test "percentage_width_has_zero_min_content_contribution" {
     const wrapper, const image = try shrinkToFitWrapperAroundImage(4.0, .{
         .display = .block,
         .item_is_replaced = true,
-        .size = .{ .width = percent(Dimension, 1.0), .height = auto(Dimension) },
+        .size = .{ .width = Dimension.fromPercent(1.0), .height = Dimension.auto },
     });
     try testing.expectEqual(@as(f32, 4.0), wrapper);
     try testing.expectEqual(@as(f32, 4.0), image);
@@ -151,7 +147,7 @@ test "percentage_max_width_has_zero_min_content_contribution" {
     const wrapper, const image = try shrinkToFitWrapperAroundImage(4.0, .{
         .display = .block,
         .item_is_replaced = true,
-        .max_size = .{ .width = percent(LengthPercentageAuto, 1.0), .height = auto(LengthPercentageAuto) },
+        .max_size = .{ .width = LengthPercentageAuto.fromPercent(1.0), .height = LengthPercentageAuto.auto },
     });
     try testing.expectEqual(@as(f32, 4.0), wrapper);
     try testing.expectEqual(@as(f32, 4.0), image);
@@ -161,7 +157,7 @@ test "percentage_width_max_content_contribution_is_intrinsic_size" {
     const wrapper, const image = try shrinkToFitWrapperAroundImage(100.0, .{
         .display = .block,
         .item_is_replaced = true,
-        .size = .{ .width = percent(Dimension, 1.0), .height = auto(Dimension) },
+        .size = .{ .width = Dimension.fromPercent(1.0), .height = Dimension.auto },
     });
     try testing.expectEqual(@as(f32, 8.0), wrapper);
     try testing.expectEqual(@as(f32, 8.0), image);
@@ -174,12 +170,12 @@ test "percentage_width_min_content_size_of_container_is_zero" {
         .{
             .display = .block,
             .item_is_replaced = true,
-            .size = .{ .width = percent(Dimension, 1.0), .height = auto(Dimension) },
+            .size = .{ .width = Dimension.fromPercent(1.0), .height = Dimension.auto },
             .padding = .{
-                .left = length(LengthPercentage, 1.0),
-                .right = length(LengthPercentage, 1.0),
-                .top = zero(LengthPercentage),
-                .bottom = zero(LengthPercentage),
+                .left = LengthPercentage.fromLength(1.0),
+                .right = LengthPercentage.fromLength(1.0),
+                .top = LengthPercentage.zero,
+                .bottom = LengthPercentage.zero,
             },
         },
         square(),

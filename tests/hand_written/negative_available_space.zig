@@ -16,8 +16,6 @@ const LayoutInput = laffy.LayoutInput;
 const LayoutOutput = laffy.LayoutOutput;
 const TrackSizingFunction = laffy.TrackSizingFunction;
 const GridTemplateComponent = laffy.GridTemplateComponent;
-const auto = laffy.style_helpers.auto;
-const length = laffy.style_helpers.length;
 const TestNodeContext = measure.TestNodeContext;
 const TaffyTree = laffy.TaffyTree(TestNodeContext);
 
@@ -72,16 +70,16 @@ fn layoutWithOversizedMargins(display: Display, flex_direction: FlexDirection) !
                 .top = LengthPercentageAuto.zero,
                 .bottom = LengthPercentageAuto.zero,
             },
-            .size = .{ .width = auto(Dimension), .height = auto(Dimension) },
+            .size = .{ .width = Dimension.auto, .height = Dimension.auto },
         },
         TestNodeContext.zero(),
     );
-    const columns = [_]GridTemplateComponent{length(GridTemplateComponent, 20.0)};
+    const columns = [_]GridTemplateComponent{GridTemplateComponent.fromLength(20.0)};
     const root = try taffy.newWithChildren(
         .{
             .display = display,
             .flex_direction = flex_direction,
-            .size = .{ .width = Dimension.fromLength(20.0), .height = auto(Dimension) },
+            .size = .{ .width = Dimension.fromLength(20.0), .height = Dimension.auto },
             .grid_template_columns = &columns,
         },
         &.{leaf},

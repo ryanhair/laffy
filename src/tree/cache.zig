@@ -189,15 +189,10 @@ pub const Cache = struct {
     /// and storing a result that was computed with a different mode drops the existing entries.
     mode: CacheMode = CacheMode.initial,
 
-    /// A new empty cache (upstream `Cache::new()`)
-    pub const new: Cache = .{};
-    /// Upstream `Default`
-    pub const default: Cache = new;
-
     /// Free the memory owned by the cache's entries
     pub fn deinit(self: *Cache, gpa: Allocator) void {
         if (self.final_layout_entry) |*entry| entry.content.deinit(gpa);
-        self.* = new;
+        self.* = .{};
     }
 
     /// Try to retrieve a cached result from the cache.
@@ -372,7 +367,7 @@ fn countMeasureEntries(cache: *const Cache) usize {
 }
 
 test "recently used measure entries get a second chance" {
-    var cache: Cache = .new;
+    var cache: Cache = .{};
     defer cache.deinit(testing.allocator);
     for (0..cache_size) |width| {
         cache.store(testing.allocator, &testInput(@floatFromInt(width)), testOutput(@floatFromInt(width)));
@@ -387,7 +382,7 @@ test "recently used measure entries get a second chance" {
 }
 
 test "storing an existing measurement updates it in place" {
-    var cache: Cache = .new;
+    var cache: Cache = .{};
     defer cache.deinit(testing.allocator);
     cache.store(testing.allocator, &testInput(1.0), testOutput(1.0));
     cache.store(testing.allocator, &testInput(2.0), testOutput(2.0));
@@ -398,7 +393,7 @@ test "storing an existing measurement updates it in place" {
 }
 
 test "measurements with margin collapse metadata are not cached" {
-    var cache: Cache = .new;
+    var cache: Cache = .{};
     defer cache.deinit(testing.allocator);
 
     var collapse_through = testOutput(1.0);
@@ -413,7 +408,7 @@ test "measurements with margin collapse metadata are not cached" {
 }
 
 test "retrieving a measurement only marks its slot as used" {
-    var cache: Cache = .new;
+    var cache: Cache = .{};
     defer cache.deinit(testing.allocator);
     cache.store(testing.allocator, &testInput(1.0), testOutput(1.0));
     cache.store(testing.allocator, &testInput(2.0), testOutput(2.0));
@@ -459,7 +454,7 @@ test "cache mode distinguishes every combination of inputs" {
 }
 
 test "retrieving with a different mode misses and keeps the entries" {
-    var cache: Cache = .new;
+    var cache: Cache = .{};
     defer cache.deinit(testing.allocator);
     cache.store(testing.allocator, &performLayoutInput(100.0, 50.0), testOutput(1.0));
     cache.store(testing.allocator, &testInput(1.0), testOutput(2.0));
@@ -477,7 +472,7 @@ test "retrieving with a different mode misses and keeps the entries" {
 
 test "storing with a different mode drops the existing entries" {
     for (otherModes(testInput(3.0))) |other| {
-        var cache: Cache = .new;
+        var cache: Cache = .{};
         defer cache.deinit(testing.allocator);
         cache.store(testing.allocator, &performLayoutInput(100.0, 50.0), testOutput(1.0));
         cache.store(testing.allocator, &testInput(1.0), testOutput(2.0));
@@ -496,7 +491,7 @@ test "storing with a different mode drops the existing entries" {
     }
 
     for (otherModes(performLayoutInput(100.0, 50.0))) |other| {
-        var cache: Cache = .new;
+        var cache: Cache = .{};
         defer cache.deinit(testing.allocator);
         cache.store(testing.allocator, &performLayoutInput(100.0, 50.0), testOutput(1.0));
         cache.store(testing.allocator, &testInput(1.0), testOutput(2.0));
@@ -509,7 +504,7 @@ test "storing with a different mode drops the existing entries" {
 }
 
 test "hidden layouts do not affect the cache" {
-    var cache: Cache = .new;
+    var cache: Cache = .{};
     defer cache.deinit(testing.allocator);
     cache.store(testing.allocator, &testInput(1.0), testOutput(1.0));
     cache.store(testing.allocator, &LayoutInput.hidden, testOutput(2.0));
@@ -518,7 +513,7 @@ test "hidden layouts do not affect the cache" {
 
 test "final layout entries own their out-of-flow candidates" {
     const gpa = testing.allocator;
-    var cache: Cache = .new;
+    var cache: Cache = .{};
     defer cache.deinit(gpa);
     var out = testOutput(5.0);
     try out.oof_candidates.push(gpa, .{

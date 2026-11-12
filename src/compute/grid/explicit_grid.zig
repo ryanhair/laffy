@@ -182,8 +182,8 @@ pub fn computeExplicitGridSizeInAxis(
             // Note: as-casts from f32 to u32 saturate, so a huge or infinite number of repetitions
             // (e.g. due to zero-sized tracks) resolves to u32::MAX and is clamped below
             break :blk switch (auto_fit_strategy) {
-                .max_repetitions_that_do_not_overflow => saturatingU32(sys.floor(num_repetition_that_fit)) +| 1,
-                .min_repetitions_that_do_overflow => saturatingU32(sys.ceil(num_repetition_that_fit)) +| 1,
+                .max_repetitions_that_do_not_overflow => saturatingU32(@floor(num_repetition_that_fit)) +| 1,
+                .min_repetitions_that_do_overflow => saturatingU32(@ceil(num_repetition_that_fit)) +| 1,
             };
         }
     } else 1;

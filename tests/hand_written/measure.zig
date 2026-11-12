@@ -14,8 +14,6 @@ const AlignItems = laffy.AlignItems;
 const AvailableSpace = laffy.AvailableSpace;
 const LayoutInput = laffy.LayoutInput;
 const LayoutOutput = laffy.LayoutOutput;
-const length = laffy.style_helpers.length;
-const auto = laffy.style_helpers.auto;
 const TestNodeContext = measure.TestNodeContext;
 const TaffyTree = laffy.TaffyTree(TestNodeContext);
 
@@ -69,7 +67,7 @@ test "measure_child_constraint" {
     const child = try taffy.newLeafWithContext(Style{}, hundredHundred());
 
     const node = try taffy.newWithChildren(
-        .{ .size = .{ .width = dim(50.0), .height = auto(Dimension) } },
+        .{ .size = .{ .width = dim(50.0), .height = Dimension.auto } },
         &.{child},
     );
 
@@ -90,7 +88,7 @@ test "measure_child_constraint_padding_parent" {
 
     const node = try taffy.newWithChildren(
         .{
-            .size = .{ .width = dim(50.0), .height = auto(Dimension) },
+            .size = .{ .width = dim(50.0), .height = Dimension.auto },
             .padding = .{
                 .left = LengthPercentage.fromLength(10.0),
                 .right = LengthPercentage.fromLength(10.0),
@@ -121,7 +119,7 @@ test "measure_child_with_flex_grow" {
     const child1 = try taffy.newLeafWithContext(.{ .flex_grow = 1.0 }, fiftyFifty());
 
     const node = try taffy.newWithChildren(
-        .{ .size = .{ .width = dim(100.0), .height = auto(Dimension) } },
+        .{ .size = .{ .width = dim(100.0), .height = Dimension.auto } },
         &.{ child0, child1 },
     );
 
@@ -142,7 +140,7 @@ test "measure_child_with_flex_shrink" {
     const child1 = try taffy.newLeafWithContext(Style{}, hundredFifty());
 
     const node = try taffy.newWithChildren(
-        .{ .size = .{ .width = dim(100.0), .height = auto(Dimension) } },
+        .{ .size = .{ .width = dim(100.0), .height = Dimension.auto } },
         &.{ child0, child1 },
     );
 
@@ -164,7 +162,7 @@ test "remeasure_child_after_growing" {
 
     const node = try taffy.newWithChildren(
         .{
-            .size = .{ .width = dim(100.0), .height = auto(Dimension) },
+            .size = .{ .width = dim(100.0), .height = Dimension.auto },
             .align_items = AlignItems.start,
         },
         &.{ child0, child1 },
@@ -189,7 +187,7 @@ test "remeasure_child_after_shrinking" {
 
     const node = try taffy.newWithChildren(
         .{
-            .size = .{ .width = dim(100.0), .height = auto(Dimension) },
+            .size = .{ .width = dim(100.0), .height = Dimension.auto },
             .align_items = AlignItems.start,
         },
         &.{ child0, child1 },
@@ -236,7 +234,7 @@ test "width_overrides_measure" {
     var taffy = try TaffyTree.init(testing.allocator);
     defer taffy.deinit();
     const child = try taffy.newLeafWithContext(
-        .{ .size = .{ .width = dim(50.0), .height = auto(Dimension) } },
+        .{ .size = .{ .width = dim(50.0), .height = Dimension.auto } },
         hundredHundred(),
     );
 
@@ -251,7 +249,7 @@ test "height_overrides_measure" {
     var taffy = try TaffyTree.init(testing.allocator);
     defer taffy.deinit();
     const child = try taffy.newLeafWithContext(
-        .{ .size = .{ .width = auto(Dimension), .height = dim(50.0) } },
+        .{ .size = .{ .width = Dimension.auto, .height = dim(50.0) } },
         hundredHundred(),
     );
 
@@ -316,7 +314,7 @@ test "explicit_min_main_size_skips_min_content_measurement" {
     var taffy = try laffy.TaffyTree(void).init(testing.allocator);
     defer taffy.deinit();
     const child = try taffy.newLeafWithContext(
-        .{ .min_size = .{ .width = length(LengthPercentageAuto, 10.0), .height = auto(LengthPercentageAuto) } },
+        .{ .min_size = .{ .width = LengthPercentageAuto.fromLength(10.0), .height = LengthPercentageAuto.auto } },
         {},
     );
     const root = try taffy.newWithChildren(Style{}, &.{child});

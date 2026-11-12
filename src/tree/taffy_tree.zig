@@ -106,10 +106,10 @@ pub fn TaffyTree(comptime NodeContext: type) type {
             style: Style,
             /// The always unrounded results of the layout computation. We must store this separately from the rounded
             /// layout to avoid errors from rounding already-rounded values. See <https://github.com/DioxusLabs/taffy/issues/501>.
-            unrounded_layout: Layout = Layout.new,
+            unrounded_layout: Layout = .{},
             /// The final results of the layout computation.
             /// These may be rounded or unrounded depending on what the `use_rounding` config setting is set to.
-            final_layout: Layout = Layout.new,
+            final_layout: Layout = .{},
             /// The node's context data, if any (upstream `has_context` plus `node_context_data`)
             context: ?NodeContext = null,
             /// The children of the node
@@ -120,7 +120,7 @@ pub fn TaffyTree(comptime NodeContext: type) type {
             /// as recorded by the out-of-flow positioning pass
             hoisted_children: std.ArrayList(NodeId) = .empty,
             /// The cached results of the layout computation
-            cache: Cache = Cache.new,
+            cache: Cache = .{},
             /// The computation result from layout algorithm
             detailed_layout_info: DetailedLayoutInfo = .none,
 
@@ -1222,7 +1222,7 @@ test "test layout" {
     defer taffy.deinit();
     const node = try taffy.newLeaf(.{});
 
-    try testing.expect(taffy.layout(node).eql(Layout.new));
+    try testing.expect(taffy.layout(node).eql(.{}));
 }
 
 test "mark dirty on leaves" {

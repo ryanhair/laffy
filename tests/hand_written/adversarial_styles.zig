@@ -18,9 +18,7 @@ const GridTemplateComponent = laffy.GridTemplateComponent;
 const TrackSizingFunction = laffy.TrackSizingFunction;
 const MinTrackSizingFunction = laffy.MinTrackSizingFunction;
 const MaxTrackSizingFunction = laffy.MaxTrackSizingFunction;
-const length = laffy.style_helpers.length;
 const repeat = laffy.style_helpers.repeat;
-const fr = laffy.style_helpers.fr;
 const TaffyTree = laffy.TaffyTree(measure.TestNodeContext);
 
 fn definite(size: f32) Size(AvailableSpace) {
@@ -63,7 +61,7 @@ test "non_finite_grid_container_size_terminates" {
         var tree = try TaffyTree.init(testing.allocator);
         defer tree.deinit();
         const child = try tree.newLeaf(Style{});
-        const tracks = [_]TrackSizingFunction{fr(TrackSizingFunction, 1.0)};
+        const tracks = [_]TrackSizingFunction{TrackSizingFunction.fromFr(1.0)};
         const columns = [_]GridTemplateComponent{repeat(2, &tracks)};
         const root = try tree.newWithChildren(
             .{
@@ -88,8 +86,8 @@ test "repetition_without_line_names_resolves_lines" {
         .size = .{ .width = dim(5.0), .height = dim(5.0) },
         .grid_column = .{ .start = .{ .named_line = .{ .name = "c", .index = 1 } }, .end = .auto },
     });
-    const tracks = [_]TrackSizingFunction{length(TrackSizingFunction, 10.0)};
-    const columns = [_]GridTemplateComponent{ repeat(2, &tracks), length(GridTemplateComponent, 10.0) };
+    const tracks = [_]TrackSizingFunction{TrackSizingFunction.fromLength(10.0)};
+    const columns = [_]GridTemplateComponent{ repeat(2, &tracks), GridTemplateComponent.fromLength(10.0) };
     const column_names = [_][]const []const u8{ &.{}, &.{}, &.{"c"} };
     const root = try tree.newWithChildren(
         .{

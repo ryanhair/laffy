@@ -239,7 +239,7 @@ pub fn GenericGridPlacement(comptime LineTypeParam: type) type {
                 .line => switch (l.end) {
                     .auto => 1,
                     .span => |span_value| span_value,
-                    .line => @panic("indefinite_span should only be called on indefinite grid tracks"),
+                    .line => @panic("indefiniteSpan should only be called on indefinite grid tracks"),
                 },
                 .auto => switch (l.end) {
                     .line => 1,
@@ -301,7 +301,7 @@ pub fn GenericGridPlacement(comptime LineTypeParam: type) type {
                     else => {},
                 },
             }
-            @panic("resolve_definite_grid_tracks should only be called on definite grid tracks");
+            @panic("resolveDefiniteGridTracks should only be called on definite grid tracks");
         }
 
         /// `Line(..).resolveAbsolutelyPositionedGridTracks` (`OriginZeroGridPlacement` only).
@@ -357,7 +357,7 @@ pub fn GenericGridPlacement(comptime LineTypeParam: type) type {
                 },
                 .line => {},
             }
-            @panic("resolve_indefinite_grid_tracks should only be called on indefinite grid tracks");
+            @panic("resolveIndefiniteGridTracks should only be called on indefinite grid tracks");
         }
     };
 }

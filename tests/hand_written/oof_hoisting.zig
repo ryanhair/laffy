@@ -15,8 +15,6 @@ const Position = laffy.Position;
 const Dimension = laffy.Dimension;
 const LengthPercentageAuto = laffy.LengthPercentageAuto;
 const AvailableSpace = laffy.AvailableSpace;
-const length = laffy.style_helpers.length;
-const auto = laffy.style_helpers.auto;
 const TaffyTree = laffy.TaffyTree(void);
 
 const max_content = Size(AvailableSpace).max_content;
@@ -27,7 +25,7 @@ fn lpa(v: f32) LengthPercentageAuto {
 }
 
 fn size(w: f32, h: f32) Size(Dimension) {
-    return .{ .width = length(Dimension, w), .height = length(Dimension, h) };
+    return .{ .width = Dimension.fromLength(w), .height = Dimension.fromLength(h) };
 }
 
 fn leafStyle(width: f32, height: f32) Style {
@@ -36,7 +34,7 @@ fn leafStyle(width: f32, height: f32) Style {
 
 /// Insets with only `left` and `top` set
 fn insetLeftTop(left: f32, top: f32) Rect(LengthPercentageAuto) {
-    return .{ .left = lpa(left), .top = lpa(top), .right = auto(LengthPercentageAuto), .bottom = auto(LengthPercentageAuto) };
+    return .{ .left = lpa(left), .top = lpa(top), .right = LengthPercentageAuto.auto, .bottom = LengthPercentageAuto.auto };
 }
 
 fn point(x: f32, y: f32) Point(f32) {
@@ -208,7 +206,7 @@ test "absolute_within_absolute" {
     defer tree.deinit();
     const inner = try tree.newLeaf(.{
         .position = .absolute,
-        .inset = .{ .right = lpa(0.0), .bottom = lpa(0.0), .left = auto(LengthPercentageAuto), .top = auto(LengthPercentageAuto) },
+        .inset = .{ .right = lpa(0.0), .bottom = lpa(0.0), .left = LengthPercentageAuto.auto, .top = LengthPercentageAuto.auto },
         .size = size(10.0, 10.0),
     });
     const outer = try tree.newWithChildren(

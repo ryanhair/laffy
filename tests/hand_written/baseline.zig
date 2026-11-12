@@ -13,9 +13,6 @@ const Baselines = laffy.tree.Baselines;
 const LayoutInput = laffy.LayoutInput;
 const LayoutOutput = laffy.LayoutOutput;
 const NodeId = laffy.NodeId;
-const length = laffy.style_helpers.length;
-const zero = laffy.style_helpers.zero;
-const auto = laffy.style_helpers.auto;
 
 /// A node context that pairs an intrinsic size with a first-baseline offset
 /// (measured from the node's top edge in the block axis).
@@ -28,7 +25,7 @@ const TaffyTree = laffy.TaffyTree(BaselineContext);
 
 const BaselineMeasurer = struct {
     pub fn measure(_: BaselineMeasurer, _: LayoutInput, _: NodeId, context: ?*BaselineContext, _: *const Style) LayoutOutput {
-        const ctx = context orelse return LayoutOutput.default;
+        const ctx = context orelse return LayoutOutput.hidden;
         return LayoutOutput.fromSizesAndBaselines(
             ctx.size,
             laffy.tree.ScrollableOverflow.zero,
@@ -42,15 +39,15 @@ fn computeLayout(taffy: *TaffyTree, root: NodeId) !void {
 }
 
 fn dim(v: f32) Dimension {
-    return length(Dimension, v);
+    return Dimension.fromLength(v);
 }
 
 fn bottomPadding(v: f32) Rect(LengthPercentage) {
     return .{
-        .left = zero(LengthPercentage),
-        .right = zero(LengthPercentage),
-        .top = zero(LengthPercentage),
-        .bottom = length(LengthPercentage, v),
+        .left = LengthPercentage.zero,
+        .right = LengthPercentage.zero,
+        .top = LengthPercentage.zero,
+        .bottom = LengthPercentage.fromLength(v),
     };
 }
 
@@ -120,7 +117,7 @@ test "block_scroll_container_child_without_baseline_synthesizes_from_border_box"
     const item_a = try taffy.newWithChildren(
         .{
             .display = .block,
-            .size = .{ .width = dim(40.0), .height = auto(Dimension) },
+            .size = .{ .width = dim(40.0), .height = Dimension.auto },
             .padding = bottomPadding(20.0),
         },
         &.{scroll_child},
@@ -169,7 +166,7 @@ test "block_non_scroll_container_child_without_baseline_contributes_nothing" {
     const item_a = try taffy.newWithChildren(
         .{
             .display = .block,
-            .size = .{ .width = dim(40.0), .height = auto(Dimension) },
+            .size = .{ .width = dim(40.0), .height = Dimension.auto },
             .padding = bottomPadding(20.0),
         },
         &.{plain_child},
@@ -225,7 +222,7 @@ test "block_scroll_container_child_baseline_is_clamped_to_border_box" {
     const item_a = try taffy.newWithChildren(
         .{
             .display = .block,
-            .size = .{ .width = dim(40.0), .height = auto(Dimension) },
+            .size = .{ .width = dim(40.0), .height = Dimension.auto },
             .padding = bottomPadding(20.0),
         },
         &.{scroll_child},

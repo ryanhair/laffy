@@ -11,7 +11,6 @@ const AlignItems = laffy.AlignItems;
 const AlignContent = laffy.AlignContent;
 const FlexWrap = laffy.FlexWrap;
 const AvailableSpace = laffy.AvailableSpace;
-const auto = laffy.style_helpers.auto;
 const TestNodeContext = measure.TestNodeContext;
 const TaffyTree = laffy.TaffyTree(TestNodeContext);
 
@@ -60,7 +59,7 @@ fn measureFitContentChild(flex_wrap: FlexWrap) !Size(f32) {
     var taffy = try TaffyTree.init(testing.allocator);
     defer taffy.deinit();
     const text = TestNodeContext.ahemText(TEXT, .horizontal);
-    const child_style: Style = .{ .size = .{ .width = Dimension.fit_content, .height = auto(Dimension) } };
+    const child_style: Style = .{ .size = .{ .width = Dimension.fit_content, .height = Dimension.auto } };
     const child = try taffy.newLeafWithContext(child_style, text);
     const container = try taffy.newWithChildren(containerStyle(flex_wrap), &.{child});
     try taffy.computeLayoutWithMeasure(container, Size(AvailableSpace).max_content, measure.TestMeasurer{});

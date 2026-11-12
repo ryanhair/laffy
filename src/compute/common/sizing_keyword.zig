@@ -84,11 +84,11 @@ pub fn resolveAbsoluteSizingKeywords(
     sizing_mode: SizingMode,
 ) LayoutError!void {
     const stretch_size: Size(f32) = .{
-        .width = sys.f32Max(
+        .width = @max(
             area_size.width - (inset.left orelse 0.0) - (inset.right orelse 0.0) - (margin.left orelse 0.0) - (margin.right orelse 0.0),
             0.0,
         ),
-        .height = sys.f32Max(
+        .height = @max(
             area_size.height - (inset.top orelse 0.0) - (inset.bottom orelse 0.0) - (margin.top orelse 0.0) - (margin.bottom orelse 0.0),
             0.0,
         ),

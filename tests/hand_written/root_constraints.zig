@@ -9,7 +9,6 @@ const Rect = laffy.Rect;
 const Dimension = laffy.Dimension;
 const LengthPercentage = laffy.LengthPercentage;
 const AvailableSpace = laffy.AvailableSpace;
-const length = laffy.style_helpers.length;
 
 test "root_with_percentage_size" {
     var taffy = try laffy.TaffyTree(measure.TestNodeContext).init(testing.allocator);
@@ -74,7 +73,7 @@ test "root_padding_and_border_larger_than_definite_size" {
 
     const root = try tree.newWithChildren(
         .{
-            .size = .{ .width = length(Dimension, 10.0), .height = length(Dimension, 10.0) },
+            .size = .{ .width = Dimension.fromLength(10.0), .height = Dimension.fromLength(10.0) },
             .padding = Rect(LengthPercentage).length(10.0),
             .border = Rect(LengthPercentage).length(10.0),
         },

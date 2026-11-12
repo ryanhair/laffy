@@ -7,20 +7,17 @@ const Style = laffy.Style;
 const Size = laffy.Size;
 const Dimension = laffy.Dimension;
 const LengthPercentageAuto = laffy.LengthPercentageAuto;
-const length = laffy.style_helpers.length;
-const zero = laffy.style_helpers.zero;
-const auto = laffy.style_helpers.auto;
 const TaffyTree = laffy.TaffyTree(measure.TestNodeContext);
 
 fn block(margin_top: f32, margin_bottom: f32, height: Dimension) Style {
     return .{
         .display = .block,
-        .size = .{ .width = auto(Dimension), .height = height },
+        .size = .{ .width = Dimension.auto, .height = height },
         .margin = .{
-            .left = zero(LengthPercentageAuto),
-            .right = zero(LengthPercentageAuto),
-            .top = length(LengthPercentageAuto, margin_top),
-            .bottom = length(LengthPercentageAuto, margin_bottom),
+            .left = LengthPercentageAuto.zero,
+            .right = LengthPercentageAuto.zero,
+            .top = LengthPercentageAuto.fromLength(margin_top),
+            .bottom = LengthPercentageAuto.fromLength(margin_bottom),
         },
     };
 }
@@ -29,13 +26,13 @@ fn block(margin_top: f32, margin_bottom: f32, height: Dimension) Style {
 test "layout_margin_excludes_collapsed_margins" {
     var taffy = try TaffyTree.init(testing.allocator);
     defer taffy.deinit();
-    const inner = try taffy.newLeaf(block(13.0, 20.0, length(Dimension, 10.0)));
-    const outer = try taffy.newWithChildren(block(8.0, 5.0, auto(Dimension)), &.{inner});
-    const sibling = try taffy.newLeaf(block(30.0, 0.0, length(Dimension, 10.0)));
+    const inner = try taffy.newLeaf(block(13.0, 20.0, Dimension.fromLength(10.0)));
+    const outer = try taffy.newWithChildren(block(8.0, 5.0, Dimension.auto), &.{inner});
+    const sibling = try taffy.newLeaf(block(30.0, 0.0, Dimension.fromLength(10.0)));
     const root = try taffy.newWithChildren(
         .{
             .display = .flow_root,
-            .size = .{ .width = length(Dimension, 100.0), .height = auto(Dimension) },
+            .size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.auto },
         },
         &.{ outer, sibling },
     );

@@ -533,7 +533,7 @@ const StackTree = struct {
         style: Style = .{},
         children: std.ArrayList(NodeId) = .empty,
         hoisted: std.ArrayList(NodeId) = .empty,
-        cache: Cache = .new,
+        cache: Cache = .{},
         unrounded: Layout = .{},
         final: Layout = .{},
         /// Content size reported by the leaf measure function

@@ -13,7 +13,6 @@ const LengthPercentageAuto = laffy.LengthPercentageAuto;
 const AlignSelf = laffy.AlignSelf;
 const JustifyContent = laffy.JustifyContent;
 const AvailableSpace = laffy.AvailableSpace;
-const auto = laffy.style_helpers.auto;
 const TaffyTree = laffy.TaffyTree(measure.TestNodeContext);
 
 fn dim(v: f32) Dimension {
@@ -257,14 +256,14 @@ test "relayout_is_stable_with_rounding" {
     const inner = try taffy.newLeaf(.{ .min_size = .{ .width = LengthPercentageAuto.fromLength(300.0), .height = LengthPercentageAuto.auto } });
     const wrapper = try taffy.newWithChildren(
         .{
-            .size = .{ .width = dim(150.0), .height = auto(Dimension) },
+            .size = .{ .width = dim(150.0), .height = Dimension.auto },
             .justify_content = JustifyContent.end,
         },
         &.{inner},
     );
     const outer = try taffy.newWithChildren(
         .{
-            .size = .{ .width = Dimension.fromPercent(1.0), .height = auto(Dimension) },
+            .size = .{ .width = Dimension.fromPercent(1.0), .height = Dimension.auto },
             .position = .relative,
             .inset = .{ .left = lpa(1.5), .right = LengthPercentageAuto.auto, .top = LengthPercentageAuto.auto, .bottom = LengthPercentageAuto.auto },
         },
@@ -389,13 +388,13 @@ fn relayoutBlockParentAs(container_style: Style) !void {
             inner_margin.top = lpa(20.0);
             const inner = try tree.newLeaf(.{
                 .display = .block,
-                .size = .{ .width = auto(Dimension), .height = dim(10.0) },
+                .size = .{ .width = Dimension.auto, .height = dim(10.0) },
                 .margin = inner_margin,
             });
             const middle = try tree.newWithChildren(
                 .{
                     .display = .block,
-                    .size = .{ .width = auto(Dimension), .height = dim(50.0) },
+                    .size = .{ .width = Dimension.auto, .height = dim(50.0) },
                 },
                 &.{inner},
             );
@@ -442,20 +441,20 @@ test "block_child_does_not_keep_collapsed_margin_as_grid_item" {
 test "flex_base_size_is_not_answered_by_an_inherent_size_measurement" {
     const BuildTree = struct {
         fn container(display: laffy.Display) Style {
-            return .{ .display = display, .size = .{ .width = dim(100.0), .height = auto(Dimension) } };
+            return .{ .display = display, .size = .{ .width = dim(100.0), .height = Dimension.auto } };
         }
 
         fn build(tree: *TaffyTree, root_style: Style) error{OutOfMemory}!Built {
             const first = try tree.newLeaf(.{
                 .display = .grid,
                 .flex_grow = 1.0,
-                .size = .{ .width = auto(Dimension), .height = dim(20.0) },
+                .size = .{ .width = Dimension.auto, .height = dim(20.0) },
                 .min_size = .{ .width = LengthPercentageAuto.fromLength(40.0), .height = LengthPercentageAuto.auto },
             });
             const second = try tree.newLeaf(.{
                 .display = .block,
                 .flex_grow = 1.0,
-                .size = .{ .width = auto(Dimension), .height = dim(20.0) },
+                .size = .{ .width = Dimension.auto, .height = dim(20.0) },
             });
             const root = try tree.newWithChildren(root_style, &.{ first, second });
             return .{ root, first, second, root };

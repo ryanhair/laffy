@@ -21,10 +21,6 @@ const AvailableSpace = laffy.AvailableSpace;
 const GridTemplateComponent = laffy.GridTemplateComponent;
 const BlockContext = laffy.BlockContext;
 const DetailedLayoutInfo = laffy.DetailedLayoutInfo;
-const auto = laffy.style_helpers.auto;
-const length = laffy.style_helpers.length;
-const percent = laffy.style_helpers.percent;
-const fitContent = laffy.style_helpers.fitContent;
 
 /// A calc() value of the form `pct * basis + px`. 8-byte aligned so that its address can be tagged.
 const Calc = struct {
@@ -67,7 +63,7 @@ const root_id = NodeId.new(std.math.maxInt(u64));
 const Node = struct {
     kind: Kind,
     style: Style,
-    cache: Cache = Cache.new,
+    cache: Cache = .{},
     layout: Layout = Layout.withOrder(0),
     children: []Node,
     hoisted_children: std.ArrayList(NodeId) = .empty,
@@ -242,7 +238,7 @@ const Node = struct {
 // a 300px tall grid with `grid-template-rows: fit-content(calc(10% + 5px))` and a 400px tall item
 // with `min-height: 0` sizes the row to 35px.
 test "grid_track_fit_content_calc_limit" {
-    const rows = [_]GridTemplateComponent{fitContent(GridTemplateComponent, calc(5.0, 0.1))};
+    const rows = [_]GridTemplateComponent{GridTemplateComponent.fitContent(calc(5.0, 0.1))};
     var children = [_]Node{Node.leaf(
         0.0,
         0.0,
@@ -271,13 +267,13 @@ test "block_item_fit_content_calc_width" {
         50.0,
         400.0,
         10.0,
-        .{ .size = .{ .width = limit, .height = auto(Dimension) } },
+        .{ .size = .{ .width = limit, .height = Dimension.auto } },
     )};
     var root = Node.new(
         .block,
         .{
             .display = .block,
-            .size = .{ .width = Dimension.fromLength(300.0), .height = auto(Dimension) },
+            .size = .{ .width = Dimension.fromLength(300.0), .height = Dimension.auto },
         },
         &children,
     );
@@ -313,12 +309,12 @@ fn layoutSingleColumnGrid(
 test "grid_track_fit_content_calc_matches_equivalent_length_and_percentage" {
     // Definite container: calc(20% + 10px) of 200px == 50px
     const calc_result = try layoutSingleColumnGrid(
-        fitContent(GridTemplateComponent, calc(10.0, 0.2)),
+        GridTemplateComponent.fitContent(calc(10.0, 0.2)),
         Dimension.fromLength(200.0),
         .max_content,
     );
     const px_result = try layoutSingleColumnGrid(
-        fitContent(GridTemplateComponent, length(LengthPercentage, 50.0)),
+        GridTemplateComponent.fitContent(LengthPercentage.fromLength(50.0)),
         Dimension.fromLength(200.0),
         .max_content,
     );
@@ -328,17 +324,17 @@ test "grid_track_fit_content_calc_matches_equivalent_length_and_percentage" {
     // Indefinite (shrink-to-fit) container: calc(50% + 0px) == 50%
     for ([_]AvailableSpace{ .{ .definite = 200.0 }, .max_content, .min_content }) |available_width| {
         errdefer std.debug.print("available width: {any}\n", .{available_width});
-        const calc_r = try layoutSingleColumnGrid(fitContent(GridTemplateComponent, calc(0.0, 0.5)), auto(Dimension), available_width);
+        const calc_r = try layoutSingleColumnGrid(GridTemplateComponent.fitContent(calc(0.0, 0.5)), Dimension.auto, available_width);
         const pct_r = try layoutSingleColumnGrid(
-            fitContent(GridTemplateComponent, percent(LengthPercentage, 0.5)),
-            auto(Dimension),
+            GridTemplateComponent.fitContent(LengthPercentage.fromPercent(0.5)),
+            Dimension.auto,
             available_width,
         );
         try testing.expectEqual(pct_r, calc_r);
     }
     // ... and the percentage really is resolved against the container's width
     const container_width, const item_width =
-        try layoutSingleColumnGrid(fitContent(GridTemplateComponent, calc(0.0, 0.5)), auto(Dimension), .max_content);
+        try layoutSingleColumnGrid(GridTemplateComponent.fitContent(calc(0.0, 0.5)), Dimension.auto, .max_content);
     try testing.expectEqual(@as(f32, 150.0), container_width);
     try testing.expectEqual(@as(f32, 75.0), item_width);
 }

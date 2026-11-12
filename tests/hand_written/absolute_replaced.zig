@@ -16,7 +16,6 @@ const Point = laffy.Point;
 const Layout = laffy.Layout;
 const Dimension = laffy.Dimension;
 const LengthPercentageAuto = laffy.LengthPercentageAuto;
-const length = laffy.style_helpers.length;
 const TestNodeContext = measure.TestNodeContext;
 const TaffyTree = laffy.TaffyTree(TestNodeContext);
 
@@ -29,16 +28,16 @@ fn container() Style {
     return .{
         .display = .block,
         .position = .relative,
-        .size = .{ .width = length(Dimension, 400.0), .height = length(Dimension, 300.0) },
+        .size = .{ .width = Dimension.fromLength(400.0), .height = Dimension.fromLength(300.0) },
     };
 }
 
 fn allInsets(value: f32) Rect(LengthPercentageAuto) {
     return .{
-        .left = length(LengthPercentageAuto, value),
-        .right = length(LengthPercentageAuto, value),
-        .top = length(LengthPercentageAuto, value),
-        .bottom = length(LengthPercentageAuto, value),
+        .left = LengthPercentageAuto.fromLength(value),
+        .right = LengthPercentageAuto.fromLength(value),
+        .top = LengthPercentageAuto.fromLength(value),
+        .bottom = LengthPercentageAuto.fromLength(value),
     };
 }
 
@@ -66,7 +65,7 @@ test "auto_height_uses_aspect_ratio_despite_insets" {
         .position = .absolute,
         .item_is_replaced = true,
         .inset = allInsets(10.0),
-        .size = .{ .width = length(Dimension, 200.0), .height = Dimension.auto },
+        .size = .{ .width = Dimension.fromLength(200.0), .height = Dimension.auto },
     });
     try testing.expectEqual(Size(f32){ .width = 200.0, .height = 100.0 }, layout.size);
 }

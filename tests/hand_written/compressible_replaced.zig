@@ -19,7 +19,6 @@ const Dimension = laffy.Dimension;
 const LengthPercentageAuto = laffy.LengthPercentageAuto;
 const AlignItems = laffy.AlignItems;
 const AvailableSpace = laffy.AvailableSpace;
-const auto = laffy.style_helpers.auto;
 const TestNodeContext = measure.TestNodeContext;
 const TaffyTree = laffy.TaffyTree(TestNodeContext);
 
@@ -42,7 +41,7 @@ fn layoutChild(container: Style, child_style: Style) !Layout {
 }
 
 fn blockContainer() Style {
-    return .{ .display = .block, .size = .{ .width = dim(400.0), .height = auto(Dimension) } };
+    return .{ .display = .block, .size = .{ .width = dim(400.0), .height = Dimension.auto } };
 }
 
 fn positionedContainer() Style {
@@ -93,10 +92,10 @@ test "absolute_auto_size_is_stretched_between_insets" {
 
 /// A `width: 100px; max-width: 100%` item in a zero-width grid's `1fr` column.
 fn gridItemWidthWithPercentMaxWidth(replaced: bool, compressible_replaced: bool) !f32 {
-    const columns = [_]laffy.GridTemplateComponent{laffy.style_helpers.fr(laffy.GridTemplateComponent, 1.0)};
+    const columns = [_]laffy.GridTemplateComponent{laffy.GridTemplateComponent.fromFr(1.0)};
     const container: Style = .{
         .display = .grid,
-        .size = .{ .width = dim(0.0), .height = auto(Dimension) },
+        .size = .{ .width = dim(0.0), .height = Dimension.auto },
         .grid_template_columns = &columns,
     };
     const child: Style = .{

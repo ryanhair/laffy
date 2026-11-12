@@ -43,8 +43,6 @@ const resolve = @import("../util/resolve.zig");
 const maybeResolve = resolve.maybeResolve;
 const resolveOrZero = resolve.resolveOrZero;
 const sys = @import("../util/sys.zig");
-const f32Max = sys.f32Max;
-const f32Min = sys.f32Min;
 const alignment = @import("common/alignment.zig");
 const applyAlignmentFallback = alignment.applyAlignmentFallback;
 const childFirstBaseline = alignment.childFirstBaseline;
@@ -1464,11 +1462,11 @@ fn determineContainerMainSize(
                     index += count;
                 }
                 const max_content_size = widest_line_length + main_content_box_inset;
-                break :blk f32Max(size, f32Min(max_content_size, main_axis_available_space));
+                break :blk @max(size, @min(max_content_size, main_axis_available_space));
             }
 
             if (lines.len > 1) {
-                break :blk f32Max(size, main_axis_available_space);
+                break :blk @max(size, main_axis_available_space);
             } else {
                 break :blk size;
             }
@@ -1634,9 +1632,9 @@ fn determineContainerMainSize(
                     item.content_flex_fraction = fraction: {
                         const diff = content_contribution - margin_sum - item.flex_basis;
                         if (diff > 0.0) {
-                            break :fraction diff / f32Max(1.0, item.flex_grow);
+                            break :fraction diff / @max(1.0, item.flex_grow);
                         } else if (diff < 0.0) {
-                            const scaled_shrink_factor = f32Max(1.0, item.flex_shrink) * item.inner_flex_basis;
+                            const scaled_shrink_factor = @max(1.0, item.flex_shrink) * item.inner_flex_basis;
                             break :fraction diff / scaled_shrink_factor;
                         } else {
                             // We are assuming that diff is 0.0 here and that we haven't accidentally introduced a NaN
@@ -1665,20 +1663,20 @@ fn determineContainerMainSize(
                     const flex_fraction = item.content_flex_fraction;
 
                     const flex_contribution: f32 = if (item.content_flex_fraction > 0.0)
-                        f32Max(1.0, item.flex_grow) * flex_fraction
+                        @max(1.0, item.flex_grow) * flex_fraction
                     else if (item.content_flex_fraction < 0.0) inner: {
-                        const scaled_shrink_factor = f32Max(1.0, item.flex_shrink) * item.inner_flex_basis;
+                        const scaled_shrink_factor = @max(1.0, item.flex_shrink) * item.inner_flex_basis;
                         break :inner if (scaled_shrink_factor == 0.0) 0.0 else scaled_shrink_factor * flex_fraction;
                     } else 0.0;
                     const size = item.flex_basis + flex_contribution + item.margin.mainAxisSum(constants.dir);
                     if (floor_by_largest_item) {
-                        largest_item_size = f32Max(largest_item_size, size);
+                        largest_item_size = @max(largest_item_size, size);
                     }
                     item_main_size_sum += size;
                 }
 
                 const gap_sum = sumAxisGaps(constants.gap.main(constants.dir), line.items.len);
-                main_size = f32Max(main_size, f32Max(largest_item_size, item_main_size_sum + gap_sum));
+                main_size = @max(main_size, @max(largest_item_size, item_main_size_sum + gap_sum));
             }
 
             break :blk main_size + main_content_box_inset;
@@ -1690,7 +1688,7 @@ fn determineContainerMainSize(
         main_content_box_inset - constants.scrollbar_gutter.main(constants.dir),
     );
 
-    const inner_main_size = f32Max(outer_main_size - main_content_box_inset, 0.0);
+    const inner_main_size = @max(outer_main_size - main_content_box_inset, 0.0);
     constants.container_size.setMain(constants.dir, outer_main_size);
     constants.inner_container_size.setMain(constants.dir, inner_main_size);
     constants.node_inner_size.setMain(constants.dir, inner_main_size);
@@ -2389,7 +2387,7 @@ fn determineContainerCrossSize(
         ),
         padding_border_sum - cross_scrollbar_gutter,
     );
-    const inner_container_size = f32Max(outer_container_size - padding_border_sum, 0.0);
+    const inner_container_size = @max(outer_container_size - padding_border_sum, 0.0);
 
     constants.container_size.setCross(dir, outer_container_size);
     constants.inner_container_size.setCross(dir, inner_container_size);

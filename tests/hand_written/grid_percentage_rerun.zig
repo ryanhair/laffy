@@ -14,10 +14,6 @@ const Dimension = laffy.Dimension;
 const LengthPercentage = laffy.LengthPercentage;
 const AvailableSpace = laffy.AvailableSpace;
 const GridTemplateComponent = laffy.GridTemplateComponent;
-const length = laffy.style_helpers.length;
-const percent = laffy.style_helpers.percent;
-const auto = laffy.style_helpers.auto;
-const fitContent = laffy.style_helpers.fitContent;
 const TestNodeContext = measure.TestNodeContext;
 const TaffyTree = laffy.TaffyTree(TestNodeContext);
 const VoidTree = laffy.TaffyTree(void);
@@ -33,8 +29,8 @@ fn layoutFitContentPercentColumn(available_width: AvailableSpace) ![2]f32 {
     const root = try tree.newWithChildren(
         .{
             .display = .grid,
-            .grid_template_columns = &.{fitContent(GridTemplateComponent, LengthPercentage.fromPercent(0.5))},
-            .grid_template_rows = &.{length(GridTemplateComponent, 40.0)},
+            .grid_template_columns = &.{GridTemplateComponent.fitContent(LengthPercentage.fromPercent(0.5))},
+            .grid_template_rows = &.{GridTemplateComponent.fromLength(40.0)},
         },
         &.{item},
     );
@@ -66,8 +62,8 @@ fn layoutPercentRowShrinkwrap(available_height: AvailableSpace) ![4]f32 {
     const root = try tree.newWithChildren(
         .{
             .display = .grid,
-            .grid_template_columns = &.{auto(GridTemplateComponent)},
-            .grid_template_rows = &.{ auto(GridTemplateComponent), percent(GridTemplateComponent, 0.2), auto(GridTemplateComponent) },
+            .grid_template_columns = &.{GridTemplateComponent.auto},
+            .grid_template_rows = &.{ GridTemplateComponent.auto, GridTemplateComponent.fromPercent(0.2), GridTemplateComponent.auto },
         },
         &.{ a, b, c },
     );
@@ -79,7 +75,7 @@ fn layoutPercentRowShrinkwrap(available_height: AvailableSpace) ![4]f32 {
 }
 
 fn itemWithHeight(tree: *VoidTree, height: f32) !NodeId {
-    return tree.newLeaf(.{ .size = .{ .width = length(Dimension, 20.0), .height = length(Dimension, height) } });
+    return tree.newLeaf(.{ .size = .{ .width = Dimension.fromLength(20.0), .height = Dimension.fromLength(height) } });
 }
 
 // Percentage rows must be re-resolved against the container's (first pass) height even when column sizing

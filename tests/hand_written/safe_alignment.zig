@@ -19,7 +19,6 @@ const AlignContent = laffy.AlignContent;
 const JustifyContent = laffy.JustifyContent;
 const AvailableSpace = laffy.AvailableSpace;
 const GridTemplateComponent = laffy.GridTemplateComponent;
-const length = laffy.style_helpers.length;
 const TaffyTree = laffy.TaffyTree(measure.TestNodeContext);
 
 fn dim(v: f32) Dimension {
@@ -31,7 +30,7 @@ fn sz(w: f32, h: f32) Size(Dimension) {
 }
 
 fn gridTrack(v: f32) GridTemplateComponent {
-    return length(GridTemplateComponent, v);
+    return GridTemplateComponent.fromLength(v);
 }
 
 test "grid_safe_align_self_falls_back_to_start_on_overflow" {

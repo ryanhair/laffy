@@ -48,7 +48,6 @@ const resolve = @import("../util/resolve.zig");
 const maybeResolve = resolve.maybeResolve;
 const resolveOrZero = resolve.resolveOrZero;
 const sys = @import("../util/sys.zig");
-const f32Max = sys.f32Max;
 const float = @import("float.zig");
 const BfcSlot = float.BfcSlot;
 const ContentSlot = float.ContentSlot;
@@ -1116,14 +1115,14 @@ fn determineContentBasedContainerWidth(tree: anytype, items: []const BlockItem, 
             break :blk width;
         };
 
-        const width = f32Max(measured_width, item.padding_border_sum.width) + item_x_margin_sum;
+        const width = @max(measured_width, item.padding_border_sum.width) + item_x_margin_sum;
 
         if (item.float.floatDirection()) |float_direction| {
             float_contribution.addFloat(width, float_direction, item.clear);
             continue;
         }
 
-        max_child_width = f32Max(max_child_width, width);
+        max_child_width = @max(max_child_width, width);
     }
 
     max_child_width = @max(max_child_width, float_contribution.result());
@@ -1578,7 +1577,7 @@ fn performFinalLayoutOnInFlowChildren(
         // Expand auto margins to fill available space
         // Note: Vertical auto-margins for relatively positioned block items simply resolve to 0.
         // See: https://www.w3.org/TR/CSS21/visudet.html#abs-non-replaced-width
-        const free_x_space = f32Max(0.0, stretch_width - final_size.width);
+        const free_x_space = @max(0.0, stretch_width - final_size.width);
         const x_axis_auto_margin_size: f32 = blk: {
             const auto_margin_count: u8 = @as(u8, @intFromBool(item_margin.left == null)) + @intFromBool(item_margin.right == null);
             if (auto_margin_count > 0) {
@@ -1863,7 +1862,7 @@ fn performFinalLayoutOnInFlowChildren(
         last_child_bottom_margin_set.resolve();
 
     committed_y_offset += resolved_content_box_inset.bottom + bottom_y_margin_offset;
-    const content_height = f32Max(0.0, committed_y_offset);
+    const content_height = @max(0.0, committed_y_offset);
     return .{
         .inflow_overflow_rect = inflow_overflow_rect,
         .content_height = content_height,

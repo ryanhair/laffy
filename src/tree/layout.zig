@@ -56,8 +56,6 @@ pub const ScrollableOverflow = struct {
 
     /// Empty overflow with normal scroll origins.
     pub const zero: ScrollableOverflow = .{ .inner = Rect(f32).zero };
-    /// Upstream `Default`
-    pub const default: ScrollableOverflow = zero;
 
     /// Pack an origin-containing rectangle and its physical scroll-origin directions.
     pub inline fn new(rect_: Rect(f32), reversed: Point(bool)) ScrollableOverflow {
@@ -74,9 +72,9 @@ pub const ScrollableOverflow = struct {
     pub inline fn rect(self: ScrollableOverflow) Rect(f32) {
         return .{
             .left = self.inner.left,
-            .right = sys.abs(self.inner.right),
+            .right = @abs(self.inner.right),
             .top = self.inner.top,
-            .bottom = sys.abs(self.inner.bottom),
+            .bottom = @abs(self.inner.bottom),
         };
     }
 
@@ -87,7 +85,7 @@ pub const ScrollableOverflow = struct {
 
     /// The physical right overflow edge, with its sign restored.
     pub inline fn right(self: ScrollableOverflow) f32 {
-        return sys.abs(self.inner.right);
+        return @abs(self.inner.right);
     }
 
     /// The physical top overflow edge.
@@ -97,7 +95,7 @@ pub const ScrollableOverflow = struct {
 
     /// The physical bottom overflow edge, with its sign restored.
     pub inline fn bottom(self: ScrollableOverflow) f32 {
-        return sys.abs(self.inner.bottom);
+        return @abs(self.inner.bottom);
     }
 
     /// Whether the physical x/y scroll origins are at the right/bottom edges.
@@ -163,9 +161,9 @@ pub const CollapsibleMarginSet = struct {
     pub fn collapseWithMargin(self: CollapsibleMarginSet, margin: f32) CollapsibleMarginSet {
         var result = self;
         if (margin >= 0.0) {
-            result.positive = sys.f32Max(result.positive, margin);
+            result.positive = @max(result.positive, margin);
         } else {
-            result.negative = sys.f32Min(result.negative, margin);
+            result.negative = @min(result.negative, margin);
         }
         return result;
     }
@@ -173,8 +171,8 @@ pub const CollapsibleMarginSet = struct {
     /// Collapse another margin set with this set
     pub fn collapseWithSet(self: CollapsibleMarginSet, other: CollapsibleMarginSet) CollapsibleMarginSet {
         var result = self;
-        result.positive = sys.f32Max(result.positive, other.positive);
-        result.negative = sys.f32Min(result.negative, other.negative);
+        result.positive = @max(result.positive, other.positive);
+        result.negative = @min(result.negative, other.negative);
         return result;
     }
 
@@ -457,8 +455,6 @@ pub const OofCandidates = struct {
 
     /// An empty list of candidates
     pub const none: OofCandidates = .{};
-    /// Upstream `Default`
-    pub const default: OofCandidates = none;
 
     /// Free the list's memory
     pub fn deinit(self: *OofCandidates, gpa: Allocator) void {
@@ -606,9 +602,6 @@ pub const LayoutOutput = struct {
         .oof_positioning_area = null,
     };
 
-    /// A blank layout output
-    pub const default: LayoutOutput = hidden;
-
     /// Constructor to create a `LayoutOutput` from just the size, scrollable overflow rectangle and baselines
     pub fn fromSizesAndBaselines(
         size: Size(f32),
@@ -713,15 +706,6 @@ pub const Layout = struct {
     /// The size of the margin of the node
     margin: Rect(f32) = Rect(f32).zero,
 
-    /// A zero-`Layout` (upstream `Layout::new()`).
-    ///
-    /// The Zero-layout has size and location set to ZERO.
-    /// The `order` value of this layout is set to the minimum value of 0.
-    /// This means it should be rendered below all other `Layout`s.
-    pub const new: Layout = .{};
-    /// Upstream `Default`
-    pub const default: Layout = new;
-
     /// Creates a new zero-`Layout` with the supplied `order` value.
     ///
     /// Nodes with a higher order should be rendered on top of those with a lower order.
@@ -761,9 +745,9 @@ pub const Layout = struct {
         if (self.scrollable_overflow_rect.isReversed().x) {
             return -self.scrollable_overflow_rect.left();
         }
-        return sys.f32Max(
+        return @max(
             0.0,
-            self.scrollable_overflow_rect.right() + sys.f32Min(self.scrollbar_size.width, self.size.width) -
+            self.scrollable_overflow_rect.right() + @min(self.scrollbar_size.width, self.size.width) -
                 self.size.width +
                 self.border.left +
                 self.border.right,
@@ -776,9 +760,9 @@ pub const Layout = struct {
         if (self.scrollable_overflow_rect.isReversed().y) {
             return -self.scrollable_overflow_rect.top();
         }
-        return sys.f32Max(
+        return @max(
             0.0,
-            self.scrollable_overflow_rect.bottom() + sys.f32Min(self.scrollbar_size.height, self.size.height) -
+            self.scrollable_overflow_rect.bottom() + @min(self.scrollbar_size.height, self.size.height) -
                 self.size.height +
                 self.border.top +
                 self.border.bottom,
@@ -876,7 +860,6 @@ test "packing preserves flags rectangles and signed zeroes" {
             }
         }
     }
-    try testing.expect(ScrollableOverflow.default.eql(ScrollableOverflow.zero));
     try testing.expect(!ScrollableOverflow.zero.eql(ScrollableOverflow.new(Rect(f32).zero, .{ .x = true, .y = false })));
     var left_neg_zero = Rect(f32).zero;
     left_neg_zero.left = -0.0;
@@ -984,7 +967,6 @@ test "OofCandidates ownership" {
 test "Layout helpers" {
     var layout = Layout.withOrder(3);
     try testing.expectEqual(@as(u32, 3), layout.order);
-    try testing.expect(Layout.new.eql(Layout.default));
     layout.size = .{ .width = 100.0, .height = 50.0 };
     layout.location = .{ .x = 5.0, .y = 6.0 };
     layout.padding = Rect(f32).new(1, 2, 3, 4);
@@ -995,7 +977,7 @@ test "Layout helpers" {
     try testing.expectEqual(@as(f32, 16.0), layout.contentBoxX());
     try testing.expectEqual(@as(f32, 39.0), layout.contentBoxY());
 
-    var scroll = Layout.new;
+    var scroll: Layout = .{};
     scroll.size = .{ .width = 100.0, .height = 100.0 };
     scroll.scrollable_overflow_rect = ScrollableOverflow.new(.{ .left = -30.0, .right = 150.0, .top = 0.0, .bottom = 120.0 }, .{ .x = false, .y = false });
     try testing.expectEqual(@as(f32, 50.0), scroll.scrollWidth());

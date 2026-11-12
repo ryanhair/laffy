@@ -620,8 +620,8 @@ pub const GridItem = struct {
         }
         const margin = resolveOrZero(self.margin, grid_area_size.width, tree);
         return .{
-            .width = if (available_space.width) |width| sys.f32Max(width - margin.horizontalAxisSum(), 0.0) else null,
-            .height = if (available_space.height) |height| sys.f32Max(height - margin.verticalAxisSum() - self.baseline_shim, 0.0) else null,
+            .width = if (available_space.width) |width| @max(width - margin.horizontalAxisSum(), 0.0) else null,
+            .height = if (available_space.height) |height| @max(height - margin.verticalAxisSum() - self.baseline_shim, 0.0) else null,
         };
     }
 
@@ -773,7 +773,7 @@ pub const GridItem = struct {
             // item below its padding + border.
             const limit = self.spannedFixedTrackLimit(axis, axis_tracks, inner_node_size.get(axis), tree);
             const margins = self.marginsAxisSumsWithBaselineShims(grid_area_size.width, tree);
-            const stretched_limit: ?f32 = if (limit) |l| sys.f32Max(l - margins.get(axis), padding_border_size.get(axis)) else null;
+            const stretched_limit: ?f32 = if (limit) |l| @max(l - margins.get(axis), padding_border_size.get(axis)) else null;
             return maybeMin(minimum_contribution, stretched_limit);
         } else {
             return 0.0;
