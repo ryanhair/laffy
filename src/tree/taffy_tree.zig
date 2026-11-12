@@ -957,7 +957,7 @@ test "remove node marks parent dirty" {
 
     // The root's height comes entirely from its child's 1px bottom border
     var child_style: Style = .{};
-    child_style.border = .{ .left = .length(0.0), .right = .length(0.0), .top = .length(0.0), .bottom = .length(1.0) };
+    child_style.border = .{ .left = .fromLength(0.0), .right = .fromLength(0.0), .top = .fromLength(0.0), .bottom = .fromLength(1.0) };
     const child = try taffy.newLeaf(child_style);
     const root = try taffy.newWithChildren(.{}, &.{child});
 
@@ -1317,7 +1317,7 @@ test "make sure layout location is top left" {
 
     const root = try taffy.newWithChildren(.{
         .size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.fromLength(100.0) },
-        .padding = .{ .left = .length(10.0), .right = .length(20.0), .top = .length(30.0), .bottom = .length(40.0) },
+        .padding = .{ .left = .fromLength(10.0), .right = .fromLength(20.0), .top = .fromLength(30.0), .bottom = .fromLength(40.0) },
     }, &.{node});
 
     try taffy.computeLayout(root, Size(AvailableSpace).max_content);
@@ -1399,7 +1399,7 @@ test "hidden subtrees, rounding and debug output" {
     const leaf0 = try taffy.newLeafWithContext(.{}, .{ .width = 10.4, .height = 3.0 });
     const leaf1 = try taffy.newLeaf(.{ .position = .absolute });
     const root = try taffy.newWithChildren(.{ .display = .none }, &.{ leaf0, leaf1 });
-    const lone = try taffy.newLeafWithContext(.{ .padding = Rect(style_mod.LengthPercentage).length(0.25) }, .{ .width = 10.25, .height = 3.0 });
+    const lone = try taffy.newLeafWithContext(.{ .padding = Rect(style_mod.LengthPercentage).fromLength(0.25) }, .{ .width = 10.25, .height = 3.0 });
 
     var measurer: SizeMeasurer = .{};
     try taffy.computeLayoutWithMeasure(root, Size(AvailableSpace).max_content, &measurer);

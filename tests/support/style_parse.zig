@@ -451,8 +451,8 @@ fn lengthPercentageFrom(allocator: Allocator, p: *Parser) ParseError!LengthPerce
     const t = p.next() orelse return error.InvalidValue;
     const v = (try lpValue(allocator, p, t)) orelse return error.InvalidValue;
     return switch (v) {
-        .px => |x| LengthPercentage.length(x),
-        .percent => |x| LengthPercentage.percent(x),
+        .px => |x| LengthPercentage.fromLength(x),
+        .percent => |x| LengthPercentage.fromPercent(x),
         .calc => |c| LengthPercentage.calc(c),
     };
 }
@@ -462,8 +462,8 @@ fn lengthPercentageAutoFrom(allocator: Allocator, p: *Parser) ParseError!LengthP
     if (t == .ident and eql(t.ident, "auto")) return LengthPercentageAuto.auto;
     const v = (try lpValue(allocator, p, t)) orelse return error.InvalidValue;
     return switch (v) {
-        .px => |x| LengthPercentageAuto.length(x),
-        .percent => |x| LengthPercentageAuto.percent(x),
+        .px => |x| LengthPercentageAuto.fromLength(x),
+        .percent => |x| LengthPercentageAuto.fromPercent(x),
         .calc => |c| LengthPercentageAuto.calc(c),
     };
 }
@@ -491,8 +491,8 @@ fn dimensionFrom(allocator: Allocator, p: *Parser) ParseError!Dimension {
     }
     const v = (try lpValue(allocator, p, t)) orelse return error.InvalidValue;
     return switch (v) {
-        .px => |x| Dimension.length(x),
-        .percent => |x| Dimension.percent(x),
+        .px => |x| Dimension.fromLength(x),
+        .percent => |x| Dimension.fromPercent(x),
         .calc => |c| Dimension.calc(c),
     };
 }
@@ -554,8 +554,8 @@ fn minTrackFrom(allocator: Allocator, p: *Parser) ParseError!MinTrackSizingFunct
     }
     const v = (try lpValue(allocator, p, t)) orelse return error.InvalidValue;
     return switch (v) {
-        .px => |x| MinTrackSizingFunction.length(x),
-        .percent => |x| MinTrackSizingFunction.percent(x),
+        .px => |x| MinTrackSizingFunction.fromLength(x),
+        .percent => |x| MinTrackSizingFunction.fromPercent(x),
         .calc => |c| MinTrackSizingFunction.calc(c),
     };
 }
@@ -571,7 +571,7 @@ fn maxTrackFrom(allocator: Allocator, p: *Parser) ParseError!MaxTrackSizingFunct
         },
         .dimension => |d| if (eql(d.unit, "fr")) {
             if (std.math.signbit(d.value)) return error.InvalidValue;
-            return MaxTrackSizingFunction.fr(d.value);
+            return MaxTrackSizingFunction.fromFr(d.value);
         },
         .function => |name| if (eql(name, "fit-content")) {
             return switch (try fitContentArg(allocator, p)) {
@@ -584,8 +584,8 @@ fn maxTrackFrom(allocator: Allocator, p: *Parser) ParseError!MaxTrackSizingFunct
     }
     const v = (try lpValue(allocator, p, t)) orelse return error.InvalidValue;
     return switch (v) {
-        .px => |x| MaxTrackSizingFunction.length(x),
-        .percent => |x| MaxTrackSizingFunction.percent(x),
+        .px => |x| MaxTrackSizingFunction.fromLength(x),
+        .percent => |x| MaxTrackSizingFunction.fromPercent(x),
         .calc => |c| MaxTrackSizingFunction.calc(c),
     };
 }
@@ -1394,13 +1394,13 @@ test "tokenizer: comments are skipped, escapes are rejected" {
 
 test "length-percentage" {
     const a = testing.allocator;
-    try testing.expectEqual(LengthPercentage.length(10), try parseLengthPercentage(a, "10px"));
-    try testing.expectEqual(LengthPercentage.length(-2.5), try parseLengthPercentage(a, " -2.5px "));
-    try testing.expectEqual(LengthPercentage.length(0), try parseLengthPercentage(a, "0px"));
+    try testing.expectEqual(LengthPercentage.fromLength(10), try parseLengthPercentage(a, "10px"));
+    try testing.expectEqual(LengthPercentage.fromLength(-2.5), try parseLengthPercentage(a, " -2.5px "));
+    try testing.expectEqual(LengthPercentage.fromLength(0), try parseLengthPercentage(a, "0px"));
     // Percentages are fractions
-    try testing.expectEqual(LengthPercentage.percent(0.5), try parseLengthPercentage(a, "50%"));
-    try testing.expectEqual(LengthPercentage.percent(1), try parseLengthPercentage(a, "100%"));
-    try testing.expectEqual(LengthPercentage.percent(0.25), try parseLengthPercentage(a, "25%"));
+    try testing.expectEqual(LengthPercentage.fromPercent(0.5), try parseLengthPercentage(a, "50%"));
+    try testing.expectEqual(LengthPercentage.fromPercent(1), try parseLengthPercentage(a, "100%"));
+    try testing.expectEqual(LengthPercentage.fromPercent(0.25), try parseLengthPercentage(a, "25%"));
     // Units other than px, bare numbers, keywords and trailing tokens are rejected; the unit is
     // case-sensitive
     try expectInvalid(parseLengthPercentage, .{ a, "10em" });
@@ -1414,8 +1414,8 @@ test "length-percentage" {
 test "length-percentage-auto" {
     const a = testing.allocator;
     try testing.expectEqual(LengthPercentageAuto.auto, try parseLengthPercentageAuto(a, "auto"));
-    try testing.expectEqual(LengthPercentageAuto.length(3), try parseLengthPercentageAuto(a, "3px"));
-    try testing.expectEqual(LengthPercentageAuto.percent(0.2), try parseLengthPercentageAuto(a, "20%"));
+    try testing.expectEqual(LengthPercentageAuto.fromLength(3), try parseLengthPercentageAuto(a, "3px"));
+    try testing.expectEqual(LengthPercentageAuto.fromPercent(0.2), try parseLengthPercentageAuto(a, "20%"));
     try expectInvalid(parseLengthPercentageAuto, .{ a, "AUTO" });
     try expectInvalid(parseLengthPercentageAuto, .{ a, "max-content" });
     try expectInvalid(parseLengthPercentageAuto, .{ a, "auto auto" });
@@ -1424,8 +1424,8 @@ test "length-percentage-auto" {
 test "dimension" {
     const a = testing.allocator;
     try testing.expectEqual(Dimension.auto, try parseDimension(a, "auto"));
-    try testing.expectEqual(Dimension.length(200), try parseDimension(a, "200px"));
-    try testing.expectEqual(Dimension.percent(0.5), try parseDimension(a, "50%"));
+    try testing.expectEqual(Dimension.fromLength(200), try parseDimension(a, "200px"));
+    try testing.expectEqual(Dimension.fromPercent(0.5), try parseDimension(a, "50%"));
     try testing.expectEqual(Dimension.min_content, try parseDimension(a, "min-content"));
     try testing.expectEqual(Dimension.max_content, try parseDimension(a, "max-content"));
     try testing.expectEqual(Dimension.fit_content, try parseDimension(a, "fit-content"));
@@ -1504,16 +1504,16 @@ test "calc: representation and evaluation" {
 
 test "track sizing functions" {
     const a = testing.allocator;
-    try testing.expectEqual(MinTrackSizingFunction.length(10), try parseMinTrackSizingFunction(a, "10px"));
-    try testing.expectEqual(MinTrackSizingFunction.percent(0.2), try parseMinTrackSizingFunction(a, "20%"));
+    try testing.expectEqual(MinTrackSizingFunction.fromLength(10), try parseMinTrackSizingFunction(a, "10px"));
+    try testing.expectEqual(MinTrackSizingFunction.fromPercent(0.2), try parseMinTrackSizingFunction(a, "20%"));
     try testing.expectEqual(MinTrackSizingFunction.auto, try parseMinTrackSizingFunction(a, "auto"));
     try testing.expectEqual(MinTrackSizingFunction.min_content, try parseMinTrackSizingFunction(a, "min-content"));
     try testing.expectEqual(MinTrackSizingFunction.max_content, try parseMinTrackSizingFunction(a, "max-content"));
     try expectInvalid(parseMinTrackSizingFunction, .{ a, "1fr" });
     try expectInvalid(parseMinTrackSizingFunction, .{ a, "fit-content(10px)" });
 
-    try testing.expectEqual(MaxTrackSizingFunction.fr(1.5), try parseMaxTrackSizingFunction(a, "1.5fr"));
-    try testing.expectEqual(MaxTrackSizingFunction.fr(0), try parseMaxTrackSizingFunction(a, "0fr"));
+    try testing.expectEqual(MaxTrackSizingFunction.fromFr(1.5), try parseMaxTrackSizingFunction(a, "1.5fr"));
+    try testing.expectEqual(MaxTrackSizingFunction.fromFr(0), try parseMaxTrackSizingFunction(a, "0fr"));
     try testing.expectEqual(MaxTrackSizingFunction.fitContentPx(20), try parseMaxTrackSizingFunction(a, "fit-content(20px)"));
     try testing.expectEqual(MaxTrackSizingFunction.fitContentPercent(0.3), try parseMaxTrackSizingFunction(a, "fit-content(30%)"));
     try expectInvalid(parseMaxTrackSizingFunction, .{ a, "-1fr" });
@@ -1526,13 +1526,13 @@ test "track sizing functions" {
     try testing.expect((try parseTrackSizingFunction(a, "2fr")).eql(TrackSizingFunction.fromFr(2)));
     try testing.expect((try parseTrackSizingFunction(a, "auto")).eql(TrackSizingFunction.auto));
     try testing.expect((try parseTrackSizingFunction(a, "min-content")).eql(TrackSizingFunction.min_content));
-    try testing.expect((try parseTrackSizingFunction(a, "fit-content(10px)")).eql(TrackSizingFunction.fitContent(LengthPercentage.length(10))));
+    try testing.expect((try parseTrackSizingFunction(a, "fit-content(10px)")).eql(TrackSizingFunction.fitContent(LengthPercentage.fromLength(10))));
     const mm = try parseTrackSizingFunction(a, "MinMax(10px, 1fr)");
-    try testing.expectEqual(MinTrackSizingFunction.length(10), mm.min);
-    try testing.expectEqual(MaxTrackSizingFunction.fr(1), mm.max);
+    try testing.expectEqual(MinTrackSizingFunction.fromLength(10), mm.min);
+    try testing.expectEqual(MaxTrackSizingFunction.fromFr(1), mm.max);
     const mm2 = try parseTrackSizingFunction(a, "minmax(min-content, 20%)");
     try testing.expectEqual(MinTrackSizingFunction.min_content, mm2.min);
-    try testing.expectEqual(MaxTrackSizingFunction.percent(0.2), mm2.max);
+    try testing.expectEqual(MaxTrackSizingFunction.fromPercent(0.2), mm2.max);
     try expectInvalid(parseTrackSizingFunction, .{ a, "minmax(1fr, 2px)" });
     try expectInvalid(parseTrackSizingFunction, .{ a, "minmax(1px)" });
     try expectInvalid(parseTrackSizingFunction, .{ a, "minmax(1px, 2px, 3px)" });
@@ -1588,8 +1588,8 @@ test "grid template tracks" {
     try testing.expectEqualStrings("x", r.line_names[0][0]);
     try testing.expectEqualStrings("y", r.line_names[1][0]);
     try testing.expectEqualStrings("z", r.line_names[2][0]);
-    try testing.expectEqual(MinTrackSizingFunction.length(5), r.tracks[1].min);
-    try testing.expectEqual(MaxTrackSizingFunction.fr(1), r.tracks[1].max);
+    try testing.expectEqual(MinTrackSizingFunction.fromLength(5), r.tracks[1].min);
+    try testing.expectEqual(MaxTrackSizingFunction.fromFr(1), r.tracks[1].max);
     try testing.expect(!rep.tracks[1].isAutoRepetition());
 
     // auto-fill and auto-fit
@@ -1603,7 +1603,7 @@ test "grid template tracks" {
     // minmax() and fit-content() members
     const mixed = try parseGridTemplateTracks(a, "min-content max-content fit-content(20px) auto 10px 20% minmax(2px, auto)");
     try testing.expectEqual(@as(usize, 7), mixed.tracks.len);
-    try testing.expect(mixed.tracks[2].single.eql(TrackSizingFunction.fitContent(LengthPercentage.length(20))));
+    try testing.expect(mixed.tracks[2].single.eql(TrackSizingFunction.fitContent(LengthPercentage.fromLength(20))));
     try testing.expect(mixed.tracks[5].single.eql(TrackSizingFunction.fromPercent(0.2)));
 
     // Errors: empty, only names, nested/unnamed misuse, bad counts, bad contents
@@ -1626,7 +1626,7 @@ test "grid auto tracks" {
     const tracks = try parseGridAutoTracks(a, "10px minmax(1px, 2fr) auto");
     try testing.expectEqual(@as(usize, 3), tracks.len);
     try testing.expect(tracks[0].eql(TrackSizingFunction.fromLength(10)));
-    try testing.expectEqual(MaxTrackSizingFunction.fr(2), tracks[1].max);
+    try testing.expectEqual(MaxTrackSizingFunction.fromFr(2), tracks[1].max);
     try expectInvalid(parseGridAutoTracks, .{ a, "" });
     try expectInvalid(parseGridAutoTracks, .{ a, "[a] 10px" });
     try expectInvalid(parseGridAutoTracks, .{ a, "repeat(2, 10px)" });
@@ -1862,22 +1862,22 @@ test "parseStyle: defaults and mapping" {
         .{ "writing-mode", "vertical-lr" },
     }), null);
     try testing.expectEqual(laffy.Display.grid, s.display);
-    try testing.expectEqual(Dimension.percent(0.5), s.size.width);
+    try testing.expectEqual(Dimension.fromPercent(0.5), s.size.width);
     try testing.expectEqual(Dimension.max_content, s.size.height);
-    try testing.expectEqual(LengthPercentageAuto.length(5), s.min_size.width);
+    try testing.expectEqual(LengthPercentageAuto.fromLength(5), s.min_size.width);
     try testing.expectEqual(LengthPercentageAuto.auto, s.max_size.height);
     try testing.expectEqual(LengthPercentageAuto.auto, s.margin.left);
     try testing.expectEqual(LengthPercentageAuto.zero, s.margin.right);
-    try testing.expectEqual(LengthPercentage.length(3), s.padding.top);
-    try testing.expectEqual(LengthPercentage.length(2), s.border.right);
-    try testing.expectEqual(LengthPercentageAuto.length(-4), s.inset.top);
+    try testing.expectEqual(LengthPercentage.fromLength(3), s.padding.top);
+    try testing.expectEqual(LengthPercentage.fromLength(2), s.border.right);
+    try testing.expectEqual(LengthPercentageAuto.fromLength(-4), s.inset.top);
     try testing.expectEqual(LengthPercentageAuto.auto, s.inset.left);
-    try testing.expectEqual(LengthPercentage.length(7), s.gap.width);
-    try testing.expectEqual(LengthPercentage.length(9), s.gap.height);
+    try testing.expectEqual(LengthPercentage.fromLength(7), s.gap.width);
+    try testing.expectEqual(LengthPercentage.fromLength(9), s.gap.height);
     try testing.expectEqual(@as(?f32, 2), s.aspect_ratio);
     try testing.expectEqual(@as(f32, 1.5), s.flex_grow);
     try testing.expectEqual(@as(f32, 0), s.flex_shrink);
-    try testing.expectEqual(Dimension.percent(0.2), s.flex_basis);
+    try testing.expectEqual(Dimension.fromPercent(0.2), s.flex_basis);
     try testing.expectEqual(@as(u16, 3), s.flex_line_count);
     try testing.expectEqual(@as(?AlignItems, null), s.align_self);
     try testing.expectEqual(@as(?AlignItems, AlignItems.end), s.justify_self);
@@ -1938,7 +1938,7 @@ test "parseNode: leaves, containers and text" {
     try testing.expect(!t1.has_children);
     try testing.expectEqualStrings("Hello World", t1.text.?);
     try testing.expectEqual(WritingMode.vertical, t1.writing_mode);
-    try testing.expectEqual(Dimension.length(10), t1.style.size.width);
+    try testing.expectEqual(Dimension.fromLength(10), t1.style.size.width);
 
     // Whitespace-only <text> still has a (empty) text context
     const t2 = try parseNode(a, doc.root.children[1], null);

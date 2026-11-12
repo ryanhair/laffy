@@ -106,9 +106,9 @@ test "repeat auto-fill str" {
 }
 
 test "zero / auto / min-content / max-content for every type" {
-    try testing.expect(Dimension.zero == Dimension.length(0.0));
-    try testing.expect(LengthPercentage.zero == LengthPercentage.length(0.0));
-    try testing.expect(CompactLength.zero == CompactLength.length(0.0));
+    try testing.expect(Dimension.zero == Dimension.fromLength(0.0));
+    try testing.expect(LengthPercentage.zero == LengthPercentage.fromLength(0.0));
+    try testing.expect(CompactLength.zero == CompactLength.fromLength(0.0));
     try testing.expect(AvailableSpace.zero.eql(.{ .definite = 0.0 }));
     try testing.expect(Dimension.auto == Dimension.auto);
     try testing.expect(GridPlacement.auto == .auto);
@@ -133,27 +133,27 @@ test "zero / auto / min-content / max-content for every type" {
 }
 
 test "length / percent / fr / fit-content" {
-    try testing.expect(Dimension.fromLength(10) == Dimension.length(10));
-    try testing.expect(LengthPercentageAuto.fromPercent(0.25) == LengthPercentageAuto.percent(0.25));
+    try testing.expect(Dimension.fromLength(10) == Dimension.fromLength(10));
+    try testing.expect(LengthPercentageAuto.fromPercent(0.25) == LengthPercentageAuto.fromPercent(0.25));
     try testing.expect(AvailableSpace.fromLength(3).eql(.{ .definite = 3 }));
-    try testing.expect(MaxTrackSizingFunction.fromFr(2) == MaxTrackSizingFunction.fr(2));
-    try testing.expect(TrackSizingFunction.fromFr(2).eql(.{ .min = MinTrackSizingFunction.auto, .max = MaxTrackSizingFunction.fr(2) }));
+    try testing.expect(MaxTrackSizingFunction.fromFr(2) == MaxTrackSizingFunction.fromFr(2));
+    try testing.expect(TrackSizingFunction.fromFr(2).eql(.{ .min = MinTrackSizingFunction.auto, .max = MaxTrackSizingFunction.fromFr(2) }));
     try testing.expect(GridTemplateComponent.fromFr(1).single.eql(TrackSizingFunction.fromFr(1)));
-    try testing.expect(CompactLength.fromFr(1) == CompactLength.fr(1));
-    try testing.expect(CompactLength.fitContent(LengthPercentage.length(10)) == CompactLength.fitContentPx(10));
-    try testing.expect(CompactLength.fitContent(LengthPercentage.percent(0.5)) == CompactLength.fitContentPercent(0.5));
-    try testing.expect(MaxTrackSizingFunction.fitContent(LengthPercentage.length(10)) == MaxTrackSizingFunction.fitContentPx(10));
-    try testing.expect(TrackSizingFunction.fitContent(LengthPercentage.length(10)).eql(.{ .min = MinTrackSizingFunction.auto, .max = MaxTrackSizingFunction.fitContentPx(10) }));
-    try testing.expect(GridTemplateComponent.fitContent(LengthPercentage.length(10)).single.eql(TrackSizingFunction.fitContent(LengthPercentage.length(10))));
-    const sl = Size(Dimension).length(4);
-    try testing.expect(sl.width == Dimension.length(4) and sl.height == Dimension.length(4));
-    const rp = Rect(LengthPercentage).percent(0.1);
-    try testing.expect(rp.top == LengthPercentage.percent(0.1));
-    const lf = Line(TrackSizingFunction).fitContent(LengthPercentage.length(3));
-    try testing.expect(lf.end.eql(TrackSizingFunction.fitContent(LengthPercentage.length(3))));
-    const pl = Point(f32).length(2);
+    try testing.expect(CompactLength.fromFr(1) == CompactLength.fromFr(1));
+    try testing.expect(CompactLength.fitContent(LengthPercentage.fromLength(10)) == CompactLength.fitContentPx(10));
+    try testing.expect(CompactLength.fitContent(LengthPercentage.fromPercent(0.5)) == CompactLength.fitContentPercent(0.5));
+    try testing.expect(MaxTrackSizingFunction.fitContent(LengthPercentage.fromLength(10)) == MaxTrackSizingFunction.fitContentPx(10));
+    try testing.expect(TrackSizingFunction.fitContent(LengthPercentage.fromLength(10)).eql(.{ .min = MinTrackSizingFunction.auto, .max = MaxTrackSizingFunction.fitContentPx(10) }));
+    try testing.expect(GridTemplateComponent.fitContent(LengthPercentage.fromLength(10)).single.eql(TrackSizingFunction.fitContent(LengthPercentage.fromLength(10))));
+    const sl = Size(Dimension).fromLength(4);
+    try testing.expect(sl.width == Dimension.fromLength(4) and sl.height == Dimension.fromLength(4));
+    const rp = Rect(LengthPercentage).fromPercent(0.1);
+    try testing.expect(rp.top == LengthPercentage.fromPercent(0.1));
+    const lf = Line(TrackSizingFunction).fitContent(LengthPercentage.fromLength(3));
+    try testing.expect(lf.end.eql(TrackSizingFunction.fitContent(LengthPercentage.fromLength(3))));
+    const pl = Point(f32).fromLength(2);
     try testing.expectEqual(Point(f32){ .x = 2, .y = 2 }, pl);
-    try testing.expect(TrackSizingFunction.fromLength(5).eql(.{ .min = MinTrackSizingFunction.length(5), .max = MaxTrackSizingFunction.length(5) }));
+    try testing.expect(TrackSizingFunction.fromLength(5).eql(.{ .min = MinTrackSizingFunction.fromLength(5), .max = MaxTrackSizingFunction.fromLength(5) }));
     try testing.expect(GridTemplateComponent.fromPercent(0.5).single.eql(TrackSizingFunction.fromPercent(0.5)));
     try testing.expect(GridTemplateComponent.zero.single.eql(TrackSizingFunction.zero));
 }
@@ -166,11 +166,11 @@ test "line / span / minmax / flex / evenly sized tracks" {
     const ls = Line(GridPlacement).fromSpan(2);
     try testing.expect(ls.start.eql(.{ .span = 2 }) and ls.end == .auto);
 
-    const mm = minmax(TrackSizingFunction, MinTrackSizingFunction.length(1), MaxTrackSizingFunction.fr(1));
-    try testing.expect(mm.eql(.{ .min = MinTrackSizingFunction.length(1), .max = MaxTrackSizingFunction.fr(1) }));
-    const mmc = minmax(GridTemplateComponent, MinTrackSizingFunction.length(1), MaxTrackSizingFunction.fr(1));
+    const mm = minmax(TrackSizingFunction, MinTrackSizingFunction.fromLength(1), MaxTrackSizingFunction.fromFr(1));
+    try testing.expect(mm.eql(.{ .min = MinTrackSizingFunction.fromLength(1), .max = MaxTrackSizingFunction.fromFr(1) }));
+    const mmc = minmax(GridTemplateComponent, MinTrackSizingFunction.fromLength(1), MaxTrackSizingFunction.fromFr(1));
     try testing.expect(mmc.single.eql(mm));
-    try testing.expect(flex(TrackSizingFunction, 2).eql(.{ .min = MinTrackSizingFunction.zero, .max = MaxTrackSizingFunction.fr(2) }));
+    try testing.expect(flex(TrackSizingFunction, 2).eql(.{ .min = MinTrackSizingFunction.zero, .max = MaxTrackSizingFunction.fromFr(2) }));
 
     const tracks = evenlySizedTracks(4);
     try testing.expectEqual(RepetitionCount{ .count = 4 }, tracks[0].repeat.count);

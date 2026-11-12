@@ -283,17 +283,17 @@ test "resolve_or_zero_rect_dimension_to_rect_f32_via_option: resolve_or_zero_per
 // Additional coverage (not upstream): other leaf types, f32 contexts, keywords and calc()
 
 test "maybeResolve other leaf types and contexts" {
-    try mrCase(LengthPercentage.percent(0.5), @as(f32, 10.0), some(5.0));
+    try mrCase(LengthPercentage.fromPercent(0.5), @as(f32, 10.0), some(5.0));
     try mrCase(LengthPercentageAuto.auto, @as(f32, 10.0), none);
     try mrCase(Dimension.content, some(10.0), none);
     try mrCase(Dimension.min_content, some(10.0), none);
     try mrCase(Dimension.fitContentPx(3.0), some(10.0), none);
-    try rozCase(LengthPercentage.length(3.0), none, 3.0);
-    try rozCase(LengthPercentageAuto.percent(0.5), some(4.0), 2.0);
+    try rozCase(LengthPercentage.fromLength(3.0), none, 3.0);
+    try rozCase(LengthPercentageAuto.fromPercent(0.5), some(4.0), 2.0);
     try rozCase(Size(LengthPercentage).fromPercent(0.5), Size(?f32){ .width = 4.0, .height = null }, Size(f32){ .width = 2.0, .height = 0.0 });
     try rozCase(Rect(LengthPercentage).fromPercent(0.5), @as(f32, 8.0), Rect(f32).new(4.0, 4.0, 4.0, 4.0));
-    try mrCase(Dimension.length(2.0), 7.0, some(2.0));
-    try mrCase(Dimension.percent(0.5), null, none);
+    try mrCase(Dimension.fromLength(2.0), 7.0, some(2.0));
+    try mrCase(Dimension.fromPercent(0.5), null, none);
 }
 
 var calc_handle_storage: u64 align(8) = 0;

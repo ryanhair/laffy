@@ -3388,7 +3388,7 @@ fn layoutNestedTree(gpa: std.mem.Allocator) !void {
 
     var abs_style: Style = .{};
     abs_style.position = .absolute;
-    abs_style.inset = .{ .left = .length(5.0), .right = .auto, .top = .auto, .bottom = .length(3.0) };
+    abs_style.inset = .{ .left = .fromLength(5.0), .right = .auto, .top = .auto, .bottom = .fromLength(3.0) };
     abs_style.size = Size(Dimension).fromLengths(7.0, 4.0);
     var fixed_style: Style = .{};
     fixed_style.position = .fixed;
@@ -3404,7 +3404,7 @@ fn layoutNestedTree(gpa: std.mem.Allocator) !void {
     const deep_leaf = try taffy.newLeaf(leaf_style);
     var baseline_item_style: Style = .{};
     baseline_item_style.align_self = AlignSelf.baseline;
-    baseline_item_style.padding = Rect(LengthPercentage).length(2.0);
+    baseline_item_style.padding = Rect(LengthPercentage).fromLength(2.0);
     const baseline_a = try taffy.newWithChildren(baseline_item_style, &.{ deep_leaf, deep_abs, deep_fixed });
     const baseline_leaf = try taffy.newLeaf(leaf_style);
     const baseline_b = try taffy.newWithChildren(baseline_item_style, &.{baseline_leaf});
@@ -3417,8 +3417,8 @@ fn layoutNestedTree(gpa: std.mem.Allocator) !void {
     column_style.position = .relative;
     column_style.flex_direction = .column;
     column_style.flex_wrap = .wrap;
-    column_style.size = .{ .width = Dimension.auto, .height = Dimension.length(40.0) };
-    column_style.gap = Size(LengthPercentage).length(3.0);
+    column_style.size = .{ .width = Dimension.auto, .height = Dimension.fromLength(40.0) };
+    column_style.gap = Size(LengthPercentage).fromLength(3.0);
     const column_abs = try taffy.newLeaf(abs_style);
     const column_leaf_a = try taffy.newLeaf(leaf_style);
     const column_leaf_b = try taffy.newLeaf(leaf_style);
@@ -3428,11 +3428,11 @@ fn layoutNestedTree(gpa: std.mem.Allocator) !void {
     var balanced_style: Style = .{};
     balanced_style.flex_wrap = .balance;
     balanced_style.flex_line_count = 2;
-    balanced_style.size = .{ .width = Dimension.length(60.0), .height = Dimension.auto };
+    balanced_style.size = .{ .width = Dimension.fromLength(60.0), .height = Dimension.auto };
     var percent_style: Style = .{};
-    percent_style.size = .{ .width = Dimension.percent(0.5), .height = Dimension.length(5.0) };
+    percent_style.size = .{ .width = Dimension.fromPercent(0.5), .height = Dimension.fromLength(5.0) };
     var auto_margin_style = leaf_style;
-    auto_margin_style.margin = .{ .left = .auto, .right = .length(1.0), .top = .auto, .bottom = .length(0.0) };
+    auto_margin_style.margin = .{ .left = .auto, .right = .fromLength(1.0), .top = .auto, .bottom = .fromLength(0.0) };
     const balanced_children = [_]NodeId{
         try taffy.newLeaf(leaf_style),
         try taffy.newLeaf(percent_style),
@@ -3445,7 +3445,7 @@ fn layoutNestedTree(gpa: std.mem.Allocator) !void {
     var root_style: Style = .{};
     root_style.flex_direction = .row_reverse;
     root_style.direction = .rtl;
-    root_style.padding = Rect(LengthPercentage).length(4.0);
+    root_style.padding = Rect(LengthPercentage).fromLength(4.0);
     root_style.overflow = .{ .x = .scroll, .y = .scroll };
     root_style.scrollbar_width = 5.0;
     const root_abs = try taffy.newLeaf(abs_style);
@@ -3480,7 +3480,7 @@ test "flex row distributes free space and positions children" {
 
     var grow: Style = .{};
     grow.flex_grow = 1.0;
-    grow.margin = Rect(LengthPercentageAuto).length(5.0);
+    grow.margin = Rect(LengthPercentageAuto).fromLength(5.0);
     var fixed: Style = .{};
     fixed.size = Size(Dimension).fromLengths(30.0, 20.0);
     const a = try taffy.newLeaf(grow);

@@ -1550,7 +1550,7 @@ fn layoutNestedGrid(gpa: Allocator) !void {
     // grid areas
     const inner_columns = [_]GridTemplateComponent{
         GridTemplateComponent.fromFr(1.0),
-        GridTemplateComponent.fromMinMax(.{ .min = MinTrackSizingFunction.min_content, .max = MaxTrackSizingFunction.fr(2.0) }),
+        GridTemplateComponent.fromMinMax(.{ .min = MinTrackSizingFunction.min_content, .max = MaxTrackSizingFunction.fromFr(2.0) }),
     };
     const inner_rows = [_]GridTemplateComponent{ GridTemplateComponent.auto, GridTemplateComponent.fromPercent(0.25) };
     const inner_areas = [_]GridTemplateArea{.{ .name = "hdr", .row_start = 1, .row_end = 2, .column_start = 1, .column_end = 3 }};
@@ -1560,26 +1560,26 @@ fn layoutNestedGrid(gpa: Allocator) !void {
     inner_style.grid_template_rows = &inner_rows;
     inner_style.grid_template_column_names = &.{ &.{"a"}, &.{"b"}, &.{"c"} };
     inner_style.grid_template_areas = .{ .areas = &inner_areas, .row_count = 1, .column_count = 2 };
-    inner_style.gap = Size(LengthPercentage).length(3.0);
-    inner_style.padding = Rect(LengthPercentage).length(2.0);
+    inner_style.gap = Size(LengthPercentage).fromLength(3.0);
+    inner_style.padding = Rect(LengthPercentage).fromLength(2.0);
 
     var baseline_style = leaf_style;
     baseline_style.align_self = AlignSelf.baseline;
-    baseline_style.margin = .{ .left = .length(0.0), .right = .length(0.0), .top = .length(4.0), .bottom = .length(0.0) };
+    baseline_style.margin = .{ .left = .fromLength(0.0), .right = .fromLength(0.0), .top = .fromLength(4.0), .bottom = .fromLength(0.0) };
     var abs_named_style: Style = .{};
     abs_named_style.position = .absolute;
     abs_named_style.grid_column = .{ .start = testNamedLine("b", 0), .end = testNamedLine("c", 0) };
     abs_named_style.grid_row = .{ .start = testNamedLine("hdr", 0), .end = .auto };
-    abs_named_style.inset = .{ .left = .length(1.0), .right = .auto, .top = .auto, .bottom = .length(2.0) };
+    abs_named_style.inset = .{ .left = .fromLength(1.0), .right = .auto, .top = .auto, .bottom = .fromLength(2.0) };
     abs_named_style.size = Size(Dimension).fromLengths(5.0, 4.0);
     var abs_stretch_style: Style = .{};
     abs_stretch_style.position = .absolute;
     abs_stretch_style.grid_column = .{ .start = .{ .line = GridLine.from(1) }, .end = .{ .span = 2 } };
-    abs_stretch_style.inset = Rect(LengthPercentageAuto).length(1.0);
+    abs_stretch_style.inset = Rect(LengthPercentageAuto).fromLength(1.0);
     var header_style: Style = .{};
     header_style.grid_row = .{ .start = testNamedLine("hdr", 0), .end = testNamedLine("hdr", 0) };
     header_style.grid_column = .{ .start = testNamedLine("hdr", 0), .end = testNamedLine("hdr", 0) };
-    header_style.size = .{ .width = .auto, .height = .length(6.0) };
+    header_style.size = .{ .width = .auto, .height = .fromLength(6.0) };
 
     const deep_leaf = try taffy.newLeaf(leaf_style);
     const deep_fixed = try taffy.newLeaf(fixed_style);
@@ -1598,7 +1598,7 @@ fn layoutNestedGrid(gpa: Allocator) !void {
 
     // A flex container nested in the grid (grid item with a non-grid layout)
     var flex_style: Style = .{ .display = .flex };
-    flex_style.size = .{ .width = .percent(0.5), .height = .auto };
+    flex_style.size = .{ .width = .fromPercent(0.5), .height = .auto };
     const flex_child = try taffy.newWithChildren(flex_style, &.{ try taffy.newLeaf(leaf_style), try taffy.newLeaf(fixed_style) });
 
     // Root grid: `[start col] repeat(auto-fill, 40px) [end] 30px` columns, dense auto flow,
@@ -1662,7 +1662,7 @@ fn layoutNestedGrid(gpa: Allocator) !void {
     // A relayout after a style change exercises the cache, the hoisted-list bookkeeping and the
     // replacement of the stored detailed grid info
     var narrow_style = leaf_style;
-    narrow_style.size = .{ .width = .percent(0.25), .height = .length(5.0) };
+    narrow_style.size = .{ .width = .fromPercent(0.25), .height = .fromLength(5.0) };
     taffy.setStyle(root_children[5], narrow_style);
     try taffy.computeLayout(root, Size(AvailableSpace).max_content);
     try taffy.computeLayout(root, Size(AvailableSpace).min_content);
@@ -1689,9 +1689,9 @@ test "grid places items and records detailed grid info" {
     grid_style.size = Size(Dimension).fromLengths(150.0, 100.0);
     grid_style.grid_template_columns = &columns;
     grid_style.grid_template_column_names = &.{ &.{"a"}, &.{}, &.{ "z", "end" } };
-    grid_style.gap = .{ .width = .length(10.0), .height = .zero };
+    grid_style.gap = .{ .width = .fromLength(10.0), .height = .zero };
     var item_style: Style = .{};
-    item_style.size = .{ .width = .auto, .height = .length(20.0) };
+    item_style.size = .{ .width = .auto, .height = .fromLength(20.0) };
     const a = try taffy.newLeaf(item_style);
     const b = try taffy.newLeaf(item_style);
     const c = try taffy.newLeaf(item_style);

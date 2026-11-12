@@ -259,12 +259,12 @@ pub fn Rect(comptime T: type) type {
 
         /// Create a new Rect with length values (`Rect(Dimension)`; upstream `Rect::<Dimension>::from_length`)
         pub fn fromLengths(start: f32, end: f32, top: f32, bottom: f32) Self {
-            return .{ .left = T.length(start), .right = T.length(end), .top = T.length(top), .bottom = T.length(bottom) };
+            return .{ .left = T.fromLength(start), .right = T.fromLength(end), .top = T.fromLength(top), .bottom = T.fromLength(bottom) };
         }
 
         /// Create a new Rect with percentage values (`Rect(Dimension)`; upstream `Rect::<Dimension>::from_percent`)
         pub fn fromPercents(start: f32, end: f32, top: f32, bottom: f32) Self {
-            return .{ .left = T.percent(start), .right = T.percent(end), .top = T.percent(top), .bottom = T.percent(bottom) };
+            return .{ .left = T.fromPercent(start), .right = T.fromPercent(end), .top = T.fromPercent(top), .bottom = T.fromPercent(bottom) };
         }
 
         // style_helpers (TaffyZero, TaffyAuto, TaffyMinContent, TaffyMaxContent, TaffyFitContent,
@@ -287,17 +287,9 @@ pub fn Rect(comptime T: type) type {
         pub fn fromLength(value: anytype) Self {
             return all(elementLength(T, value));
         }
-        /// A Rect where all sides are the same given absolute length (upstream `Rect::length`)
-        pub fn length(value: anytype) Self {
-            return fromLength(value);
-        }
         /// A Rect where all sides are the same given percentage (upstream `FromPercent`)
         pub fn fromPercent(value: anytype) Self {
             return all(elementPercent(T, value));
-        }
-        /// A Rect where all sides are the same given percentage (upstream `Rect::percent`)
-        pub fn percent(value: anytype) Self {
-            return fromPercent(value);
         }
 
         fn all(value: T) Self {
@@ -354,17 +346,9 @@ pub fn Line(comptime T: type) type {
         pub fn fromLength(value: anytype) Self {
             return both(elementLength(T, value));
         }
-        /// A Line where both start and end are the same given absolute length (upstream `Line::length`)
-        pub fn length(value: anytype) Self {
-            return fromLength(value);
-        }
         /// A Line where both start and end are the same given percentage (upstream `FromPercent`)
         pub fn fromPercent(value: anytype) Self {
             return both(elementPercent(T, value));
-        }
-        /// A Line where both start and end are the same given percentage (upstream `Line::percent`)
-        pub fn percent(value: anytype) Self {
-            return fromPercent(value);
         }
 
         /// Upstream `TaffyGridLine for Line<GridPlacement>`: starts at the given line, ends `auto`
@@ -730,12 +714,12 @@ pub fn Size(comptime T: type) type {
 
         /// Generates a `Size(Dimension)` using length values
         pub fn fromLengths(width: f32, height: f32) Self {
-            return .{ .width = T.length(width), .height = T.length(height) };
+            return .{ .width = T.fromLength(width), .height = T.fromLength(height) };
         }
 
         /// Generates a `Size(Dimension)` using percentage values (upstream `Size::<Dimension>::from_percent`)
         pub fn fromPercents(width: f32, height: f32) Self {
-            return .{ .width = T.percent(width), .height = T.percent(height) };
+            return .{ .width = T.fromPercent(width), .height = T.fromPercent(height) };
         }
 
         // `Size<AvailableSpace>` helpers
@@ -770,17 +754,9 @@ pub fn Size(comptime T: type) type {
         pub fn fromLength(value: anytype) Self {
             return both(elementLength(T, value));
         }
-        /// A Size where both components are the same given absolute length (upstream `Size::length`)
-        pub fn length(value: anytype) Self {
-            return fromLength(value);
-        }
         /// A Size where both components are the same given percentage (upstream `FromPercent`)
         pub fn fromPercent(value: anytype) Self {
             return both(elementPercent(T, value));
-        }
-        /// A Size where both components are the same given percentage (upstream `Size::percent`)
-        pub fn percent(value: anytype) Self {
-            return fromPercent(value);
         }
 
         fn both(value: T) Self {
@@ -882,17 +858,9 @@ pub fn Point(comptime T: type) type {
         pub fn fromLength(value: anytype) Self {
             return both(elementLength(T, value));
         }
-        /// A Point where x and y are the same given absolute length (upstream `Point::length`)
-        pub fn length(value: anytype) Self {
-            return fromLength(value);
-        }
         /// A Point where x and y are the same given percentage (upstream `FromPercent`)
         pub fn fromPercent(value: anytype) Self {
             return both(elementPercent(T, value));
-        }
-        /// A Point where x and y are the same given percentage (upstream `Point::percent`)
-        pub fn percent(value: anytype) Self {
-            return fromPercent(value);
         }
 
         fn both(value: T) Self {
@@ -1037,7 +1005,7 @@ test "Line helpers" {
     const l: Line(f32) = .{ .start = 1, .end = 2 };
     try testing.expectEqual(@as(f32, 3), l.sum());
     try testing.expectEqual(Line(f32){ .start = 0, .end = 0 }, Line(f32).zero);
-    try testing.expectEqual(Line(?f32){ .start = 5, .end = 5 }, Line(?f32).length(5));
+    try testing.expectEqual(Line(?f32){ .start = 5, .end = 5 }, Line(?f32).fromLength(5));
 }
 
 test "FloatInsets" {
@@ -1136,17 +1104,17 @@ test "isSize and isRect" {
 test "style helper declarations on generic geometry types" {
     const dimension = @import("style/dimension.zig");
     const Dimension = dimension.Dimension;
-    const lp = LengthPercentage.length(10);
+    const lp = LengthPercentage.fromLength(10);
     const TrackSizingFunction = @import("style/grid.zig").TrackSizingFunction;
     const expected = TrackSizingFunction.fitContent(lp);
     try testing.expect(Size(TrackSizingFunction).fitContent(lp).height.eql(expected));
     try testing.expect(Rect(TrackSizingFunction).fitContent(lp).bottom.eql(expected));
     try testing.expect(Point(TrackSizingFunction).fitContent(lp).y.eql(expected));
-    try testing.expect(Size(Dimension).percent(0.5).width == Dimension.percent(0.5));
-    try testing.expect(Point(Dimension).percent(0.5).x == Dimension.percent(0.5));
-    try testing.expect(Line(Dimension).percent(0.5).end == Dimension.percent(0.5));
-    try testing.expect(Rect(Dimension).length(2).left == Dimension.length(2));
-    try testing.expect(Line(Dimension).length(2).start == Dimension.length(2));
+    try testing.expect(Size(Dimension).fromPercent(0.5).width == Dimension.fromPercent(0.5));
+    try testing.expect(Point(Dimension).fromPercent(0.5).x == Dimension.fromPercent(0.5));
+    try testing.expect(Line(Dimension).fromPercent(0.5).end == Dimension.fromPercent(0.5));
+    try testing.expect(Rect(Dimension).fromLength(2).left == Dimension.fromLength(2));
+    try testing.expect(Line(Dimension).fromLength(2).start == Dimension.fromLength(2));
     try testing.expect(Size(Dimension).min_content.width == Dimension.min_content);
     try testing.expect(Size(Dimension).max_content.height == Dimension.max_content);
     try testing.expect(Rect(Dimension).min_content.top == Dimension.min_content);

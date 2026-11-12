@@ -1895,13 +1895,13 @@ fn layoutNestedBlockTree(gpa: Allocator) !void {
 
     var abs_style: Style = .{ .display = .block };
     abs_style.position = .absolute;
-    abs_style.inset = .{ .left = .length(5.0), .right = .auto, .top = .auto, .bottom = .length(3.0) };
+    abs_style.inset = .{ .left = .fromLength(5.0), .right = .auto, .top = .auto, .bottom = .fromLength(3.0) };
     abs_style.size = Size(Dimension).fromLengths(7.0, 4.0);
     var fixed_style: Style = .{ .display = .block };
     fixed_style.position = .fixed;
     fixed_style.size = Size(Dimension).fromLengths(2.0, 3.0);
     var leaf_style: Style = .{ .display = .block };
-    leaf_style.size = .{ .width = Dimension.auto, .height = Dimension.length(10.0) };
+    leaf_style.size = .{ .width = Dimension.auto, .height = Dimension.fromLength(10.0) };
     var float_left_style: Style = .{ .display = .block, .float = .left };
     float_left_style.size = Size(Dimension).fromLengths(50.0, 30.0);
     var float_right_style: Style = .{ .display = .block, .float = .right };
@@ -1922,7 +1922,7 @@ fn layoutNestedBlockTree(gpa: Allocator) !void {
     const nested_float = try taffy.newWithChildren(nested_float_style, &.{ nested_float_leaf, nested_float_abs, nested_float_fixed });
     var relative_float_style = float_right_style;
     relative_float_style.position = .relative;
-    relative_float_style.inset = .{ .left = .length(2.0), .right = .auto, .top = .length(3.0), .bottom = .auto };
+    relative_float_style.inset = .{ .left = .fromLength(2.0), .right = .auto, .top = .fromLength(3.0), .bottom = .auto };
     const relative_float = try taffy.newLeaf(relative_float_style);
     const para_abs = try taffy.newLeaf(abs_style);
     const hidden_leaf = try taffy.newLeaf(leaf_style);
@@ -1930,7 +1930,7 @@ fn layoutNestedBlockTree(gpa: Allocator) !void {
     const para_text = try taffy.newLeaf(leaf_style);
     const para_cleared = try taffy.newLeaf(clear_style);
     var para_style: Style = .{ .display = .block };
-    para_style.margin = .{ .left = .length(0.0), .right = .length(0.0), .top = .length(10.0), .bottom = .length(5.0) };
+    para_style.margin = .{ .left = .fromLength(0.0), .right = .fromLength(0.0), .top = .fromLength(10.0), .bottom = .fromLength(5.0) };
     const para = try taffy.newWithChildren(para_style, &.{ nested_float, para_text, relative_float, para_abs, hidden, para_cleared });
 
     // A relatively positioned flow-root that claims its absolutely positioned descendants and
@@ -1940,13 +1940,13 @@ fn layoutNestedBlockTree(gpa: Allocator) !void {
     const flow_leaf = try taffy.newLeaf(leaf_style);
     var flow_root_style: Style = .{ .display = .flow_root };
     flow_root_style.position = .relative;
-    flow_root_style.padding = Rect(LengthPercentage).length(2.0);
+    flow_root_style.padding = Rect(LengthPercentage).fromLength(2.0);
     const flow_root = try taffy.newWithChildren(flow_root_style, &.{ flow_float, flow_leaf, flow_abs });
 
     // An `align-content: center` container (which establishes a new block formatting context)
     var centered_style: Style = .{ .display = .block };
     centered_style.align_content = AlignContent.center;
-    centered_style.size = .{ .width = Dimension.auto, .height = Dimension.length(50.0) };
+    centered_style.size = .{ .width = Dimension.auto, .height = Dimension.fromLength(50.0) };
     centered_style.text_align = .legacy_center;
     var narrow_style = leaf_style;
     narrow_style.size = Size(Dimension).fromLengths(20.0, 10.0);
@@ -1955,8 +1955,8 @@ fn layoutNestedBlockTree(gpa: Allocator) !void {
     const centered = try taffy.newWithChildren(centered_style, &.{ centered_leaf, centered_abs });
 
     var root_style: Style = .{ .display = .block };
-    root_style.size = .{ .width = Dimension.length(200.0), .height = Dimension.auto };
-    root_style.padding = Rect(LengthPercentage).length(4.0);
+    root_style.size = .{ .width = Dimension.fromLength(200.0), .height = Dimension.auto };
+    root_style.padding = Rect(LengthPercentage).fromLength(4.0);
     root_style.overflow = .{ .x = .visible, .y = .scroll };
     root_style.scrollbar_width = 6.0;
     const float_left = try taffy.newLeaf(float_left_style);
@@ -1996,14 +1996,14 @@ test "adjoining sibling margins collapse" {
     defer taffy.deinit();
 
     var a_style: Style = .{ .display = .block };
-    a_style.size = .{ .width = Dimension.auto, .height = Dimension.length(10.0) };
-    a_style.margin = .{ .left = .length(0.0), .right = .length(0.0), .top = .length(0.0), .bottom = .length(20.0) };
+    a_style.size = .{ .width = Dimension.auto, .height = Dimension.fromLength(10.0) };
+    a_style.margin = .{ .left = .fromLength(0.0), .right = .fromLength(0.0), .top = .fromLength(0.0), .bottom = .fromLength(20.0) };
     var b_style = a_style;
-    b_style.margin = .{ .left = .length(0.0), .right = .length(0.0), .top = .length(30.0), .bottom = .length(0.0) };
+    b_style.margin = .{ .left = .fromLength(0.0), .right = .fromLength(0.0), .top = .fromLength(30.0), .bottom = .fromLength(0.0) };
     const a = try taffy.newLeaf(a_style);
     const b = try taffy.newLeaf(b_style);
     var root_style: Style = .{ .display = .block };
-    root_style.size = .{ .width = Dimension.length(100.0), .height = Dimension.auto };
+    root_style.size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.auto };
     const root = try taffy.newWithChildren(root_style, &.{ a, b });
 
     try taffy.computeLayout(root, Size(AvailableSpace).max_content);
@@ -2017,7 +2017,7 @@ test "legacy text-align centers narrow children" {
 
     const child = try taffy.newLeaf(.{ .display = .block, .size = Size(Dimension).fromLengths(40.0, 10.0) });
     var root_style: Style = .{ .display = .block, .text_align = .legacy_center };
-    root_style.size = .{ .width = Dimension.length(100.0), .height = Dimension.auto };
+    root_style.size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.auto };
     const root = try taffy.newWithChildren(root_style, &.{child});
 
     try taffy.computeLayout(root, Size(AvailableSpace).max_content);

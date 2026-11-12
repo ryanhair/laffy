@@ -443,7 +443,7 @@ test "explicit grid sizing auto fill min size exact fit" {
     const cols = [_]GridTemplateComponent{repeatOf(.auto_fill, &.{len(40.0)})};
     const rows = [_]GridTemplateComponent{repeatOf(.auto_fill, &.{len(20.0)})};
     var grid_style: Style = .{ .display = .grid };
-    grid_style.min_size = .{ .width = .length(120.0), .height = .length(80.0) };
+    grid_style.min_size = .{ .width = .fromLength(120.0), .height = .fromLength(80.0) };
     grid_style.grid_template_columns = &cols;
     grid_style.grid_template_rows = &rows;
     try expectSizes(explicitSizes(&grid_style, .{ .width = 120.0, .height = 80.0 }, .min_repetitions_that_do_overflow), 3, 4, 3, 4);
@@ -453,7 +453,7 @@ test "explicit grid sizing auto fill min size non exact fit" {
     const cols = [_]GridTemplateComponent{repeatOf(.auto_fill, &.{len(40.0)})};
     const rows = [_]GridTemplateComponent{repeatOf(.auto_fill, &.{len(20.0)})};
     var grid_style: Style = .{ .display = .grid };
-    grid_style.min_size = .{ .width = .length(140.0), .height = .length(90.0) };
+    grid_style.min_size = .{ .width = .fromLength(140.0), .height = .fromLength(90.0) };
     grid_style.grid_template_columns = &cols;
     grid_style.grid_template_rows = &rows;
     try expectSizes(explicitSizes(&grid_style, .{ .width = 140.0, .height = 90.0 }, .min_repetitions_that_do_overflow), 4, 5, 4, 5);
@@ -475,7 +475,7 @@ test "explicit grid sizing auto fill gap" {
     var grid_style: Style = .{ .display = .grid, .size = Size(Dimension).fromLengths(140.0, 100.0) };
     grid_style.grid_template_columns = &cols;
     grid_style.grid_template_rows = &rows;
-    grid_style.gap = Size(LengthPercentage).length(20.0);
+    grid_style.gap = Size(LengthPercentage).fromLength(20.0);
     // 2 tracks + 1 gap; 3 tracks + 2 gaps
     try expectSizes(explicitSizes(&grid_style, preferredSize(&grid_style), .max_repetitions_that_do_not_overflow), 2, 3, 2, 3);
 }
@@ -486,7 +486,7 @@ test "explicit grid sizing no defined size" {
     var grid_style: Style = .{ .display = .grid };
     grid_style.grid_template_columns = &cols;
     grid_style.grid_template_rows = &rows;
-    grid_style.gap = Size(LengthPercentage).length(20.0);
+    grid_style.gap = Size(LengthPercentage).fromLength(20.0);
     try expectSizes(explicitSizes(&grid_style, preferredSize(&grid_style), .min_repetitions_that_do_overflow), 3, 1, 1, 1);
 }
 
@@ -496,7 +496,7 @@ test "explicit grid sizing mix repeated and non repeated" {
     var grid_style: Style = .{ .display = .grid, .size = Size(Dimension).fromLengths(140.0, 100.0) };
     grid_style.grid_template_columns = &cols;
     grid_style.grid_template_rows = &rows;
-    grid_style.gap = Size(LengthPercentage).length(20.0);
+    grid_style.gap = Size(LengthPercentage).fromLength(20.0);
     // 3 tracks + 2 gaps; 2 tracks + 1 gap
     try expectSizes(explicitSizes(&grid_style, preferredSize(&grid_style), .max_repetitions_that_do_not_overflow), 3, 2, 2, 1);
 }
@@ -505,7 +505,7 @@ test "explicit grid sizing mix with padding" {
     const cols = [_]GridTemplateComponent{repeatOf(.auto_fill, &.{len(20.0)})};
     const rows = [_]GridTemplateComponent{repeatOf(.auto_fill, &.{len(20.0)})};
     var grid_style: Style = .{ .display = .grid, .size = Size(Dimension).fromLengths(120.0, 120.0) };
-    grid_style.padding = .{ .left = .length(10.0), .right = .length(10.0), .top = .length(20.0), .bottom = .length(20.0) };
+    grid_style.padding = .{ .left = .fromLength(10.0), .right = .fromLength(10.0), .top = .fromLength(20.0), .bottom = .fromLength(20.0) };
     grid_style.grid_template_columns = &cols;
     grid_style.grid_template_rows = &rows;
     // 40px horizontal padding; 20px vertical padding
@@ -558,11 +558,11 @@ const Min100Percent300px = struct {
 test "explicit grid sizing auto fit calc min track" {
     const calc_ptr: *const anyopaque = &calc_handle;
     for ([_]RepetitionCount{ .auto_fit, .auto_fill }) |count| {
-        const tracks = [_]TrackSizingFunction{.{ .min = MinTrackSizingFunction.calc(calc_ptr), .max = MaxTrackSizingFunction.fr(1.0) }};
+        const tracks = [_]TrackSizingFunction{.{ .min = MinTrackSizingFunction.calc(calc_ptr), .max = MaxTrackSizingFunction.fromFr(1.0) }};
         const cols = [_]GridTemplateComponent{repeatOf(count, &tracks)};
         var grid_style: Style = .{ .display = .grid };
-        grid_style.size = .{ .width = .length(800.0), .height = .auto };
-        grid_style.gap = .{ .width = .length(8.0), .height = .zero };
+        grid_style.size = .{ .width = .fromLength(800.0), .height = .auto };
+        grid_style.gap = .{ .width = .fromLength(8.0), .height = .zero };
         grid_style.grid_template_columns = &cols;
         try testing.expectEqual(ExplicitGridSize{ 2, 2 }, computeExplicitGridSizeInAxis(&grid_style, 800.0, .max_repetitions_that_do_not_overflow, Min100Percent300px{}, .horizontal));
 
@@ -600,12 +600,12 @@ test "initialize grid tracks" {
     // Setup test
     const cols = [_]GridTemplateComponent{
         GridTemplateComponent.fromLength(100.0),
-        GridTemplateComponent.fromMinMax(.{ .min = MinTrackSizingFunction.fromLength(100.0), .max = MaxTrackSizingFunction.fr(2.0) }),
+        GridTemplateComponent.fromMinMax(.{ .min = MinTrackSizingFunction.fromLength(100.0), .max = MaxTrackSizingFunction.fromFr(2.0) }),
         GridTemplateComponent.fromFr(1.0),
     };
     const auto_cols = [_]TrackSizingFunction{ TrackSizingFunction.auto, len(100.0) };
     var grid_style: Style = .{ .display = .grid };
-    grid_style.gap = Size(LengthPercentage).length(20.0);
+    grid_style.gap = Size(LengthPercentage).fromLength(20.0);
     grid_style.grid_template_columns = &cols;
     grid_style.grid_auto_columns = &auto_cols;
     const track_counts: TrackCounts = .{ .negative_implicit = 3, .explicit = @intCast(cols.len), .positive_implicit = 3 };

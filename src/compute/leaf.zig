@@ -251,8 +251,8 @@ fn leafInputs(run_mode: layout.RunMode, sizing_mode: layout.SizingMode) LayoutIn
 
 test "leaf with measure function, padding and border" {
     var style: Style = .{};
-    style.padding = Rect(LengthPercentage).length(5.0);
-    style.border = .{ .left = .length(1.0), .right = .length(1.0), .top = .length(2.0), .bottom = .length(2.0) };
+    style.padding = Rect(LengthPercentage).fromLength(5.0);
+    style.border = .{ .left = .fromLength(1.0), .right = .fromLength(1.0), .top = .fromLength(2.0), .bottom = .fromLength(2.0) };
     var m: FixedMeasure = .{ .size = .{ .width = 30.0, .height = 20.0 } };
     const out = computeLeafLayout(leafInputs(.perform_layout, .inherent_size), &style, style_mod.NoCalc{}, &m);
     try testing.expectEqual(Size(f32){ .width = 42.0, .height = 34.0 }, out.size);
@@ -266,9 +266,9 @@ test "leaf with measure function, padding and border" {
 
 test "leaf with definite size, percentages, min/max and aspect ratio" {
     var style: Style = .{};
-    style.size = .{ .width = Dimension.percent(0.5), .height = Dimension.auto };
+    style.size = .{ .width = Dimension.fromPercent(0.5), .height = Dimension.auto };
     style.aspect_ratio = 2.0;
-    style.max_size.width = .length(80.0);
+    style.max_size.width = .fromLength(80.0);
     var m: FixedMeasure = .{ .size = .{ .width = 1.0, .height = 1.0 } };
     const out = computeLeafLayout(leafInputs(.perform_layout, .inherent_size), &style, style_mod.NoCalc{}, &m);
     // width 100 from 50% of 200, clamped to 80; height from the aspect ratio of the unclamped size (50)
@@ -279,7 +279,7 @@ test "leaf with definite size, percentages, min/max and aspect ratio" {
 test "leaf early return for compute_size with both dimensions known" {
     var style: Style = .{};
     style.size = Size(Dimension).fromLengths(10.0, 20.0);
-    style.padding = Rect(LengthPercentage).length(15.0);
+    style.padding = Rect(LengthPercentage).fromLength(15.0);
     var m: FixedMeasure = .{ .size = .{ .width = 1.0, .height = 1.0 } };
     const out = computeLeafLayout(leafInputs(.compute_size, .inherent_size), &style, style_mod.NoCalc{}, &m);
     try testing.expectEqual(@as(usize, 0), m.calls);
@@ -310,7 +310,7 @@ test "scroll container leaf reserves a scrollbar gutter and includes end padding
     var style: Style = .{};
     style.overflow = .{ .x = .visible, .y = .scroll };
     style.scrollbar_width = 10.0;
-    style.padding = Rect(LengthPercentage).length(4.0);
+    style.padding = Rect(LengthPercentage).fromLength(4.0);
     style.direction = .rtl;
     var m: FixedMeasure = .{ .size = .{ .width = 20.0, .height = 20.0 } };
     const out = computeLeafLayout(leafInputs(.perform_layout, .inherent_size), &style, style_mod.NoCalc{}, &m);

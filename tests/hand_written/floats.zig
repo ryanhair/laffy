@@ -180,7 +180,7 @@ test "auto_margins_include_float_avoidance_offsets" {
                     .display = .flow_root,
                     .direction = direction,
                     .size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.auto },
-                    .padding = Rect(LengthPercentage).length(5.0),
+                    .padding = Rect(LengthPercentage).fromLength(5.0),
                 },
                 &children,
             );
@@ -261,7 +261,7 @@ test "float_avoiding_auto_margins_in_nested_block_ignore_relative_insets_and_cle
                 .display = .flow_root,
                 .direction = direction,
                 .size = .{ .width = Dimension.fromLength(200.0), .height = Dimension.auto },
-                .padding = Rect(LengthPercentage).length(10.0),
+                .padding = Rect(LengthPercentage).fromLength(10.0),
             },
             &.{ left_float, right_float, nested },
         );

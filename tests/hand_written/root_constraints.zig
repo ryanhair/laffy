@@ -74,8 +74,8 @@ test "root_padding_and_border_larger_than_definite_size" {
     const root = try tree.newWithChildren(
         .{
             .size = .{ .width = Dimension.fromLength(10.0), .height = Dimension.fromLength(10.0) },
-            .padding = Rect(LengthPercentage).length(10.0),
-            .border = Rect(LengthPercentage).length(10.0),
+            .padding = Rect(LengthPercentage).fromLength(10.0),
+            .border = Rect(LengthPercentage).fromLength(10.0),
         },
         &.{child},
     );

@@ -158,7 +158,7 @@ const testing = std.testing;
 
 test "resolveSizingKeyword" {
     const no_calc = style.NoCalc{};
-    try testing.expect(resolveSizingKeyword(Dimension.length(10), 5.0, 5.0, no_calc) == null);
+    try testing.expect(resolveSizingKeyword(Dimension.fromLength(10), 5.0, 5.0, no_calc) == null);
     try testing.expect(resolveSizingKeyword(Dimension.auto, 5.0, 5.0, no_calc) == null);
     try testing.expect(resolveSizingKeyword(Dimension.min_content, null, null, no_calc).?.measure == .min_content);
     try testing.expect(resolveSizingKeyword(Dimension.max_content, null, null, no_calc).?.measure == .max_content);

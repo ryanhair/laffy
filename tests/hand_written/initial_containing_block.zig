@@ -30,7 +30,7 @@ fn rootStyle() Style {
             .top = LengthPercentageAuto.fromLength(20.0),
             .bottom = LengthPercentageAuto.fromLength(20.0),
         },
-        .border = Rect(LengthPercentage).length(5.0),
+        .border = Rect(LengthPercentage).fromLength(5.0),
     };
 }
 
@@ -53,7 +53,7 @@ test "inset_zero_fills_viewport" {
     for ([_]Position{ .absolute, .fixed }) |position| {
         var tree = try TaffyTree.init(testing.allocator);
         defer tree.deinit();
-        const oof = try tree.newLeaf(oofStyle(position, Rect(LengthPercentageAuto).length(0.0), Size(Dimension).auto));
+        const oof = try tree.newLeaf(oofStyle(position, Rect(LengthPercentageAuto).fromLength(0.0), Size(Dimension).auto));
         const root = try tree.newWithChildren(rootStyle(), &.{oof});
         try tree.computeLayout(root, VIEWPORT);
 

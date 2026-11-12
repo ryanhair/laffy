@@ -496,18 +496,6 @@ pub const MaxTrackSizingFunction = packed struct(u64) {
     /// This is the smallest size that can fit the item's contents with NO soft line-wrapping opportunities taken
     pub const max_content: MaxTrackSizingFunction = .{ .inner = CompactLength.max_content };
 
-    /// Upstream `FromLength`
-    pub fn fromLength(value: anytype) MaxTrackSizingFunction {
-        return length(toF32(value));
-    }
-    /// Upstream `FromPercent`
-    pub fn fromPercent(value: anytype) MaxTrackSizingFunction {
-        return percent(toF32(value));
-    }
-    /// Upstream `FromFr`
-    pub fn fromFr(value: anytype) MaxTrackSizingFunction {
-        return fr(toF32(value));
-    }
     /// Upstream `TaffyFitContent`
     pub fn fitContent(argument: LengthPercentage) MaxTrackSizingFunction {
         return .{ .inner = CompactLength.fitContent(argument) };
@@ -536,15 +524,15 @@ pub const MaxTrackSizingFunction = packed struct(u64) {
 
     /// An absolute length in some abstract units. Users of laffy may define what they correspond
     /// to in their application (pixels, logical pixels, mm, etc) as they see fit.
-    pub fn length(val: f32) MaxTrackSizingFunction {
-        return .{ .inner = CompactLength.length(val) };
+    pub fn fromLength(val: f32) MaxTrackSizingFunction {
+        return .{ .inner = CompactLength.fromLength(val) };
     }
 
     /// A percentage length relative to the size of the containing block.
     ///
     /// **NOTE: percentages are represented as a f32 value in the range [0.0, 1.0] NOT the range [0.0, 100.0]**
-    pub fn percent(val: f32) MaxTrackSizingFunction {
-        return .{ .inner = CompactLength.percent(val) };
+    pub fn fromPercent(val: f32) MaxTrackSizingFunction {
+        return .{ .inner = CompactLength.fromPercent(val) };
     }
 
     /// The size should be computed according to the "fit content" formula:
@@ -564,8 +552,8 @@ pub const MaxTrackSizingFunction = packed struct(u64) {
     /// The dimension as a fraction of the total available grid space (`fr` units in CSS)
     /// Specified value is the numerator of the fraction. Denominator is the sum of all fraction specified in that grid dimension
     /// Spec: <https://www.w3.org/TR/css3-grid-layout/#fr-unit>
-    pub fn fr(val: f32) MaxTrackSizingFunction {
-        return .{ .inner = CompactLength.fr(val) };
+    pub fn fromFr(val: f32) MaxTrackSizingFunction {
+        return .{ .inner = CompactLength.fromFr(val) };
     }
 
     /// A `calc()` value. The value passed here is treated as an opaque handle to
@@ -726,15 +714,15 @@ pub const MaxTrackSizingFunction = packed struct(u64) {
     /// Convert an `ExpandedMaxTrackSizingFunction` back into the compact form (upstream `From`)
     pub fn fromExpanded(value: ExpandedMaxTrackSizingFunction) MaxTrackSizingFunction {
         return switch (value) {
-            .length => |val| length(val),
-            .percent => |val| percent(val),
+            .length => |val| fromLength(val),
+            .percent => |val| fromPercent(val),
             .auto => auto,
             .min_content => min_content,
             .max_content => max_content,
             .fit_content_px => |val| fitContentPx(val),
             .fit_content_percent => |val| fitContentPercent(val),
             .fit_content_calc => |ptr| fitContentCalc(ptr),
-            .fr => |val| fr(val),
+            .fr => |val| fromFr(val),
             .calc => |ptr| calc(ptr),
         };
     }
@@ -786,14 +774,6 @@ pub const MinTrackSizingFunction = packed struct(u64) {
     /// This is the smallest size that can fit the item's contents with NO soft line-wrapping opportunities taken
     pub const max_content: MinTrackSizingFunction = .{ .inner = CompactLength.max_content };
 
-    /// Upstream `FromLength`
-    pub fn fromLength(value: anytype) MinTrackSizingFunction {
-        return length(toF32(value));
-    }
-    /// Upstream `FromPercent`
-    pub fn fromPercent(value: anytype) MinTrackSizingFunction {
-        return percent(toF32(value));
-    }
     /// Upstream `From<LengthPercentage>`
     pub fn fromLengthPercentage(input: LengthPercentage) MinTrackSizingFunction {
         return .{ .inner = input.inner };
@@ -826,15 +806,15 @@ pub const MinTrackSizingFunction = packed struct(u64) {
 
     /// An absolute length in some abstract units. Users of laffy may define what they correspond
     /// to in their application (pixels, logical pixels, mm, etc) as they see fit.
-    pub fn length(val: f32) MinTrackSizingFunction {
-        return .{ .inner = CompactLength.length(val) };
+    pub fn fromLength(val: f32) MinTrackSizingFunction {
+        return .{ .inner = CompactLength.fromLength(val) };
     }
 
     /// A percentage length relative to the size of the containing block.
     ///
     /// **NOTE: percentages are represented as a f32 value in the range [0.0, 1.0] NOT the range [0.0, 100.0]**
-    pub fn percent(val: f32) MinTrackSizingFunction {
-        return .{ .inner = CompactLength.percent(val) };
+    pub fn fromPercent(val: f32) MinTrackSizingFunction {
+        return .{ .inner = CompactLength.fromPercent(val) };
     }
 
     /// A `calc()` value. The value passed here is treated as an opaque handle to
@@ -935,8 +915,8 @@ pub const MinTrackSizingFunction = packed struct(u64) {
     /// Convert an `ExpandedMinTrackSizingFunction` back into the compact form (upstream `From`)
     pub fn fromExpanded(value: ExpandedMinTrackSizingFunction) MinTrackSizingFunction {
         return switch (value) {
-            .length => |val| length(val),
-            .percent => |val| percent(val),
+            .length => |val| fromLength(val),
+            .percent => |val| fromPercent(val),
             .auto => auto,
             .min_content => min_content,
             .max_content => max_content,
@@ -1131,26 +1111,26 @@ test "repetition track count saturates" {
 
 test "max track sizing function round trips" {
     const cases = [_]MaxTrackSizingFunction{
-        MaxTrackSizingFunction.length(12.0),
-        MaxTrackSizingFunction.percent(0.5),
+        MaxTrackSizingFunction.fromLength(12.0),
+        MaxTrackSizingFunction.fromPercent(0.5),
         MaxTrackSizingFunction.auto,
         MaxTrackSizingFunction.min_content,
         MaxTrackSizingFunction.max_content,
         MaxTrackSizingFunction.fitContentPx(30.0),
         MaxTrackSizingFunction.fitContentPercent(0.75),
-        MaxTrackSizingFunction.fr(2.0),
+        MaxTrackSizingFunction.fromFr(2.0),
     };
     for (cases) |value| {
         try testing.expect(MaxTrackSizingFunction.fromExpanded(value.expand()) == value);
     }
-    try testing.expectEqual(ExpandedMaxTrackSizingFunction{ .fr = 2.0 }, MaxTrackSizingFunction.fr(2.0).expand());
+    try testing.expectEqual(ExpandedMaxTrackSizingFunction{ .fr = 2.0 }, MaxTrackSizingFunction.fromFr(2.0).expand());
     try testing.expectEqual(ExpandedMaxTrackSizingFunction{ .fit_content_px = 30.0 }, MaxTrackSizingFunction.fitContentPx(30.0).expand());
 }
 
 test "min track sizing function round trips" {
     const cases = [_]MinTrackSizingFunction{
-        MinTrackSizingFunction.length(12.0),
-        MinTrackSizingFunction.percent(0.5),
+        MinTrackSizingFunction.fromLength(12.0),
+        MinTrackSizingFunction.fromPercent(0.5),
         MinTrackSizingFunction.auto,
         MinTrackSizingFunction.min_content,
         MinTrackSizingFunction.max_content,
@@ -1177,16 +1157,16 @@ test "track sizing function conversions" {
     try testing.expect(MaxTrackSizingFunction.fromDimension(Dimension.stretch) == MaxTrackSizingFunction.auto);
     try testing.expect(MaxTrackSizingFunction.fromDimension(Dimension.fitContentPx(3)) == MaxTrackSizingFunction.fitContentPx(3));
     try testing.expect(MinTrackSizingFunction.fromDimension(Dimension.fitContentPx(3)) == MinTrackSizingFunction.auto);
-    try testing.expect(MinTrackSizingFunction.fromMax(MaxTrackSizingFunction.fr(1)) == MinTrackSizingFunction.auto);
-    try testing.expect(MinTrackSizingFunction.fromMax(MaxTrackSizingFunction.length(4)) == MinTrackSizingFunction.length(4));
-    try testing.expect(TrackSizingFunction.fromFr(2).eql(.{ .min = MinTrackSizingFunction.auto, .max = MaxTrackSizingFunction.fr(2) }));
+    try testing.expect(MinTrackSizingFunction.fromMax(MaxTrackSizingFunction.fromFr(1)) == MinTrackSizingFunction.auto);
+    try testing.expect(MinTrackSizingFunction.fromMax(MaxTrackSizingFunction.fromLength(4)) == MinTrackSizingFunction.fromLength(4));
+    try testing.expect(TrackSizingFunction.fromFr(2).eql(.{ .min = MinTrackSizingFunction.auto, .max = MaxTrackSizingFunction.fromFr(2) }));
     try testing.expect(TrackSizingFunction.fromLength(5).hasFixedComponent());
     try testing.expect(!TrackSizingFunction.auto.hasFixedComponent());
     try testing.expectEqual(@as(?f32, 50), MaxTrackSizingFunction.fitContentPercent(0.5).definiteLimit(100, compact_length.NoCalc{}));
-    try testing.expectEqual(@as(?f32, 7), MaxTrackSizingFunction.length(7).definiteLimit(null, compact_length.NoCalc{}));
-    try testing.expectEqual(@as(?f32, null), MaxTrackSizingFunction.percent(0.5).definiteValue(null, compact_length.NoCalc{}));
-    try testing.expect(MinTrackSizingFunction.percent(0.5).behavesAsAuto(null));
-    try testing.expect(!MinTrackSizingFunction.percent(0.5).behavesAsAuto(10));
+    try testing.expectEqual(@as(?f32, 7), MaxTrackSizingFunction.fromLength(7).definiteLimit(null, compact_length.NoCalc{}));
+    try testing.expectEqual(@as(?f32, null), MaxTrackSizingFunction.fromPercent(0.5).definiteValue(null, compact_length.NoCalc{}));
+    try testing.expect(MinTrackSizingFunction.fromPercent(0.5).behavesAsAuto(null));
+    try testing.expect(!MinTrackSizingFunction.fromPercent(0.5).behavesAsAuto(10));
 }
 
 test "repetition count and template components" {

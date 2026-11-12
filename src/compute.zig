@@ -736,7 +736,7 @@ test "custom tree: multi-level layout through computeCachedLayout recursion" {
     defer tree.deinit();
 
     var padded: Style = .{};
-    padded.padding = Rect(LengthPercentage).length(10.0);
+    padded.padding = Rect(LengthPercentage).fromLength(10.0);
     const leaf_a = try tree.add(.{}, .{ .width = 30.0, .height = 10.0 }, &.{});
     const leaf_b = try tree.add(.{}, .{ .width = 20.5, .height = 15.25 }, &.{});
     const inner = try tree.add(padded, Size(f32).zero, &.{ leaf_a, leaf_b });
@@ -780,13 +780,13 @@ test "custom tree: out-of-flow candidates bubble to their containing block" {
 
     var abs_style: Style = .{};
     abs_style.position = .absolute;
-    abs_style.inset = .{ .left = .length(5.0), .right = .auto, .top = .auto, .bottom = .length(3.0) };
+    abs_style.inset = .{ .left = .fromLength(5.0), .right = .auto, .top = .auto, .bottom = .fromLength(3.0) };
     abs_style.size = Size(Dimension).fromLengths(7.0, 4.0);
     var fixed_style: Style = .{};
     fixed_style.position = .fixed;
     var relative: Style = .{};
     relative.position = .relative;
-    relative.border = Rect(LengthPercentage).length(1.0);
+    relative.border = Rect(LengthPercentage).fromLength(1.0);
 
     const abs = try tree.add(abs_style, Size(f32).zero, &.{});
     const fixed = try tree.add(fixed_style, .{ .width = 2.0, .height = 3.0 }, &.{});
@@ -820,8 +820,8 @@ test "custom tree: absolutely positioned and relatively positioned roots" {
 
     var abs_root: Style = .{};
     abs_root.position = .absolute;
-    abs_root.inset = .{ .left = .length(10.0), .right = .length(10.0), .top = .length(5.0), .bottom = .auto };
-    abs_root.margin = .{ .left = .length(2.0), .right = .length(0.0), .top = .length(0.0), .bottom = .length(0.0) };
+    abs_root.inset = .{ .left = .fromLength(10.0), .right = .fromLength(10.0), .top = .fromLength(5.0), .bottom = .auto };
+    abs_root.margin = .{ .left = .fromLength(2.0), .right = .fromLength(0.0), .top = .fromLength(0.0), .bottom = .fromLength(0.0) };
     const root = try tree.add(abs_root, .{ .width = 3.0, .height = 4.0 }, &.{});
     try computeRootLayout(&tree, root, .{ .width = .{ .definite = 100.0 }, .height = .{ .definite = 50.0 } });
     // Stretch-fit width: 100 - 10 - 10 - 2
@@ -831,17 +831,17 @@ test "custom tree: absolutely positioned and relatively positioned roots" {
     var rel_root: Style = .{};
     rel_root.position = .relative;
     rel_root.direction = .rtl;
-    rel_root.inset = .{ .left = .length(1.0), .right = .length(3.0), .top = .auto, .bottom = .length(4.0) };
-    rel_root.margin = Rect(LengthPercentageAuto).length(2.0);
+    rel_root.inset = .{ .left = .fromLength(1.0), .right = .fromLength(3.0), .top = .auto, .bottom = .fromLength(4.0) };
+    rel_root.margin = Rect(LengthPercentageAuto).fromLength(2.0);
     const root2 = try tree.add(rel_root, .{ .width = 10.0, .height = 10.0 }, &.{});
     try computeRootLayout(&tree, root2, .{ .width = .{ .definite = 100.0 }, .height = .{ .definite = 50.0 } });
     try testing.expectEqual(Point(f32){ .x = 100.0 - 10.0 - 2.0 - 3.0, .y = 2.0 - 4.0 }, tree.node(root2).unrounded.location);
 
     var block_root: Style = .{};
     block_root.display = .block;
-    block_root.margin = Rect(LengthPercentageAuto).length(5.0);
-    block_root.min_size = .{ .width = .auto, .height = .length(30.0) };
-    block_root.max_size = .{ .width = .auto, .height = .length(20.0) };
+    block_root.margin = Rect(LengthPercentageAuto).fromLength(5.0);
+    block_root.min_size = .{ .width = .auto, .height = .fromLength(30.0) };
+    block_root.max_size = .{ .width = .auto, .height = .fromLength(20.0) };
     const root3 = try tree.add(block_root, .{ .width = 10.0, .height = 10.0 }, &.{});
     try computeRootLayout(&tree, root3, .{ .width = .{ .definite = 100.0 }, .height = .{ .definite = 50.0 } });
     // Block roots stretch to the available width (minus margins); min > max fixes the height
@@ -907,7 +907,7 @@ test "custom tree: computeOofLayoutForArea positions claimed candidates without 
 
     var abs_style: Style = .{};
     abs_style.position = .absolute;
-    abs_style.inset = .{ .left = .auto, .right = .length(4.0), .top = .length(2.0), .bottom = .auto };
+    abs_style.inset = .{ .left = .auto, .right = .fromLength(4.0), .top = .fromLength(2.0), .bottom = .auto };
     const abs = try tree.add(abs_style, .{ .width = 6.0, .height = 3.0 }, &.{});
     const owner = try tree.add(.{}, Size(f32).zero, &.{abs});
 

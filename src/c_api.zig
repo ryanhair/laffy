@@ -424,16 +424,16 @@ fn number(value: f32) CError!f32 {
 
 fn toLengthPercentage(v: LaffyLengthPercentage) CError!LengthPercentage {
     return switch (try enumFromC(LaffyUnit, v.unit)) {
-        .length => LengthPercentage.length(try number(v.value)),
-        .percent => LengthPercentage.percent(try number(v.value)),
+        .length => LengthPercentage.fromLength(try number(v.value)),
+        .percent => LengthPercentage.fromPercent(try number(v.value)),
         else => error.InvalidArgument,
     };
 }
 
 fn toLengthPercentageAuto(v: LaffyLengthPercentageAuto) CError!LengthPercentageAuto {
     return switch (try enumFromC(LaffyUnit, v.unit)) {
-        .length => LengthPercentageAuto.length(try number(v.value)),
-        .percent => LengthPercentageAuto.percent(try number(v.value)),
+        .length => LengthPercentageAuto.fromLength(try number(v.value)),
+        .percent => LengthPercentageAuto.fromPercent(try number(v.value)),
         .auto => LengthPercentageAuto.auto,
         else => error.InvalidArgument,
     };
@@ -441,8 +441,8 @@ fn toLengthPercentageAuto(v: LaffyLengthPercentageAuto) CError!LengthPercentageA
 
 fn toDimension(v: LaffyDimension) CError!Dimension {
     return switch (try enumFromC(LaffyUnit, v.unit)) {
-        .length => Dimension.length(try number(v.value)),
-        .percent => Dimension.percent(try number(v.value)),
+        .length => Dimension.fromLength(try number(v.value)),
+        .percent => Dimension.fromPercent(try number(v.value)),
         .auto => Dimension.auto,
         .min_content => Dimension.min_content,
         .max_content => Dimension.max_content,
@@ -457,8 +457,8 @@ fn toDimension(v: LaffyDimension) CError!Dimension {
 
 fn toMinTrack(v: LaffyMinTrackSizing) CError!MinTrackSizingFunction {
     return switch (try enumFromC(LaffyUnit, v.unit)) {
-        .length => MinTrackSizingFunction.length(try number(v.value)),
-        .percent => MinTrackSizingFunction.percent(try number(v.value)),
+        .length => MinTrackSizingFunction.fromLength(try number(v.value)),
+        .percent => MinTrackSizingFunction.fromPercent(try number(v.value)),
         .auto => MinTrackSizingFunction.auto,
         .min_content => MinTrackSizingFunction.min_content,
         .max_content => MinTrackSizingFunction.max_content,
@@ -468,14 +468,14 @@ fn toMinTrack(v: LaffyMinTrackSizing) CError!MinTrackSizingFunction {
 
 fn toMaxTrack(v: LaffyMaxTrackSizing) CError!MaxTrackSizingFunction {
     return switch (try enumFromC(LaffyUnit, v.unit)) {
-        .length => MaxTrackSizingFunction.length(try number(v.value)),
-        .percent => MaxTrackSizingFunction.percent(try number(v.value)),
+        .length => MaxTrackSizingFunction.fromLength(try number(v.value)),
+        .percent => MaxTrackSizingFunction.fromPercent(try number(v.value)),
         .auto => MaxTrackSizingFunction.auto,
         .min_content => MaxTrackSizingFunction.min_content,
         .max_content => MaxTrackSizingFunction.max_content,
         .fit_content_length => MaxTrackSizingFunction.fitContentPx(try number(v.value)),
         .fit_content_percent => MaxTrackSizingFunction.fitContentPercent(try number(v.value)),
-        .fr => MaxTrackSizingFunction.fr(try number(v.value)),
+        .fr => MaxTrackSizingFunction.fromFr(try number(v.value)),
         .fit_content, .stretch, .content => error.InvalidArgument,
     };
 }
@@ -1721,21 +1721,21 @@ test "scalar style setters round-trip" {
         .float = .right,
         .clear = .both,
         .position = .sticky,
-        .inset = .{ .left = .length(1), .right = .percent(0.5), .top = .auto, .bottom = .length(4) },
+        .inset = .{ .left = .fromLength(1), .right = .fromPercent(0.5), .top = .auto, .bottom = .fromLength(4) },
         .size = .{ .width = .fitContentPx(30), .height = .stretch },
-        .min_size = .{ .width = .length(5), .height = .percent(0.25) },
-        .max_size = .{ .width = .auto, .height = .length(500) },
+        .min_size = .{ .width = .fromLength(5), .height = .fromPercent(0.25) },
+        .max_size = .{ .width = .auto, .height = .fromLength(500) },
         .aspect_ratio = 1.5,
-        .margin = .{ .left = .length(1), .right = .length(2), .top = .auto, .bottom = .length(4) },
-        .padding = .{ .left = .length(5), .right = .length(6), .top = .percent(0.1), .bottom = .length(8) },
-        .border = .{ .left = .length(9), .right = .length(10), .top = .length(11), .bottom = .length(12) },
+        .margin = .{ .left = .fromLength(1), .right = .fromLength(2), .top = .auto, .bottom = .fromLength(4) },
+        .padding = .{ .left = .fromLength(5), .right = .fromLength(6), .top = .fromPercent(0.1), .bottom = .fromLength(8) },
+        .border = .{ .left = .fromLength(9), .right = .fromLength(10), .top = .fromLength(11), .bottom = .fromLength(12) },
         .align_items = AlignItems.safe_center,
         .justify_items = AlignItems.self_end,
         .align_self = AlignItems.baseline.withSafety(.unsafe),
         .justify_self = AlignItems.stretch,
         .align_content = AlignContent.space_evenly,
         .justify_content = AlignContent.safe_flex_end,
-        .gap = .{ .width = .length(3), .height = .percent(0.2) },
+        .gap = .{ .width = .fromLength(3), .height = .fromPercent(0.2) },
         .text_align = .legacy_center,
         .flex_direction = .column_reverse,
         .flex_wrap = .balance_reverse,
@@ -1759,7 +1759,7 @@ test "scalar style setters round-trip" {
 
     // Every unit maps to the expected `Dimension`
     const units = [_]struct { LaffyUnit, Dimension }{
-        .{ .length, .length(2) },                         .{ .percent, .percent(2) },
+        .{ .length, .fromLength(2) },                     .{ .percent, .fromPercent(2) },
         .{ .auto, .auto },                                .{ .min_content, .min_content },
         .{ .max_content, .max_content },                  .{ .fit_content_length, .fitContentPx(2) },
         .{ .fit_content_percent, .fitContentPercent(2) }, .{ .fit_content, .fit_content },
@@ -1824,7 +1824,7 @@ test "grid setters round-trip and copy their data" {
     const rep = style.grid_template_columns[1].repeat;
     try testing.expectEqual(laffy.RepetitionCount.auto_fill, rep.count);
     try testing.expectEqual(@as(usize, 1), rep.tracks.len);
-    try expectTrack(.{ .min = .length(20), .max = .fitContentPercent(0.5) }, rep.tracks[0]);
+    try expectTrack(.{ .min = .fromLength(20), .max = .fitContentPercent(0.5) }, rep.tracks[0]);
     try testing.expectEqual(@as(usize, 2), rep.line_names.len);
     try testing.expectEqualStrings("alpha", rep.line_names[0][0]);
     try testing.expectEqual(@as(usize, 0), rep.line_names[1].len);

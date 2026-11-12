@@ -6,7 +6,7 @@
 //!
 //! Naming: zero-argument constructors and upstream associated constants are declarations
 //! (`Dimension.auto`, `Dimension.zero`, `Dimension.min_content`, ...); constructors that take
-//! arguments are functions (`Dimension.length(10)`, `Dimension.fitContentPx(5)`, ...).
+//! arguments are functions (`Dimension.fromLength(10)`, `Dimension.fitContentPx(5)`, ...).
 const std = @import("std");
 const compact_length = @import("compact_length.zig");
 const CompactLength = compact_length.CompactLength;
@@ -21,27 +21,17 @@ pub const LengthPercentage = packed struct(u64) {
     /// Zero length (upstream `TaffyZero::ZERO`)
     pub const zero: LengthPercentage = .{ .inner = CompactLength.zero };
 
-    /// Upstream `FromLength::from_length`
-    pub fn fromLength(value_: anytype) LengthPercentage {
-        return length(toF32(value_));
-    }
-
-    /// Upstream `FromPercent::from_percent`
-    pub fn fromPercent(value_: anytype) LengthPercentage {
-        return percent(toF32(value_));
-    }
-
     /// An absolute length in some abstract units. Users of laffy may define what they correspond
     /// to in their application (pixels, logical pixels, mm, etc) as they see fit.
-    pub fn length(val: f32) LengthPercentage {
-        return .{ .inner = CompactLength.length(val) };
+    pub fn fromLength(val: f32) LengthPercentage {
+        return .{ .inner = CompactLength.fromLength(val) };
     }
 
     /// A percentage length relative to the size of the containing block.
     ///
     /// **NOTE: percentages are represented as a f32 value in the range [0.0, 1.0] NOT the range [0.0, 100.0]**
-    pub fn percent(val: f32) LengthPercentage {
-        return .{ .inner = CompactLength.percent(val) };
+    pub fn fromPercent(val: f32) LengthPercentage {
+        return .{ .inner = CompactLength.fromPercent(val) };
     }
 
     /// A `calc()` value. The value passed here is treated as an opaque handle to
@@ -78,8 +68,8 @@ pub const LengthPercentage = packed struct(u64) {
     /// Convert an `ExpandedLengthPercentage` back into the compact form (upstream `From`)
     pub fn fromExpanded(value_: ExpandedLengthPercentage) LengthPercentage {
         return switch (value_) {
-            .length => |val| length(val),
-            .percent => |val| percent(val),
+            .length => |val| fromLength(val),
+            .percent => |val| fromPercent(val),
             .calc => |ptr| calc(ptr),
         };
     }
@@ -111,16 +101,6 @@ pub const LengthPercentageAuto = packed struct(u64) {
     /// regarding the default size of boxes. (Upstream `auto()` and `TaffyAuto::AUTO`.)
     pub const auto: LengthPercentageAuto = .{ .inner = CompactLength.auto };
 
-    /// Upstream `FromLength::from_length`
-    pub fn fromLength(value_: anytype) LengthPercentageAuto {
-        return length(toF32(value_));
-    }
-
-    /// Upstream `FromPercent::from_percent`
-    pub fn fromPercent(value_: anytype) LengthPercentageAuto {
-        return percent(toF32(value_));
-    }
-
     /// Upstream `From<LengthPercentage>`
     pub fn fromLengthPercentage(input: LengthPercentage) LengthPercentageAuto {
         return .{ .inner = input.inner };
@@ -128,15 +108,15 @@ pub const LengthPercentageAuto = packed struct(u64) {
 
     /// An absolute length in some abstract units. Users of laffy may define what they correspond
     /// to in their application (pixels, logical pixels, mm, etc) as they see fit.
-    pub fn length(val: f32) LengthPercentageAuto {
-        return .{ .inner = CompactLength.length(val) };
+    pub fn fromLength(val: f32) LengthPercentageAuto {
+        return .{ .inner = CompactLength.fromLength(val) };
     }
 
     /// A percentage length relative to the size of the containing block.
     ///
     /// **NOTE: percentages are represented as a f32 value in the range [0.0, 1.0] NOT the range [0.0, 100.0]**
-    pub fn percent(val: f32) LengthPercentageAuto {
-        return .{ .inner = CompactLength.percent(val) };
+    pub fn fromPercent(val: f32) LengthPercentageAuto {
+        return .{ .inner = CompactLength.fromPercent(val) };
     }
 
     /// A `calc()` value. The value passed here is treated as an opaque handle to
@@ -195,8 +175,8 @@ pub const LengthPercentageAuto = packed struct(u64) {
     /// Convert an `ExpandedLengthPercentageAuto` back into the compact form (upstream `From`)
     pub fn fromExpanded(value_: ExpandedLengthPercentageAuto) LengthPercentageAuto {
         return switch (value_) {
-            .length => |val| length(val),
-            .percent => |val| percent(val),
+            .length => |val| fromLength(val),
+            .percent => |val| fromPercent(val),
             .auto => auto,
             .calc => |ptr| calc(ptr),
         };
@@ -254,16 +234,6 @@ pub const Dimension = packed struct(u64) {
     /// This keyword is only valid for `flex-basis`. In any other context it behaves as `auto`.
     pub const content: Dimension = .{ .inner = CompactLength.content };
 
-    /// Upstream `FromLength::from_length`
-    pub fn fromLength(value_: anytype) Dimension {
-        return length(toF32(value_));
-    }
-
-    /// Upstream `FromPercent::from_percent`
-    pub fn fromPercent(value_: anytype) Dimension {
-        return percent(toF32(value_));
-    }
-
     /// Upstream `From<LengthPercentage>`
     pub fn fromLengthPercentage(input: LengthPercentage) Dimension {
         return .{ .inner = input.inner };
@@ -276,15 +246,15 @@ pub const Dimension = packed struct(u64) {
 
     /// An absolute length in some abstract units. Users of laffy may define what they correspond
     /// to in their application (pixels, logical pixels, mm, etc) as they see fit.
-    pub fn length(val: f32) Dimension {
-        return .{ .inner = CompactLength.length(val) };
+    pub fn fromLength(val: f32) Dimension {
+        return .{ .inner = CompactLength.fromLength(val) };
     }
 
     /// A percentage length relative to the size of the containing block.
     ///
     /// **NOTE: percentages are represented as a f32 value in the range [0.0, 1.0] NOT the range [0.0, 100.0]**
-    pub fn percent(val: f32) Dimension {
-        return .{ .inner = CompactLength.percent(val) };
+    pub fn fromPercent(val: f32) Dimension {
+        return .{ .inner = CompactLength.fromPercent(val) };
     }
 
     /// The size should be computed according to the "fit content" formula:
@@ -402,8 +372,8 @@ pub const Dimension = packed struct(u64) {
     /// Convert an `ExpandedDimension` back into the compact form (upstream `From`)
     pub fn fromExpanded(value_: ExpandedDimension) Dimension {
         return switch (value_) {
-            .length => |val| length(val),
-            .percent => |val| percent(val),
+            .length => |val| fromLength(val),
+            .percent => |val| fromPercent(val),
             .auto => auto,
             .min_content => min_content,
             .max_content => max_content,
@@ -456,16 +426,16 @@ fn calcHandle() *const anyopaque {
 }
 
 test "LengthPercentage round trips" {
-    const cases = [_]LengthPercentage{ LengthPercentage.length(12.0), LengthPercentage.percent(0.5), LengthPercentage.zero };
+    const cases = [_]LengthPercentage{ LengthPercentage.fromLength(12.0), LengthPercentage.fromPercent(0.5), LengthPercentage.zero };
     for (cases) |value| {
         try testing.expect(LengthPercentage.fromExpanded(value.expand()) == value);
     }
-    try testing.expectEqual(ExpandedLengthPercentage{ .length = 3.0 }, LengthPercentage.length(3.0).expand());
-    try testing.expectEqual(ExpandedLengthPercentage{ .percent = 0.25 }, LengthPercentage.percent(0.25).expand());
+    try testing.expectEqual(ExpandedLengthPercentage{ .length = 3.0 }, LengthPercentage.fromLength(3.0).expand());
+    try testing.expectEqual(ExpandedLengthPercentage{ .percent = 0.25 }, LengthPercentage.fromPercent(0.25).expand());
 }
 
 test "LengthPercentageAuto round trips" {
-    const cases = [_]LengthPercentageAuto{ LengthPercentageAuto.length(12.0), LengthPercentageAuto.percent(0.5), LengthPercentageAuto.auto };
+    const cases = [_]LengthPercentageAuto{ LengthPercentageAuto.fromLength(12.0), LengthPercentageAuto.fromPercent(0.5), LengthPercentageAuto.auto };
     for (cases) |value| {
         try testing.expect(LengthPercentageAuto.fromExpanded(value.expand()) == value);
     }
@@ -474,8 +444,8 @@ test "LengthPercentageAuto round trips" {
 
 test "Dimension round trips all keywords" {
     const cases = [_]Dimension{
-        Dimension.length(12.0),
-        Dimension.percent(0.5),
+        Dimension.fromLength(12.0),
+        Dimension.fromPercent(0.5),
         Dimension.auto,
         Dimension.min_content,
         Dimension.max_content,
@@ -504,11 +474,11 @@ test "calc round trips" {
 
 test "LengthPercentageAuto resolveToOption" {
     const NoCalc = compact_length.NoCalc;
-    try testing.expectEqual(@as(?f32, 5.0), LengthPercentageAuto.length(5.0).resolveToOption(100.0, NoCalc{}));
-    try testing.expectEqual(@as(?f32, 50.0), LengthPercentageAuto.percent(0.5).resolveToOption(100.0, NoCalc{}));
+    try testing.expectEqual(@as(?f32, 5.0), LengthPercentageAuto.fromLength(5.0).resolveToOption(100.0, NoCalc{}));
+    try testing.expectEqual(@as(?f32, 50.0), LengthPercentageAuto.fromPercent(0.5).resolveToOption(100.0, NoCalc{}));
     try testing.expectEqual(@as(?f32, null), LengthPercentageAuto.auto.resolveToOption(100.0, NoCalc{}));
     const handle = calcHandle();
     try testing.expectEqual(@as(?f32, 42.42), LengthPercentageAuto.calc(handle).resolveToOption(100.0, compact_length.ConstCalc{ .value = 42.42 }));
-    try testing.expectEqual(@as(?f32, 7.0), Dimension.length(7.0).intoOption());
-    try testing.expectEqual(@as(?f32, null), Dimension.percent(0.5).intoOption());
+    try testing.expectEqual(@as(?f32, 7.0), Dimension.fromLength(7.0).intoOption());
+    try testing.expectEqual(@as(?f32, null), Dimension.fromPercent(0.5).intoOption());
 }

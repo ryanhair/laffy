@@ -131,14 +131,14 @@ pub const CompactLength = packed struct(u64) {
 
     /// An absolute length in some abstract units. Users of laffy may define what they correspond
     /// to in their application (pixels, logical pixels, mm, etc) as they see fit.
-    pub fn length(val: f32) CompactLength {
+    pub fn fromLength(val: f32) CompactLength {
         return fromVal(val, length_tag);
     }
 
     /// A percentage length relative to the size of the containing block.
     ///
     /// **NOTE: percentages are represented as a f32 value in the range [0.0, 1.0] NOT the range [0.0, 100.0]**
-    pub fn percent(val: f32) CompactLength {
+    pub fn fromPercent(val: f32) CompactLength {
         return fromVal(val, percent_tag);
     }
 
@@ -173,7 +173,7 @@ pub const CompactLength = packed struct(u64) {
     /// The dimension as a fraction of the total available grid space (`fr` units in CSS)
     /// Specified value is the numerator of the fraction. Denominator is the sum of all fraction specified in that grid dimension
     /// Spec: <https://www.w3.org/TR/css3-grid-layout/#fr-unit>
-    pub fn fr(val: f32) CompactLength {
+    pub fn fromFr(val: f32) CompactLength {
         return fromVal(val, fr_tag);
     }
 
@@ -222,22 +222,7 @@ pub const CompactLength = packed struct(u64) {
     pub const content: CompactLength = fromTag(content_tag);
 
     /// Zero length (upstream `TaffyZero::ZERO`)
-    pub const zero: CompactLength = length(0.0);
-
-    /// Create from an `Into<f64>`-like number (upstream `FromLength`)
-    pub fn fromLength(number: anytype) CompactLength {
-        return length(toF32(number));
-    }
-
-    /// Create from an `Into<f64>`-like number (upstream `FromPercent`)
-    pub fn fromPercent(number: anytype) CompactLength {
-        return percent(toF32(number));
-    }
-
-    /// Create from an `Into<f64>`-like number (upstream `FromFr`)
-    pub fn fromFr(number: anytype) CompactLength {
-        return fr(toF32(number));
-    }
+    pub const zero: CompactLength = fromLength(0.0);
 
     /// Create a `fit-content(…)` value from a `LengthPercentage` limit (upstream `TaffyFitContent`)
     pub fn fitContent(lp: LengthPercentage) CompactLength {
@@ -461,16 +446,16 @@ test "percentage bit matches usesPercentage" {
     for (percentage_tags) |tag| try testing.expect(tag & CompactLength.percentage_bit != 0);
     try testing.expect(CompactLength.calc_tag & CompactLength.percentage_bit != 0);
 
-    try testing.expect(!CompactLength.length(10.0).usesPercentage());
+    try testing.expect(!CompactLength.fromLength(10.0).usesPercentage());
     try testing.expect(!CompactLength.auto.usesPercentage());
-    try testing.expect(!CompactLength.fr(1.0).usesPercentage());
+    try testing.expect(!CompactLength.fromFr(1.0).usesPercentage());
     try testing.expect(!CompactLength.min_content.usesPercentage());
     try testing.expect(!CompactLength.max_content.usesPercentage());
     try testing.expect(!CompactLength.fitContentPx(10.0).usesPercentage());
     try testing.expect(!CompactLength.fit_content_keyword.usesPercentage());
     try testing.expect(!CompactLength.stretch.usesPercentage());
     try testing.expect(!CompactLength.content.usesPercentage());
-    try testing.expect(CompactLength.percent(0.5).usesPercentage());
+    try testing.expect(CompactLength.fromPercent(0.5).usesPercentage());
     try testing.expect(CompactLength.fitContentPercent(0.5).usesPercentage());
 }
 
@@ -515,10 +500,10 @@ test "calc round trips pointer" {
 }
 
 test "value round trips and isZero" {
-    try testing.expectEqual(@as(f32, 12.5), CompactLength.length(12.5).value());
-    try testing.expectEqual(@as(f32, -0.25), CompactLength.percent(-0.25).value());
+    try testing.expectEqual(@as(f32, 12.5), CompactLength.fromLength(12.5).value());
+    try testing.expectEqual(@as(f32, -0.25), CompactLength.fromPercent(-0.25).value());
     try testing.expect(CompactLength.zero.isZero());
-    try testing.expect(!CompactLength.length(-0.0).isZero());
-    try testing.expectEqual(@as(?f32, 5.0), CompactLength.percent(0.5).resolvedPercentageSize(10.0, NoCalc{}));
-    try testing.expectEqual(@as(?f32, null), CompactLength.length(0.5).resolvedPercentageSize(10.0, NoCalc{}));
+    try testing.expect(!CompactLength.fromLength(-0.0).isZero());
+    try testing.expectEqual(@as(?f32, 5.0), CompactLength.fromPercent(0.5).resolvedPercentageSize(10.0, NoCalc{}));
+    try testing.expectEqual(@as(?f32, null), CompactLength.fromLength(0.5).resolvedPercentageSize(10.0, NoCalc{}));
 }
