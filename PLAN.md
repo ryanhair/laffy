@@ -84,13 +84,62 @@ decisions behind the port and the milestone roadmap.
 
 ## Risks to check early
 
-- **Float parity (checked on Zig 0.17.1, runtime values).** taffy wraps min, max and round in
-  `util/sys.rs`, using Rust's `f32::max`, `f32::min` and `f32::round`. Zig's `@max` and `@min`
-  return the non-NaN operand like Rust, and `@round` rounds ties away from zero like Rust, so the
-  builtins can back laffy's wrappers directly. Comptime evaluation was not checked.
+- **Float parity (checked on Zig 0.17.1, runtime values).** Zig's `@max` and `@min` return the
+  non-NaN operand, like Rust's `f32::max` and `f32::min`. taffy's `round` is `floor(value + 0.5)`
+  (not round-half-away-from-zero), so laffy's `round` wrapper must be written the same way and
+  must not use `@round`.
 - **Recursive generics.** Zig cannot infer error sets across recursive generic calls, so every
   layout entry point declares its error set explicitly.
 - **Harness parser scope.** Fixture attributes include full grid syntax such as
   `repeat(auto-fill, minmax(...))`, named lines and `calc()`. The parser grows with each algorithm.
 - **Upstream churn.** taffy is under active development; re-sync fixtures at milestone boundaries
   rather than continuously.
+
+## Porting conventions
+
+These apply to every file in the port so that independently written pieces fit together.
+
+- **Upstream reference.** Port from a checkout of taffy at the commit in `tests/fixtures/UPSTREAM`.
+  Port behaviour exactly, including edge cases and the order of floating-point operations.
+- **File layout.** Mirror upstream paths under `src/`, with `.zig` in place of `.rs`. A Rust
+  `foo/mod.rs` becomes `foo.zig` next to the `foo/` directory. `src/root.zig` is `lib.rs`.
+- **Naming.** Zig style: `PascalCase` types, `camelCase` functions, `snake_case` fields, variables
+  and enum variants. Keep upstream names otherwise (`compute_flexbox_layout` becomes
+  `computeFlexboxLayout`). Associated constants such as `Size::ZERO` become lower-case declarations
+  (`Size(f32).zero`).
+- **Generics.** `Size<T>` becomes `Size(T)`. `Option<T>` becomes `?T`.
+- **Traits.** Tree traits become duck-typed `anytype` / `comptime Tree: type` parameters; the
+  expected methods are documented in `src/tree/traits.zig`. Helper traits such as `MaybeMath` and
+  `MaybeResolve` become free functions that dispatch on argument type at comptime.
+- **Closures.** `map(|x| ...)` style helpers become explicit code at the call site, or take a
+  `comptime` function parameter where that reads better.
+- **Calc resolver.** Where upstream takes `calc: impl Fn(*const (), f32) -> f32`, laffy takes
+  `calc: anytype` and calls `calc.resolveCalcValue(ptr, basis)`. Layout code passes the tree.
+- **Errors and allocation.** Layout can fail only with `error{OutOfMemory}`. Declare that error set
+  explicitly on every function in the layout call graph (inferred error sets do not work across
+  the recursion). Temporary allocations use the scratch allocator the tree provides.
+- **Not ported.** Cargo feature flags (everything is always on), `serde`, `strict_provenance`, and
+  the `no_std` polyfills.
+- **Tests.** Port upstream `#[cfg(test)]` unit tests as Zig `test` blocks in the same file.
+- **Comments.** Carry over upstream doc comments, trimmed where they only describe Rust mechanics.
+- **Tooling.** Zig 0.17.1. Run `zig build test` and `zig fmt` before finishing. When unsure of a
+  std API, read the std source of the installed toolchain rather than guessing.
+
+### Conventions established by the foundation layer
+
+- **Maybe-math.** `maybeMin`, `maybeMax`, `maybeAdd`, `maybeSub(lhs, rhs)` and
+  `maybeClamp(lhs, min, max)` in `src/util/math.zig` accept every upstream operand combination
+  (`?f32`, `f32`, `AvailableSpace`, and `Size` of those).
+- **Resolve.** `maybeResolve(value, context, calc)` and `resolveOrZero(value, context, calc)` in
+  `src/util/resolve.zig`. `NoCalc` is the resolver for trees without `calc()` support.
+- **Style accessors.** Upstream accessor `foo()` is `getFoo()` (Zig does not allow a method to
+  share a field's name); `is_*` predicates stay `isFoo()`. `Style` implements all of them. The
+  full interface lists and reusable defaults are documented at the top of `src/style.zig`.
+- **Style ownership.** `Style` is a plain value (`.{}` is the default). Grid track lists and line
+  or area names are borrowed slices; the caller keeps them alive.
+- **Constants and constructors.** No-argument upstream constructors and constants are lower-case
+  declarations (`Dimension.auto`, `Size(f32).zero`); constructors with arguments are functions
+  (`Dimension.fromLength(10)`). Rust tuple-struct `.0` fields are named `inner`.
+- **Comptime closures.** `map`, `zipMap` and similar take `comptime` functions and cannot capture
+  runtime state; write the field-wise code out when a capture is needed.
+- **Already ported ahead of schedule.** `src/compute/grid/types/coordinates.zig`.
