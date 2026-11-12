@@ -1,0 +1,5 @@
+repository: https://github.com/DioxusLabs/taffy.git
+commit: d0345bac609a10b25278ecc0850e862be9504e74
+date: 2026-11-11
+version: 0.15.0
+fixtures: 6688
