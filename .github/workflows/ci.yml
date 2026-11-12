@@ -18,10 +18,14 @@ jobs:
         with:
           version: 0.17.1
       - name: Check formatting
-        run: zig fmt --check build.zig src tests
+        run: zig fmt --check build.zig src tests benches examples
       - name: Unit tests
         run: zig build test --summary all
       - name: Hand-written integration tests
         run: zig build hand-written --summary all
       - name: Fixture conformance tests
         run: zig build fixtures --summary all
+      - name: C API test
+        run: zig build c-test --summary all
+      - name: Build example and benchmarks
+        run: zig build example && zig build bench -- flex-chain-100

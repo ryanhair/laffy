@@ -81,10 +81,14 @@ decisions behind the port and the milestone roadmap.
 ### 5. Hand-written tests
 
 - Port the 26 upstream test files, including `calc()` coverage.
+- Status: done. 164 tests from 25 files pass. Not ported: one `should_panic` test and `serde.rs`.
 
 ### 6. Polish
 
 - Benchmarks against taffy, documentation, CI, optional C ABI.
+- Status: done. `zig build bench` and `benches/README.md` (laffy is about 1.15 to 1.45 times
+  slower than taffy on full layout); C API in `src/c_api.zig` and `include/laffy.h`; CI on Linux
+  and macOS.
 
 ## Risks to check early
 
@@ -152,6 +156,6 @@ These apply to every file in the port so that independently written pieces fit t
 
 - `zig build conformance -- [group ...] [--filter substring] [--verbose]` runs fixture groups and
   prints pass counts, failing fixture names and expected/actual diffs.
-- `tests/support/runner.zig` has a `ported` struct; fixtures needing an unported algorithm are
-  skipped instead of hitting the placeholder panic. Flip the flag when an algorithm lands.
+- `tests/support/runner.zig` has a `ported` struct, a leftover from the port: fixtures needing an
+  algorithm flagged as unported are skipped. All flags are now true.
 - `tests/fixtures.zig` lists `enabled_groups`, which `zig build fixtures` requires to pass fully.

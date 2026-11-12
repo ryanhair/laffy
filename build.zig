@@ -47,6 +47,19 @@ pub fn build(b: *std.Build) void {
     const hand_written_step = b.step("hand-written", "Run ported hand-written integration tests");
     hand_written_step.dependOn(&run_hand_written_tests.step);
 
+    // A minimal usage example.
+    const example = b.addExecutable(.{
+        .name = "basic",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("examples/basic.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{.{ .name = "laffy", .module = mod }},
+        }),
+    });
+    const example_step = b.step("example", "Run examples/basic.zig");
+    example_step.dependOn(&b.addRunArtifact(example).step);
+
     // Development runner for the fixtures: `zig build conformance -- [group ...] [--filter s] [--verbose]`.
     // Built in ReleaseSafe by default so that full groups run quickly.
     const conformance_optimize: std.builtin.OptimizeMode = if (b.user_input_options.contains("optimize")) optimize else .ReleaseSafe;
