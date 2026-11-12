@@ -470,27 +470,27 @@ pub fn computeBlockLayout(tree: anytype, node_id: NodeId, inputs: LayoutInput, b
     const style = tree.getBlockContainerStyle(node_id);
 
     // Pull these out earlier to avoid borrowing issues
-    const overflow = style.getOverflow();
+    const overflow = style.overflow;
     const is_scroll_container = overflow.x.isScrollContainer() or overflow.y.isScrollContainer();
-    const contain = style.getContain();
+    const contain = style.contain;
     // css-align-3 §5.1.1: a non-`normal` `align-content` makes a block container establish an
     // independent formatting context. <https://drafts.csswg.org/css-align-3/#distribution-block>
     // Layout and paint containment also establish an independent formatting context.
     // <https://drafts.csswg.org/css-contain-2/#containment-layout>
     const establishes_new_bfc = is_scroll_container or
-        style.getAlignContent().keyword != .normal or
+        style.align_content.keyword != .normal or
         contain.establishesIndependentFormattingContext();
-    const aspect_ratio = style.getAspectRatio();
-    const padding = resolveOrZero(style.getPadding(), parent_size.width, tree);
-    const border = resolveOrZero(style.getBorder(), parent_size.width, tree);
+    const aspect_ratio = style.aspect_ratio;
+    const padding = resolveOrZero(style.padding, parent_size.width, tree);
+    const border = resolveOrZero(style.border, parent_size.width, tree);
     const padding_border_size = padding.add(border).sumAxes();
-    const box_sizing_adjustment = if (style.getBoxSizing() == .content_box) padding_border_size else Size(f32).zero;
+    const box_sizing_adjustment = if (style.box_sizing == .content_box) padding_border_size else Size(f32).zero;
 
-    const min_size = maybeAdd(maybeResolve(style.getMinSize(), parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
-    const max_size = maybeAdd(maybeResolve(style.getMaxSize(), parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
+    const min_size = maybeAdd(maybeResolve(style.min_size, parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
+    const max_size = maybeAdd(maybeResolve(style.max_size, parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
     const clamped_style_size: Size(?f32) = if (inputs.sizing_mode == .inherent_size)
         maybeClamp(
-            maybeAdd(maybeResolve(style.getSize(), parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
+            maybeAdd(maybeResolve(style.size, parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
             min_size,
             max_size,
         )
@@ -557,22 +557,22 @@ fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: 
     const vertical_margins_are_collapsible = inputs.vertical_margins_are_collapsible;
 
     const style = tree.getBlockContainerStyle(node_id);
-    const raw_padding = style.getPadding();
-    const raw_border = style.getBorder();
-    const raw_margin = style.getMargin();
-    const aspect_ratio = style.getAspectRatio();
+    const raw_padding = style.padding;
+    const raw_border = style.border;
+    const raw_margin = style.margin;
+    const aspect_ratio = style.aspect_ratio;
     const padding = resolveOrZero(raw_padding, parent_size.width, tree);
     const border = resolveOrZero(raw_border, parent_size.width, tree);
-    const direction = style.getDirection();
+    const direction = style.direction;
 
     // Scrollbar gutters are reserved when the `overflow` property is set to `Overflow.scroll`.
     // However, the axis are switched (transposed) because a node that scrolls vertically needs
     // *horizontal* space to be reserved for a scrollbar
     const scrollbar_gutter: Rect(f32) = blk: {
-        const transposed = style.getOverflow().transpose();
+        const transposed = style.overflow.transpose();
         const offsets: Point(f32) = .{
-            .x = if (transposed.x == .scroll) style.getScrollbarWidth() else 0.0,
-            .y = if (transposed.y == .scroll) style.getScrollbarWidth() else 0.0,
+            .x = if (transposed.x == .scroll) style.scrollbar_width else 0.0,
+            .y = if (transposed.y == .scroll) style.scrollbar_width else 0.0,
         };
         break :blk switch (direction) {
             .ltr => .{ .top = 0.0, .left = 0.0, .right = offsets.x, .bottom = offsets.y },
@@ -586,10 +586,10 @@ fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: 
     // Apply content box inset
     block_ctx.applyContentBoxInset(FloatInsets.new(content_box_inset.left, content_box_inset.right));
 
-    const box_sizing_adjustment = if (style.getBoxSizing() == .content_box) padding_border_size else Size(f32).zero;
-    const size = maybeAdd(maybeResolve(style.getSize(), parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
-    const min_size = maybeAdd(maybeResolve(style.getMinSize(), parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
-    const max_size = maybeAdd(maybeResolve(style.getMaxSize(), parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
+    const box_sizing_adjustment = if (style.box_sizing == .content_box) padding_border_size else Size(f32).zero;
+    const size = maybeAdd(maybeResolve(style.size, parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
+    const min_size = maybeAdd(maybeResolve(style.min_size, parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
+    const max_size = maybeAdd(maybeResolve(style.max_size, parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
 
     // css-sizing-4: a definite size in one axis transfers through `aspect-ratio`
     // to make the other definite. Deriving it from `known_dimensions` self-gates
@@ -611,11 +611,11 @@ fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: 
     };
     const container_content_box_size = maybeSub(percentage_basis_dimensions, content_box_inset.sumAxes());
 
-    const overflow = style.getOverflow();
+    const overflow = style.overflow;
     const is_scroll_container = overflow.x.isScrollContainer() or overflow.y.isScrollContainer();
     const establishes_new_bfc = is_scroll_container or
-        style.getAlignContent().keyword != .normal or
-        style.getContain().establishesIndependentFormattingContext();
+        style.align_content.keyword != .normal or
+        style.contain.establishesIndependentFormattingContext();
 
     // Determine margin collapsing behaviour
     //
@@ -624,12 +624,12 @@ fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: 
     const children_margins_adjoin_own_edges: Line(bool) = .{
         .start = vertical_margins_are_collapsible.start and
             !establishes_new_bfc and
-            !style.getPosition().isOutOfFlow() and
+            !style.position.isOutOfFlow() and
             padding.top == 0.0 and
             border.top == 0.0,
         .end = vertical_margins_are_collapsible.end and
             !establishes_new_bfc and
-            !style.getPosition().isOutOfFlow() and
+            !style.position.isOutOfFlow() and
             padding.bottom == 0.0 and
             border.bottom == 0.0,
     };
@@ -640,15 +640,15 @@ fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: 
     const has_styles_preventing_being_collapsed_through = !style.isBlock() or
         block_ctx.isBfcRoot() or
         establishes_new_bfc or
-        style.getPosition().isOutOfFlow() or
+        style.position.isOutOfFlow() or
         padding.top > 0.0 or
         padding.bottom > 0.0 or
         border.top > 0.0 or
         border.bottom > 0.0;
 
-    const text_align = style.getTextAlign();
-    const align_content = style.getAlignContent();
-    const justify_items = style.getJustifyItems();
+    const text_align = style.text_align;
+    const align_content = style.align_content;
+    const justify_items = style.justify_items;
 
     // 1. Generate items
     const items = try generateItemList(tree, node_id, container_content_box_size);
@@ -913,7 +913,7 @@ fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: 
     for (0..len) |order| {
         const child = tree.getChildId(node_id, order);
         const child_style = tree.getBlockChildStyle(child);
-        if (child_style.getBoxGenerationMode() == .none) {
+        if (child_style.boxGenerationMode() == .none) {
             _ = try traits.performChildLayout(
                 tree,
                 child,
@@ -945,32 +945,32 @@ fn generateItemList(tree: anytype, node: NodeId, node_inner_size: Size(?f32)) La
     var order: u32 = 0;
     while (child_ids.next()) |child_node_id| {
         const child_style = tree.getBlockChildStyle(child_node_id);
-        if (child_style.getBoxGenerationMode() == .none) continue;
+        if (child_style.boxGenerationMode() == .none) continue;
         defer order += 1;
 
-        const aspect_ratio = child_style.getAspectRatio();
-        const padding = resolveOrZero(child_style.getPadding(), node_inner_size.width, tree);
-        const border = resolveOrZero(child_style.getBorder(), node_inner_size.width, tree);
+        const aspect_ratio = child_style.aspect_ratio;
+        const padding = resolveOrZero(child_style.padding, node_inner_size.width, tree);
+        const border = resolveOrZero(child_style.border, node_inner_size.width, tree);
         const pb_sum = padding.add(border).sumAxes();
-        const box_sizing_adjustment = if (child_style.getBoxSizing() == .content_box) pb_sum else Size(f32).zero;
+        const box_sizing_adjustment = if (child_style.box_sizing == .content_box) pb_sum else Size(f32).zero;
 
-        const position = child_style.getPosition();
-        const overflow = child_style.getOverflow();
+        const position = child_style.position;
+        const overflow = child_style.overflow;
 
-        const child_float = child_style.getFloat();
+        const child_float = child_style.float;
         const is_not_floated = child_float == .none;
 
         const is_block = child_style.isBlock();
-        const is_table = child_style.isTable();
+        const is_table = child_style.item_is_table;
         const is_compressible_replaced = child_style.isCompressibleReplaced();
         const min_content_width_cap: ?f32 = if (is_compressible_replaced) blk: {
-            const width = maybeResolve(child_style.getSize().width, @as(?f32, 0.0), tree);
-            const max_width = maybeResolve(child_style.getMaxSize().width, @as(?f32, 0.0), tree);
+            const width = maybeResolve(child_style.size.width, @as(?f32, 0.0), tree);
+            const max_width = maybeResolve(child_style.max_size.width, @as(?f32, 0.0), tree);
             const capped: ?f32 = if (width) |w| maybeMin(w, max_width) else max_width;
             break :blk maybeAdd(capped, box_sizing_adjustment.width);
         } else null;
         const is_scroll_container = overflow.x.isScrollContainer() or overflow.y.isScrollContainer();
-        const contain = child_style.getContain();
+        const contain = child_style.contain;
 
         const is_in_same_bfc: bool = is_block and
             !is_table and
@@ -978,7 +978,7 @@ fn generateItemList(tree: anytype, node: NodeId, node_inner_size: Size(?f32)) La
             is_not_floated and
             !is_scroll_container and
             !contain.establishesIndependentFormattingContext() and
-            child_style.getAlignContent().keyword == .normal;
+            child_style.align_content.keyword == .normal;
 
         items.appendAssumeCapacity(.{
             .node_id = child_node_id,
@@ -988,20 +988,20 @@ fn generateItemList(tree: anytype, node: NodeId, node_inner_size: Size(?f32)) La
             .min_content_width_cap = min_content_width_cap,
             .is_in_same_bfc = is_in_same_bfc,
             .float = child_float,
-            .clear = child_style.getClear(),
-            .size_style = child_style.getSize(),
-            .size = maybeAdd(maybeResolve(child_style.getSize(), node_inner_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
-            .min_size = maybeAdd(maybeResolve(child_style.getMinSize(), node_inner_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
-            .max_size = maybeAdd(maybeResolve(child_style.getMaxSize(), node_inner_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
+            .clear = child_style.clear,
+            .size_style = child_style.size,
+            .size = maybeAdd(maybeResolve(child_style.size, node_inner_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
+            .min_size = maybeAdd(maybeResolve(child_style.min_size, node_inner_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
+            .max_size = maybeAdd(maybeResolve(child_style.max_size, node_inner_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
             .overflow = overflow,
             .contain = contain,
-            .scrollbar_width = child_style.getScrollbarWidth(),
+            .scrollbar_width = child_style.scrollbar_width,
             .position = position,
-            .direction = child_style.getDirection(),
-            .align_self = child_style.getAlignSelf(),
-            .justify_self = child_style.getJustifySelf(),
-            .inset = child_style.getInset(),
-            .margin = child_style.getMargin(),
+            .direction = child_style.direction,
+            .align_self = child_style.align_self,
+            .justify_self = child_style.justify_self,
+            .inset = child_style.inset,
+            .margin = child_style.margin,
             .padding = padding,
             .border = border,
             .padding_border_sum = pb_sum,

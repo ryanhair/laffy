@@ -102,8 +102,8 @@ being replaced:
   out-of-flow candidates stored per node on the tree instead of in an owned list on the output;
   detailed grid info refilled in place; rounding skips subtrees that did not change since they
   were last rounded (relayout of a deep tree is now 3 to 50 times faster than taffy).
-- Candidates: direct field access instead of style accessors; a tagged union instead of the
-  packed `CompactLength`.
+  Style accessor interfaces are gone: algorithms read `Style` fields.
+- Candidates: a tagged union instead of the packed `CompactLength`; a smaller per-node record.
 
 ## Risks to check early
 
@@ -155,9 +155,8 @@ These apply to every file in the port so that independently written pieces fit t
   (`?f32`, `f32`, `AvailableSpace`, and `Size` of those).
 - **Resolve.** `maybeResolve(value, context, calc)` and `resolveOrZero(value, context, calc)` in
   `src/util/resolve.zig`. `NoCalc` is the resolver for trees without `calc()` support.
-- **Style accessors.** Upstream accessor `foo()` is `getFoo()` (Zig does not allow a method to
-  share a field's name); `is_*` predicates stay `isFoo()`. `Style` implements all of them. The
-  full interface lists and reusable defaults are documented at the top of `src/style.zig`.
+- **Styles.** Algorithms take `*const Style` and read its fields. The few derived values are
+  methods (`boxGenerationMode()`, `gridPlacement(axis)`, `isContainingBlock()`).
 - **Style ownership.** `Style` is a plain value (`.{}` is the default). Grid track lists and line
   or area names are borrowed slices; the caller keeps them alive.
 - **Constants and constructors.** No-argument upstream constructors and constants are lower-case

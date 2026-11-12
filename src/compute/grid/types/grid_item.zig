@@ -1,5 +1,6 @@
 //! Contains GridItem used to represent a single grid item during layout
 const std = @import("std");
+const Style = @import("../../../style.zig").Style;
 const geometry = @import("../../../geometry.zig");
 const AbstractAxis = geometry.AbstractAxis;
 const Line = geometry.Line;
@@ -161,7 +162,7 @@ pub const GridItem = struct {
     /// Create a new item from its style. Its placement (`row`/`column`) is filled in by the placement algorithm.
     pub fn newWithStyleAndOrder(
         node: NodeId,
-        style: anytype,
+        style: *const Style,
         parent_align_items: AlignItems,
         parent_justify_items: AlignItems,
         source_order: u16,
@@ -173,18 +174,18 @@ pub const GridItem = struct {
             .row = unplaced,
             .column = unplaced,
             .is_compressible_replaced = style.isCompressibleReplaced(),
-            .is_replaced = style.isReplaced(),
-            .overflow = style.getOverflow(),
-            .box_sizing = style.getBoxSizing(),
-            .size = style.getSize(),
-            .min_size = style.getMinSize(),
-            .max_size = style.getMaxSize(),
-            .aspect_ratio = style.getAspectRatio(),
-            .padding = style.getPadding(),
-            .border = style.getBorder(),
-            .margin = style.getMargin(),
-            .align_self = style.getAlignSelf() orelse parent_align_items,
-            .justify_self = style.getJustifySelf() orelse parent_justify_items,
+            .is_replaced = style.item_is_replaced,
+            .overflow = style.overflow,
+            .box_sizing = style.box_sizing,
+            .size = style.size,
+            .min_size = style.min_size,
+            .max_size = style.max_size,
+            .aspect_ratio = style.aspect_ratio,
+            .padding = style.padding,
+            .border = style.border,
+            .margin = style.margin,
+            .align_self = style.align_self orelse parent_align_items,
+            .justify_self = style.justify_self orelse parent_justify_items,
             .baseline = null,
             .baseline_shim = 0.0,
             .row_indexes = .{ .start = 0, .end = 0 }, // Properly initialised later

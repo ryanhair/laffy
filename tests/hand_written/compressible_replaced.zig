@@ -119,8 +119,8 @@ test "grid_percent_max_width_compresses_replaced_minimum_contribution" {
 test "replaced_implies_compressible_replaced" {
     var style: Style = .{ .item_is_replaced = true };
     try testing.expect(style.isCompressibleReplaced());
-    try testing.expect(style.isReplaced());
+    try testing.expect(style.item_is_replaced);
     style = .{ .item_is_compressible_replaced = true };
     try testing.expect(style.isCompressibleReplaced());
-    try testing.expect(!style.isReplaced());
+    try testing.expect(!style.item_is_replaced);
 }

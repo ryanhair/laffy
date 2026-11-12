@@ -4,9 +4,6 @@
 //! laffy uses borrowed `[]const u8` slices everywhere. Names (and the slices that hold track
 //! lists, line-name sets and template areas) are NOT owned by the style values: the caller must
 //! keep the referenced memory alive for as long as the style is used.
-//!
-//! The `GridContainerStyle` and `GridItemStyle` accessor interfaces are documented in
-//! `src/style.zig` together with the other style accessor interfaces.
 const std = @import("std");
 const geometry = @import("../geometry.zig");
 const Line = geometry.Line;

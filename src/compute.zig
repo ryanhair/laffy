@@ -113,8 +113,8 @@ pub fn computeRootLayout(tree: anytype, root: NodeId, available_space: Size(Avai
     defer frame.end();
     const scratch = frame.allocator();
     const root_style = tree.getCoreContainerStyle(root);
-    const position = root_style.getPosition();
-    const direction = root_style.getDirection();
+    const position = root_style.position;
+    const direction = root_style.direction;
 
     const icb_size = available_space.intoOptions();
     const oof_root_area: ?Size(f32) = if (position.isOutOfFlow() and icb_size.width != null and icb_size.height != null)
@@ -165,7 +165,7 @@ pub fn computeRootLayout(tree: anytype, root: NodeId, available_space: Size(Avai
     // containing block is the containing block for `position: fixed` boxes and for
     // `position: absolute` boxes with no positioned ancestor.
     if (candidates.len != 0) {
-        const overflow = tree.getCoreContainerStyle(root).getOverflow();
+        const overflow = tree.getCoreContainerStyle(root).overflow;
 
         // The initial containing block has the dimensions of the viewport (the available space) and is
         // anchored at the canvas origin. In an axis where the available space is indefinite, fall back
@@ -237,7 +237,7 @@ fn computeInFlowRootLayout(
     // The available space passed to the root excludes the root's margins
     const root_available_space = blk: {
         const root_style = tree.getCoreContainerStyle(root);
-        const margin = resolveOrZero(root_style.getMargin(), available_space.width.intoOption(), tree);
+        const margin = resolveOrZero(root_style.margin, available_space.width.intoOption(), tree);
         break :blk maybeMax(maybeSub(available_space, margin.sumAxes()), Size(f32).zero);
     };
 
@@ -247,16 +247,16 @@ fn computeInFlowRootLayout(
 
         if (root_style.isBlock()) {
             // Pull these out earlier to avoid borrowing issues
-            const aspect_ratio = root_style.getAspectRatio();
-            const padding = resolveOrZero(root_style.getPadding(), parent_size.width, tree);
-            const border = resolveOrZero(root_style.getBorder(), parent_size.width, tree);
+            const aspect_ratio = root_style.aspect_ratio;
+            const padding = resolveOrZero(root_style.padding, parent_size.width, tree);
+            const border = resolveOrZero(root_style.border, parent_size.width, tree);
             const padding_border_size = padding.add(border).sumAxes();
-            const box_sizing_adjustment = if (root_style.getBoxSizing() == .content_box) padding_border_size else Size(f32).zero;
+            const box_sizing_adjustment = if (root_style.box_sizing == .content_box) padding_border_size else Size(f32).zero;
 
-            const min_size = maybeAdd(maybeResolve(root_style.getMinSize(), parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
-            const max_size = maybeAdd(maybeResolve(root_style.getMaxSize(), parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
+            const min_size = maybeAdd(maybeResolve(root_style.min_size, parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
+            const max_size = maybeAdd(maybeResolve(root_style.max_size, parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
             const clamped_style_size = maybeClamp(
-                maybeAdd(maybeResolve(root_style.getSize(), parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
+                maybeAdd(maybeResolve(root_style.size, parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
                 min_size,
                 max_size,
             );
@@ -294,14 +294,14 @@ fn computeInFlowRootLayout(
     // Recursively compute node layout
     const output = try tree.computeChildLayout(root, inputs);
     const root_style = tree.getCoreContainerStyle(root);
-    const padding = resolveOrZero(root_style.getPadding(), available_space.width.intoOption(), tree);
-    const border = resolveOrZero(root_style.getBorder(), available_space.width.intoOption(), tree);
-    const margin = resolveOrZero(root_style.getMargin(), available_space.width.intoOption(), tree);
+    const padding = resolveOrZero(root_style.padding, available_space.width.intoOption(), tree);
+    const border = resolveOrZero(root_style.border, available_space.width.intoOption(), tree);
+    const margin = resolveOrZero(root_style.margin, available_space.width.intoOption(), tree);
     const scrollbar_size: Size(f32) = .{
-        .width = if (root_style.getOverflow().y == .scroll) root_style.getScrollbarWidth() else 0.0,
-        .height = if (root_style.getOverflow().x == .scroll) root_style.getScrollbarWidth() else 0.0,
+        .width = if (root_style.overflow.y == .scroll) root_style.scrollbar_width else 0.0,
+        .height = if (root_style.overflow.x == .scroll) root_style.scrollbar_width else 0.0,
     };
-    const is_rtl = root_style.getDirection().isRtl();
+    const is_rtl = root_style.direction.isRtl();
 
     // The root's margin box is placed at the origin of the initial containing block
     var location: Point(f32) = .{
@@ -313,9 +313,9 @@ fn computeInFlowRootLayout(
     };
 
     // A relatively positioned root is offset by its insets (resolved against the initial containing block)
-    if (root_style.getPosition() == .relative) {
+    if (root_style.position == .relative) {
         const icb_size = available_space.intoOptions();
-        const inset = root_style.getInset();
+        const inset = root_style.inset;
         const left = maybeResolve(inset.left, icb_size.width, tree);
         const right = maybeResolve(inset.right, icb_size.width, tree);
         const top = maybeResolve(inset.top, icb_size.height, tree);
@@ -698,8 +698,8 @@ const StackTree = struct {
         defer frame.end();
         const gpa = frame.allocator();
         const container_style = tree.getCoreContainerStyle(id);
-        const padding = resolveOrZero(container_style.getPadding(), inputs.parent_size.width, tree);
-        const border = resolveOrZero(container_style.getBorder(), inputs.parent_size.width, tree);
+        const padding = resolveOrZero(container_style.padding, inputs.parent_size.width, tree);
+        const border = resolveOrZero(container_style.border, inputs.parent_size.width, tree);
         const inset = padding.add(border);
 
         var candidates: std.ArrayList(OofCandidate) = .empty;

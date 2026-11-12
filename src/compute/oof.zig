@@ -371,7 +371,7 @@ pub fn computeOofLayout(tree: anytype, node_id: NodeId, output: *LayoutOutput) L
     defer frame.end();
 
     const container_style = tree.getCoreContainerStyle(node_id);
-    const direction = container_style.getDirection();
+    const direction = container_style.direction;
     const claims = container_style.isContainingBlock();
 
     const reversed = output.scrollable_overflow_rect.isReversed();
@@ -392,7 +392,7 @@ pub fn computeOofLayout(tree: anytype, node_id: NodeId, output: *LayoutOutput) L
     try tree.setOofCandidates(node_id, result.unclaimed.items);
     {
         const final_reversed = output.scrollable_overflow_rect.isReversed();
-        const overflow = tree.getCoreContainerStyle(node_id).getOverflow();
+        const overflow = tree.getCoreContainerStyle(node_id).overflow;
         output.scrollable_overflow_rect = finalizeScrollableOverflow(
             output.scrollable_overflow_rect.rect().@"union"(result.scrollable_overflow_rect),
             area.size,
@@ -464,7 +464,7 @@ fn computeOofLayoutForAreaWithOrigin(
     claims: ContainingBlockClaims,
     reversed: Point(bool),
 ) LayoutError!OofLayoutResult {
-    const overflow = tree.getCoreContainerStyle(geometry_owner).getOverflow();
+    const overflow = tree.getCoreContainerStyle(geometry_owner).overflow;
 
     var hoisted: std.ArrayList(NodeId) = .empty;
     errdefer hoisted.deinit(gpa);
@@ -551,8 +551,8 @@ pub fn layoutOofBox(
                     .bottom = area_offset.y + area_size.height,
                 };
                 const grid_area = grid_info.resolveAbsoluteGridArea(
-                    child_style.getGridRow(),
-                    child_style.getGridColumn(),
+                    child_style.grid_row,
+                    child_style.grid_column,
                     direction,
                     area_rect,
                 );
@@ -566,48 +566,48 @@ pub fn layoutOofBox(
     const area_height = area_size.height;
     const area_size_options: Size(?f32) = .{ .width = area_width, .height = area_height };
 
-    const aspect_ratio = child_style.getAspectRatio();
-    const margin_style = child_style.getMargin();
+    const aspect_ratio = child_style.aspect_ratio;
+    const margin_style = child_style.margin;
     const margin: Rect(?f32) = .{
         .left = margin_style.left.resolveToOption(area_width, tree),
         .right = margin_style.right.resolveToOption(area_width, tree),
         .top = margin_style.top.resolveToOption(area_width, tree),
         .bottom = margin_style.bottom.resolveToOption(area_width, tree),
     };
-    const padding = resolveOrZero(child_style.getPadding(), @as(?f32, area_width), tree);
-    const border = resolveOrZero(child_style.getBorder(), @as(?f32, area_width), tree);
+    const padding = resolveOrZero(child_style.padding, @as(?f32, area_width), tree);
+    const border = resolveOrZero(child_style.border, @as(?f32, area_width), tree);
     const padding_border_sum = padding.add(border).sumAxes();
-    const box_sizing_adjustment = if (child_style.getBoxSizing() == .content_box) padding_border_sum else Size(f32).zero;
+    const box_sizing_adjustment = if (child_style.box_sizing == .content_box) padding_border_sum else Size(f32).zero;
 
     // Resolve inset
-    const inset_style = child_style.getInset();
+    const inset_style = child_style.inset;
     const left = maybeResolve(inset_style.left, area_width, tree);
     const right = maybeResolve(inset_style.right, area_width, tree);
     const top = maybeResolve(inset_style.top, area_height, tree);
     const bottom = maybeResolve(inset_style.bottom, area_height, tree);
 
     // Compute known dimensions from min/max/inherent size styles
-    const size_style = child_style.getSize();
+    const size_style = child_style.size;
     const style_size = maybeAdd(maybeResolve(size_style, area_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
     var min_size = maybeMax(
-        maybeAdd(maybeResolve(child_style.getMinSize(), area_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment)
+        maybeAdd(maybeResolve(child_style.min_size, area_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment)
             .@"or"(.{ .width = padding_border_sum.width, .height = padding_border_sum.height }),
         padding_border_sum,
     );
-    const max_size = maybeAdd(maybeResolve(child_style.getMaxSize(), area_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
+    const max_size = maybeAdd(maybeResolve(child_style.max_size, area_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
     var known_dimensions = maybeClamp(style_size, min_size, max_size);
 
-    const is_replaced = child_style.isReplaced();
-    const is_table = child_style.isTable();
-    const item_direction = child_style.getDirection();
+    const is_replaced = child_style.item_is_replaced;
+    const is_table = child_style.item_is_table;
+    const item_direction = child_style.direction;
     // laffy only supports the `horizontal-tb` writing mode, so only the inline axis can be reversed.
     // `auto` (`null`) behaves as `normal` for absolutely positioned boxes: it does not defer to the
     // `*-items` properties of the containing block.
-    const justify_self = (child_style.getJustifySelf() orelse AlignSelf.normal).resolveSelfRelative(item_direction, direction, true);
-    const align_self = (child_style.getAlignSelf() orelse AlignSelf.normal).resolveSelfRelative(item_direction, direction, false);
-    const overflow = child_style.getOverflow();
-    const scrollbar_width = child_style.getScrollbarWidth();
-    const contain = child_style.getContain();
+    const justify_self = (child_style.justify_self orelse AlignSelf.normal).resolveSelfRelative(item_direction, direction, true);
+    const align_self = (child_style.align_self orelse AlignSelf.normal).resolveSelfRelative(item_direction, direction, false);
+    const overflow = child_style.overflow;
+    const scrollbar_width = child_style.scrollbar_width;
+    const contain = child_style.contain;
 
     // Static positions are relative to the containing block's border box: make them relative to
     // the inset-resolution area

@@ -56,7 +56,9 @@ A C API over `TaffyTree` is in `include/laffy.h`; see [docs/c-api.md](docs/c-api
 
 ## Differences from taffy
 
-- Names follow Zig conventions (`compute_layout` is `computeLayout`, style accessors are `getFoo`).
+- Names follow Zig conventions (`compute_layout` is `computeLayout`).
+- Layout reads styles as plain `Style` fields. There are no style traits, so a custom tree
+  provides a `Style` per node rather than its own style type.
 - Trees take an allocator. Layout can fail only with `error.OutOfMemory`.
 - `Style` borrows its grid track lists and line names as slices; keep them alive while in use.
 - `TaffyTree` resolves `calc()` values to zero, as upstream's does. Custom trees can resolve them.

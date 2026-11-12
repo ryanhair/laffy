@@ -80,14 +80,6 @@ pub const TrackSizingFunction = style.TrackSizingFunction;
 pub const GridTemplateArea = style.GridTemplateArea;
 pub const GridTemplateAreas = style.GridTemplateAreas;
 pub const NamedGridLine = style.NamedGridLine;
-pub const CoreStyleDefaults = style.CoreStyleDefaults;
-pub const OofItemStyleDefaults = style.OofItemStyleDefaults;
-pub const FlexboxContainerStyleDefaults = style.FlexboxContainerStyleDefaults;
-pub const FlexboxItemStyleDefaults = style.FlexboxItemStyleDefaults;
-pub const GridContainerStyleDefaults = style.GridContainerStyleDefaults;
-pub const GridItemStyleDefaults = style.GridItemStyleDefaults;
-pub const BlockContainerStyleDefaults = style.BlockContainerStyleDefaults;
-pub const BlockItemStyleDefaults = style.BlockItemStyleDefaults;
 
 // util (upstream `pub use crate::util::*`)
 pub const maybeMin = util.maybeMin;

@@ -138,21 +138,21 @@ pub fn alignAndPositionItem(
 
     const style = tree.getGridChildStyle(node);
 
-    const overflow = style.getOverflow();
-    const contain = style.getContain();
-    const scrollbar_width = style.getScrollbarWidth();
-    const aspect_ratio = style.getAspectRatio();
-    const is_replaced = style.isReplaced();
+    const overflow = style.overflow;
+    const contain = style.contain;
+    const scrollbar_width = style.scrollbar_width;
+    const aspect_ratio = style.aspect_ratio;
+    const is_replaced = style.item_is_replaced;
     // Fall back to the container's justify-items/align-items if unset (`null`), and then resolve
     // writing-mode-relative self-start/self-end keywords against the item's own direction.
     // The horizontal axis is the inline axis (laffy only supports horizontal-tb); the vertical
     // (block) axis resolves them to plain start/end.
-    const item_direction = style.getDirection();
-    const justify_self = (style.getJustifySelf() orelse container_alignment_styles.horizontal).resolveSelfRelative(item_direction, direction, true);
-    const align_self = (style.getAlignSelf() orelse container_alignment_styles.vertical).resolveSelfRelative(item_direction, direction, false);
+    const item_direction = style.direction;
+    const justify_self = (style.justify_self orelse container_alignment_styles.horizontal).resolveSelfRelative(item_direction, direction, true);
+    const align_self = (style.align_self orelse container_alignment_styles.vertical).resolveSelfRelative(item_direction, direction, false);
 
-    const position = style.getPosition();
-    const inset = style.getInset();
+    const position = style.position;
+    const inset = style.inset;
     const inset_horizontal: Line(?f32) = .{
         .start = inset.left.resolveToOption(containing_block_size.width, tree),
         .end = inset.right.resolveToOption(containing_block_size.width, tree),
@@ -161,21 +161,21 @@ pub fn alignAndPositionItem(
         .start = inset.top.resolveToOption(containing_block_size.height, tree),
         .end = inset.bottom.resolveToOption(containing_block_size.height, tree),
     };
-    const padding = resolveOrZero(style.getPadding(), @as(?f32, containing_block_size.width), tree);
-    const border = resolveOrZero(style.getBorder(), @as(?f32, containing_block_size.width), tree);
+    const padding = resolveOrZero(style.padding, @as(?f32, containing_block_size.width), tree);
+    const border = resolveOrZero(style.border, @as(?f32, containing_block_size.width), tree);
     const padding_border_size = padding.add(border).sumAxes();
 
-    const box_sizing_adjustment = if (style.getBoxSizing() == .content_box) padding_border_size else Size(f32).zero;
+    const box_sizing_adjustment = if (style.box_sizing == .content_box) padding_border_size else Size(f32).zero;
 
     const containing_block_options: Size(?f32) = .{ .width = containing_block_size.width, .height = containing_block_size.height };
-    const size_style = style.getSize();
+    const size_style = style.size;
     const inherent_size = maybeAdd(maybeResolve(size_style, containing_block_options, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
     const min_size = maybeMax(
-        maybeAdd(maybeResolve(style.getMinSize(), containing_block_options, tree), box_sizing_adjustment)
+        maybeAdd(maybeResolve(style.min_size, containing_block_options, tree), box_sizing_adjustment)
             .@"or"(.{ .width = padding_border_size.width, .height = padding_border_size.height }),
         padding_border_size,
     ).maybeApplyAspectRatio(aspect_ratio);
-    const max_size = maybeAdd(maybeResolve(style.getMaxSize(), containing_block_options, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
+    const max_size = maybeAdd(maybeResolve(style.max_size, containing_block_options, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
 
     // Resolve `normal` alignment (the default if alignment is set on neither the parent or the node itself)
     // Note: if the child has a preferred aspect ratio but neither width or height are set, then the width is stretched
@@ -204,7 +204,7 @@ pub fn alignAndPositionItem(
 
     // Note: This is not a bug. It is part of the CSS spec that both horizontal and vertical margins
     // resolve against the WIDTH of the grid area.
-    const margin_style = style.getMargin();
+    const margin_style = style.margin;
     const margin: Rect(?f32) = .{
         .left = margin_style.left.resolveToOption(containing_block_size.width, tree),
         .right = margin_style.right.resolveToOption(containing_block_size.width, tree),

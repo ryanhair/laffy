@@ -134,38 +134,38 @@ const GridContainerConstants = struct {
 };
 
 /// Resolve the grid container's style against the layout inputs (step 1 of `computeGridLayout`)
-fn computeContainerConstants(tree: anytype, style: anytype, inputs: LayoutInput) GridContainerConstants {
+fn computeContainerConstants(tree: anytype, style: *const Style, inputs: LayoutInput) GridContainerConstants {
     const known_dimensions = inputs.known_dimensions;
     const parent_size = inputs.parent_size;
     const available_space = inputs.available_space;
 
-    const direction = style.getDirection();
-    const contain = style.getContain();
+    const direction = style.direction;
+    const contain = style.contain;
     const containing_block_claims = style.isContainingBlock();
 
     // 1. Compute "available grid space"
     // https://www.w3.org/TR/css-grid-1/#available-grid-space
-    const aspect_ratio = style.getAspectRatio();
-    const padding = resolveOrZero(style.getPadding(), parent_size.width, tree);
-    const border = resolveOrZero(style.getBorder(), parent_size.width, tree);
+    const aspect_ratio = style.aspect_ratio;
+    const padding = resolveOrZero(style.padding, parent_size.width, tree);
+    const border = resolveOrZero(style.border, parent_size.width, tree);
     const padding_border = padding.add(border);
     const padding_border_size = padding_border.sumAxes();
-    const box_sizing_adjustment = if (style.getBoxSizing() == .content_box) padding_border_size else Size(f32).zero;
+    const box_sizing_adjustment = if (style.box_sizing == .content_box) padding_border_size else Size(f32).zero;
 
-    const min_size = maybeAdd(maybeResolve(style.getMinSize(), parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
-    const max_size = maybeAdd(maybeResolve(style.getMaxSize(), parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
+    const min_size = maybeAdd(maybeResolve(style.min_size, parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
+    const max_size = maybeAdd(maybeResolve(style.max_size, parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
     const preferred_size: Size(?f32) = if (inputs.sizing_mode == .inherent_size)
-        maybeAdd(maybeResolve(style.getSize(), parent_size, tree).maybeApplyAspectRatio(style.getAspectRatio()), box_sizing_adjustment)
+        maybeAdd(maybeResolve(style.size, parent_size, tree).maybeApplyAspectRatio(style.aspect_ratio), box_sizing_adjustment)
     else
         Size(?f32).none;
 
     // Scrollbar gutters are reserved when the `overflow` property is set to `Overflow.scroll`.
     // However, the axis are switched (transposed) because a node that scrolls vertically needs
     // *horizontal* space to be reserved for a scrollbar
-    const overflow = style.getOverflow();
+    const overflow = style.overflow;
     const scrollbar_gutter: Point(f32) = .{
-        .x = if (overflow.y == .scroll) style.getScrollbarWidth() else 0.0,
-        .y = if (overflow.x == .scroll) style.getScrollbarWidth() else 0.0,
+        .x = if (overflow.y == .scroll) style.scrollbar_width else 0.0,
+        .y = if (overflow.x == .scroll) style.scrollbar_width else 0.0,
     };
     const is_scroll_container = overflow.x.isScrollContainer() or overflow.y.isScrollContainer();
     var content_box_inset = padding_border;
@@ -177,10 +177,10 @@ fn computeContainerConstants(tree: anytype, style: anytype, inputs: LayoutInput)
     }
 
     // `normal` behaves as `stretch` for grid containers
-    const align_content = style.getGridAlignContent(.block);
-    const justify_content = style.getGridAlignContent(.@"inline");
-    const align_items = style.getAlignItems();
-    const justify_items = style.getJustifyItems();
+    const align_content = style.gridAlignContent(.block);
+    const justify_content = style.gridAlignContent(.@"inline");
+    const align_items = style.align_items;
+    const justify_items = style.justify_items;
     const style_size = known_dimensions.@"or"(preferred_size);
     const unclamped_available_space: Size(AvailableSpace) = .{
         .width = if (style_size.width) |w| .{ .definite = w } else available_space.width,
@@ -383,12 +383,12 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
         var index: usize = 0;
         while (child_iter.next()) |child_node| : (index += 1) {
             const child_style = tree.getGridChildStyle(child_node);
-            if (child_style.getBoxGenerationMode() == .none or child_style.getPosition().isOutOfFlow()) {
+            if (child_style.boxGenerationMode() == .none or child_style.position.isOutOfFlow()) {
                 continue;
             }
             placements.appendAssumeCapacity(.{
-                .horizontal = name_resolver.resolveColumnNames(child_style.getGridColumn()).intoOriginZero(explicit_col_count),
-                .vertical = name_resolver.resolveRowNames(child_style.getGridRow()).intoOriginZero(explicit_row_count),
+                .horizontal = name_resolver.resolveColumnNames(child_style.grid_column).intoOriginZero(explicit_col_count),
+                .vertical = name_resolver.resolveRowNames(child_style.grid_row).intoOriginZero(explicit_row_count),
             });
             items.appendAssumeCapacity(GridItem.newWithStyleAndOrder(
                 child_node,
@@ -411,7 +411,7 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
     defer cell_occupancy_matrix.deinit(scratch);
     // `items` is in document order from here on (placement only fills in each item's grid area). The track
     // sizing and baseline passes sort references to the items rather than the items themselves.
-    try placeGridItems(scratch, &cell_occupancy_matrix, items.items, placements.items, style.getGridAutoFlow());
+    try placeGridItems(scratch, &cell_occupancy_matrix, items.items, placements.items, style.grid_auto_flow);
 
     // Extract track counts from previous step (auto-placement can expand the number of tracks)
     const final_col_counts = cell_occupancy_matrix.trackCounts(.horizontal);
@@ -787,7 +787,7 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
         const child_style = tree.getGridChildStyle(child);
 
         // Position hidden child
-        if (child_style.getBoxGenerationMode() == .none) {
+        if (child_style.boxGenerationMode() == .none) {
             _ = try traits.performChildLayout(
                 tree,
                 child,
@@ -808,11 +808,11 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
         // (`computeOofLayout`), which lays out those for which this grid is the containing
         // block after this algorithm has run (resolving their grid areas from the detailed grid
         // info recorded below).
-        if (child_style.getPosition().isOutOfFlow()) {
-            const position = child_style.getPosition();
-            const item_direction = child_style.getDirection();
-            const justify_self = (child_style.getJustifySelf() orelse justify_items).resolveSelfRelative(item_direction, direction, true);
-            const align_self = (child_style.getAlignSelf() orelse align_items).resolveSelfRelative(item_direction, direction, false);
+        if (child_style.position.isOutOfFlow()) {
+            const position = child_style.position;
+            const item_direction = child_style.direction;
+            const justify_self = (child_style.justify_self orelse justify_items).resolveSelfRelative(item_direction, direction, true);
+            const align_self = (child_style.align_self orelse align_items).resolveSelfRelative(item_direction, direction, false);
 
             // The static-position rectangle: the grid area determined by the grid-placement
             // properties when this grid is the child's containing block, and otherwise the
@@ -1056,7 +1056,7 @@ fn absolutelyPositionedTrackIndexes(resolved: Line(?OriginZeroLine), counts: Tra
 ///   - As a start edge, a line resolves to the start of the track that follows it
 ///   - As an end edge, a line resolves to the end of the track that precedes it
 fn resolveStaticPositionGridArea(
-    child_style: anytype,
+    child_style: *const Style,
     name_resolver: *const NamedLineResolver,
     final_row_counts: TrackCounts,
     final_col_counts: TrackCounts,
@@ -1070,13 +1070,13 @@ fn resolveStaticPositionGridArea(
     // Convert grid-col-{start/end} into optional indexes into the columns vector
     // The index is null if the style property is Auto and an unresolvable Span
     const maybe_col_indexes = absolutelyPositionedTrackIndexes(
-        name_resolver.resolveColumnNames(child_style.getGridColumn()).intoOriginZero(final_col_counts.explicit).resolveAbsolutelyPositionedGridTracks(),
+        name_resolver.resolveColumnNames(child_style.grid_column).intoOriginZero(final_col_counts.explicit).resolveAbsolutelyPositionedGridTracks(),
         final_col_counts,
     );
     // Convert grid-row-{start/end} into optional indexes into the row vector
     // The index is null if the style property is Auto and an unresolvable Span
     const maybe_row_indexes = absolutelyPositionedTrackIndexes(
-        name_resolver.resolveRowNames(child_style.getGridRow()).intoOriginZero(final_row_counts.explicit).resolveAbsolutelyPositionedGridTracks(),
+        name_resolver.resolveRowNames(child_style.grid_row).intoOriginZero(final_row_counts.explicit).resolveAbsolutelyPositionedGridTracks(),
         final_row_counts,
     );
 

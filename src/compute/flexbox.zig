@@ -148,8 +148,8 @@ const FlexItem = struct {
     oof_candidates: []const OofCandidate,
 
     /// The size that the item's size styles exclude: padding + border for `box-sizing: content-box`, otherwise zero
-    fn boxSizingAdjustment(self: *const FlexItem, style: anytype) Size(f32) {
-        if (style.getBoxSizing() == .content_box) {
+    fn boxSizingAdjustment(self: *const FlexItem, style: *const Style) Size(f32) {
+        if (style.box_sizing == .content_box) {
             return self.padding.add(self.border).sumAxes();
         } else {
             return Size(f32).zero;
@@ -297,18 +297,18 @@ pub fn computeFlexboxLayout(tree: anytype, node: NodeId, inputs: LayoutInput) La
     const style = tree.getFlexboxContainerStyle(node);
 
     // Pull these out earlier to avoid borrowing issues
-    const contain = style.getContain();
-    const aspect_ratio = style.getAspectRatio();
-    const padding = resolveOrZero(style.getPadding(), parent_size.width, tree);
-    const border = resolveOrZero(style.getBorder(), parent_size.width, tree);
+    const contain = style.contain;
+    const aspect_ratio = style.aspect_ratio;
+    const padding = resolveOrZero(style.padding, parent_size.width, tree);
+    const border = resolveOrZero(style.border, parent_size.width, tree);
     const padding_border_sum = padding.sumAxes().add(border.sumAxes());
-    const box_sizing_adjustment = if (style.getBoxSizing() == .content_box) padding_border_sum else Size(f32).zero;
+    const box_sizing_adjustment = if (style.box_sizing == .content_box) padding_border_sum else Size(f32).zero;
 
-    const min_size = maybeAdd(maybeResolve(style.getMinSize(), parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
-    const max_size = maybeAdd(maybeResolve(style.getMaxSize(), parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
+    const min_size = maybeAdd(maybeResolve(style.min_size, parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
+    const max_size = maybeAdd(maybeResolve(style.max_size, parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
     const clamped_style_size: Size(?f32) = if (inputs.sizing_mode == .inherent_size)
         maybeClamp(
-            maybeAdd(maybeResolve(style.getSize(), parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
+            maybeAdd(maybeResolve(style.size, parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
             min_size,
             max_size,
         )
@@ -439,7 +439,7 @@ fn computePreliminary(tree: anytype, node: NodeId, inputs: LayoutInput) LayoutEr
         // Re-resolve percentage gaps
         const style = tree.getFlexboxContainerStyle(node);
         const inner_container_size = constants.inner_container_size.main(constants.dir);
-        const new_gap = maybeResolve(style.getGap().main(constants.dir), inner_container_size, tree) orelse 0.0;
+        const new_gap = maybeResolve(style.gap.main(constants.dir), inner_container_size, tree) orelse 0.0;
         constants.gap.setMain(constants.dir, new_gap);
     }
 
@@ -528,7 +528,7 @@ fn computePreliminary(tree: anytype, node: NodeId, inputs: LayoutInput) LayoutEr
     const len = tree.childCount(node);
     for (0..len) |order| {
         const child = tree.getChildId(node, order);
-        if (tree.getFlexboxChildStyle(child).getBoxGenerationMode() == .none) {
+        if (tree.getFlexboxChildStyle(child).boxGenerationMode() == .none) {
             _ = try traits.performChildLayout(
                 tree,
                 child,
@@ -641,46 +641,46 @@ fn resolveNormalAlignment(alignment_value: AlignItems) AlignItems {
 /// Compute constants that can be reused during the flexbox algorithm.
 fn computeConstants(
     tree: anytype,
-    style: anytype,
+    style: *const Style,
     known_dimensions: Size(?f32),
     known_dimensions_are_definite: Size(bool),
     parent_size: Size(?f32),
     available_space: Size(AvailableSpace),
 ) AlgoConstants {
-    const dir = style.getFlexDirection();
+    const dir = style.flex_direction;
     const is_row = dir.isRow();
     const is_column = dir.isColumn();
-    const flex_wrap = style.getFlexWrap();
+    const flex_wrap = style.flex_wrap;
     const is_wrap = flex_wrap.isMultiLine();
     const is_wrap_reverse = flex_wrap.isReverse();
     const is_balance = flex_wrap.isBalance();
-    const line_count: ?u16 = if (is_wrap) @max(style.getFlexLineCount(), 1) else null;
+    const line_count: ?u16 = if (is_wrap) @max(style.flex_line_count, 1) else null;
 
-    const aspect_ratio = style.getAspectRatio();
-    const padding_raw = resolveOrZero(style.getPadding(), parent_size.width, tree);
-    const border = resolveOrZero(style.getBorder(), parent_size.width, tree);
+    const aspect_ratio = style.aspect_ratio;
+    const padding_raw = resolveOrZero(style.padding, parent_size.width, tree);
+    const border = resolveOrZero(style.border, parent_size.width, tree);
     const padding_border_sum = padding_raw.sumAxes().add(border.sumAxes());
-    const box_sizing_adjustment = if (style.getBoxSizing() == .content_box) padding_border_sum else Size(f32).zero;
+    const box_sizing_adjustment = if (style.box_sizing == .content_box) padding_border_sum else Size(f32).zero;
 
     // `normal` behaves as `stretch` for flex items. This is resolved once here so that
     // items with an `align_self` of `null`, which defer to this value, are also resolved.
-    const align_items = resolveNormalAlignment(style.getAlignItems());
+    const align_items = resolveNormalAlignment(style.align_items);
     // `normal` behaves as `stretch` for flex containers. In the main axis `stretch` behaves as
     // `flex-start`, so a `normal` justify-content is resolved straight to `flex-start`.
     // <https://www.w3.org/TR/css-align-3/#distribution-flex>
-    const align_content_style = style.getAlignContent();
+    const align_content_style = style.align_content;
     const align_content = if (align_content_style.keyword == .normal) AlignContent.stretch else align_content_style;
-    const justify_content_style = style.getJustifyContent();
+    const justify_content_style = style.justify_content;
     const justify_content = if (justify_content_style.keyword == .normal) JustifyContent.flex_start else justify_content_style;
-    const layout_direction = style.getDirection();
+    const layout_direction = style.direction;
 
     // Scrollbar gutters are reserved when the `overflow` property is set to `Overflow.scroll`.
     // However, the axis are switched (transposed) because a node that scrolls vertically needs
     // *horizontal* space to be reserved for a scrollbar
-    const overflow = style.getOverflow();
+    const overflow = style.overflow;
     const scrollbar_gutter: Point(f32) = .{
-        .x = if (overflow.y == .scroll) style.getScrollbarWidth() else 0.0,
-        .y = if (overflow.x == .scroll) style.getScrollbarWidth() else 0.0,
+        .x = if (overflow.y == .scroll) style.scrollbar_width else 0.0,
+        .y = if (overflow.x == .scroll) style.scrollbar_width else 0.0,
     };
     const is_scroll_container = overflow.x.isScrollContainer() or overflow.y.isScrollContainer();
     var content_box_inset = padding_raw.add(border);
@@ -710,7 +710,7 @@ fn computeConstants(
     const has_definite_main_size = known_main_size_is_definite and known_dimensions.main(dir) != null;
     const has_definite_cross_size = known_dimensions_are_definite.cross(dir) and known_dimensions.cross(dir) != null;
     const cross_axis_available_space_is_definite = has_definite_cross_size or available_space.cross(dir) == .definite;
-    const gap = resolveOrZero(style.getGap(), node_inner_size.@"or"(Size(?f32).zero), tree);
+    const gap = resolveOrZero(style.gap, node_inner_size.@"or"(Size(?f32).zero), tree);
 
     return .{
         .dir = dir,
@@ -721,8 +721,8 @@ fn computeConstants(
         .is_wrap_reverse = is_wrap_reverse,
         .is_balance = is_balance,
         .line_count = line_count,
-        .min_size = maybeAdd(maybeResolve(style.getMinSize(), parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
-        .max_size = maybeAdd(maybeResolve(style.getMaxSize(), parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
+        .min_size = maybeAdd(maybeResolve(style.min_size, parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
+        .max_size = maybeAdd(maybeResolve(style.max_size, parent_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
         .border = border,
         .gap = gap,
         .content_box_inset = content_box_inset,
@@ -797,20 +797,20 @@ fn generateAnonymousFlexItems(tree: anytype, node: NodeId, constants: *const Alg
     var index: usize = 0;
     while (iter.next()) |child| : (index += 1) {
         const child_style = tree.getFlexboxChildStyle(child);
-        if (child_style.getPosition().isOutOfFlow()) continue;
-        if (child_style.getBoxGenerationMode() == .none) continue;
+        if (child_style.position.isOutOfFlow()) continue;
+        if (child_style.boxGenerationMode() == .none) continue;
 
-        const aspect_ratio = child_style.getAspectRatio();
-        const padding = resolveOrZero(child_style.getPadding(), constants.node_inner_size.width, tree);
-        const border = resolveOrZero(child_style.getBorder(), constants.node_inner_size.width, tree);
-        const box_sizing_adjustment = if (child_style.getBoxSizing() == .content_box)
+        const aspect_ratio = child_style.aspect_ratio;
+        const padding = resolveOrZero(child_style.padding, constants.node_inner_size.width, tree);
+        const border = resolveOrZero(child_style.border, constants.node_inner_size.width, tree);
+        const box_sizing_adjustment = if (child_style.box_sizing == .content_box)
             padding.add(border).sumAxes()
         else
             Size(f32).zero;
-        const margin_style = child_style.getMargin();
+        const margin_style = child_style.margin;
 
-        const relative_inset = if (child_style.getPosition() == .relative) blk: {
-            const inset_style = child_style.getInset();
+        const relative_inset = if (child_style.position == .relative) blk: {
+            const inset_style = child_style.inset;
             const inset: Rect(?f32) = .{
                 .left = maybeResolve(inset_style.left, constants.node_inner_size.width, tree),
                 .right = maybeResolve(inset_style.right, constants.node_inner_size.width, tree),
@@ -827,10 +827,10 @@ fn generateAnonymousFlexItems(tree: anytype, node: NodeId, constants: *const Alg
         try flex_items.append(gpa, .{
             .node = child,
             .order = @intCast(index),
-            .size = maybeAdd(maybeResolve(child_style.getSize(), percent_resolution_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
-            .size_style = child_style.getSize(),
-            .min_size = maybeAdd(maybeResolve(child_style.getMinSize(), percent_resolution_size, tree), box_sizing_adjustment),
-            .max_size = maybeAdd(maybeResolve(child_style.getMaxSize(), percent_resolution_size, tree), box_sizing_adjustment),
+            .size = maybeAdd(maybeResolve(child_style.size, percent_resolution_size, tree).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment),
+            .size_style = child_style.size,
+            .min_size = maybeAdd(maybeResolve(child_style.min_size, percent_resolution_size, tree), box_sizing_adjustment),
+            .max_size = maybeAdd(maybeResolve(child_style.max_size, percent_resolution_size, tree), box_sizing_adjustment),
             .aspect_ratio = aspect_ratio,
 
             .relative_inset = relative_inset,
@@ -843,13 +843,13 @@ fn generateAnonymousFlexItems(tree: anytype, node: NodeId, constants: *const Alg
             },
             .padding = padding,
             .border = border,
-            .align_self = resolveNormalAlignment(child_style.getAlignSelf() orelse constants.align_items)
-                .resolveSelfRelative(child_style.getDirection(), constants.layout_direction, constants.is_column),
-            .overflow = child_style.getOverflow(),
-            .contain = child_style.getContain(),
-            .scrollbar_width = child_style.getScrollbarWidth(),
-            .flex_grow = child_style.getFlexGrow(),
-            .flex_shrink = child_style.getFlexShrink(),
+            .align_self = resolveNormalAlignment(child_style.align_self orelse constants.align_items)
+                .resolveSelfRelative(child_style.direction, constants.layout_direction, constants.is_column),
+            .overflow = child_style.overflow,
+            .contain = child_style.contain,
+            .scrollbar_width = child_style.scrollbar_width,
+            .flex_grow = child_style.flex_grow,
+            .flex_shrink = child_style.flex_shrink,
             .flex_basis_is_definite = false,
             .flex_basis = 0.0,
             .inner_flex_basis = 0.0,
@@ -992,7 +992,7 @@ fn determineFlexBaseSize(
         // if that size is definite. A known main size which is derived from the container's own
         // content is treated as indefinite here.
         const percent_resolution_main_size: ?f32 = if (constants.known_main_size_is_definite) constants.node_inner_size.main(dir) else null;
-        const flex_basis_style = child_style.getFlexBasis();
+        const flex_basis_style = child_style.flex_basis;
         const flex_basis = maybeAdd(maybeResolve(flex_basis_style, percent_resolution_main_size, tree), box_sizing_adjustment);
 
         child.flex_basis = flex_basis: {
@@ -2153,7 +2153,7 @@ fn determineUsedCrossSize(tree: anytype, flex_lines: []FlexLine, constants: *con
                 // (its width) on all four sides, not against its height for the top/bottom sides
                 const box_sizing_adjustment = child.boxSizingAdjustment(child_style);
 
-                const max_size_ignoring_aspect_ratio = maybeAdd(maybeResolve(child_style.getMaxSize(), constants.node_inner_size, tree), box_sizing_adjustment);
+                const max_size_ignoring_aspect_ratio = maybeAdd(maybeResolve(child_style.max_size, constants.node_inner_size, tree), box_sizing_adjustment);
 
                 break :blk maybeClamp(
                     @max(line_cross_size - child.margin.crossAxisSum(dir), 0.0),
@@ -2674,9 +2674,9 @@ fn collectOofCandidates(
     for (0..tree.childCount(node)) |order| {
         const child = tree.getChildId(node, order);
         const child_style = tree.getFlexboxChildStyle(child);
-        const position = child_style.getPosition();
+        const position = child_style.position;
 
-        if (child_style.getBoxGenerationMode() == .none) {
+        if (child_style.boxGenerationMode() == .none) {
             continue;
         }
         // In-flow item: merge the candidates bubbled out of its subtree
@@ -2687,8 +2687,8 @@ fn collectOofCandidates(
             continue;
         }
 
-        const align_self = resolveNormalAlignment(child_style.getAlignSelf() orelse constants.align_items)
-            .resolveSelfRelative(child_style.getDirection(), constants.layout_direction, constants.is_column);
+        const align_self = resolveNormalAlignment(child_style.align_self orelse constants.align_items)
+            .resolveSelfRelative(child_style.direction, constants.layout_direction, constants.is_column);
 
         // Main-axis static position (justify-content).
         //

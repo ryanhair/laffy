@@ -1,127 +1,6 @@
 //! A typed representation of [CSS style properties](https://css-tricks.com/snippets/css/a-guide-to-flexbox/). Used as input to layout computation.
 //!
-//! # Style accessor interfaces
-//!
-//! Upstream defines the traits `CoreStyle`, `OofItemStyle`, `FlexboxContainerStyle`,
-//! `FlexboxItemStyle`, `GridContainerStyle`, `GridItemStyle`, `BlockContainerStyle` and
-//! `BlockItemStyle`, which layout algorithms use to read styles. In laffy these are duck-typed
-//! interfaces: layout algorithms take the style as `anytype` and call the methods listed below.
-//! `Style` implements every method, so `Style` or `*const Style` can be passed directly.
-//!
-//! Method naming: Zig does not allow a method and a field with the same name, and `Style` has a
-//! field for most properties. Every accessor is therefore named `get` + the upstream method name in
-//! PascalCase (`size()` -> `getSize()`, `box_sizing()` -> `getBoxSizing()`), except predicates
-//! whose upstream name starts with `is_`, which keep that name (`is_block()` -> `isBlock()`).
-//!
-//! A custom style type implements the methods of each interface it is used as. Methods marked
-//! "default" have an upstream default implementation, which is available as a function taking
-//! `self: anytype` in the matching `*Defaults` namespace below. A custom type can adopt a default
-//! with a declaration, e.g. `pub const getBoxSizing = style.CoreStyleDefaults.getBoxSizing;`.
-//! Methods marked "required" have no upstream default.
-//!
-//! ## CoreStyle (`CoreStyleDefaults`)
-//!
-//!   - `getBoxGenerationMode() BoxGenerationMode`: default `.normal`
-//!   - `isBlock() bool`: default `false` (true only for `display: block`, not `flow-root`)
-//!   - `isCompressibleReplaced() bool`: default `false`
-//!   - `isReplaced() bool`: default `false`
-//!   - `getBoxSizing() BoxSizing`: default `.border_box`
-//!   - `getDirection() Direction`: default `.ltr`
-//!   - `getOverflow() Point(Overflow)`: default `.{ .x = .visible, .y = .visible }`
-//!   - `getScrollbarWidth() f32`: default `0.0`
-//!   - `getPosition() Position`: default `.static`
-//!   - `getInset() Rect(LengthPercentageAuto)`: default `Rect(LengthPercentageAuto).auto`
-//!   - `isContainingBlock() ContainingBlockClaims`: default
-//!     `.{ .absolute = self.getPosition().isPositioned(), .fixed = false }`
-//!   - `getSize() Size(Dimension)`: default `Size(Dimension).auto`
-//!   - `getMinSize() Size(LengthPercentageAuto)`: default `Size(LengthPercentageAuto).auto`
-//!   - `getMaxSize() Size(LengthPercentageAuto)`: default `Size(LengthPercentageAuto).auto`
-//!   - `getAspectRatio() ?f32`: default `null`
-//!   - `getMargin() Rect(LengthPercentageAuto)`: default `Rect(LengthPercentageAuto).zero`
-//!   - `getPadding() Rect(LengthPercentage)`: default `Rect(LengthPercentage).zero`
-//!   - `getBorder() Rect(LengthPercentage)`: default `Rect(LengthPercentage).zero`
-//!   - `getContain() Contain`: default `Contain.none`
-//!
-//! Upstream's associated type `CoreStyle::CustomIdent` has no equivalent: names are `[]const u8`.
-//!
-//! ## OofItemStyle (`OofItemStyleDefaults`), in addition to CoreStyle
-//!
-//!   - `getAlignSelf() ?AlignSelf`: default `null`
-//!   - `getJustifySelf() ?AlignSelf`: default `null`
-//!   - `isTable() bool`: default `false`
-//!   - `getGridRow() Line(GridPlacement)`: default `Line(GridPlacement).auto`
-//!   - `getGridColumn() Line(GridPlacement)`: default `Line(GridPlacement).auto`
-//!
-//! ## FlexboxContainerStyle (`FlexboxContainerStyleDefaults`), in addition to CoreStyle
-//!
-//!   - `getFlexDirection() FlexDirection`: default `.row`
-//!   - `getFlexWrap() FlexWrap`: default `.no_wrap`
-//!   - `getFlexLineCount() u16`: default `1`
-//!   - `getGap() Size(LengthPercentage)`: default `Size(LengthPercentage).zero`
-//!   - `getAlignContent() AlignContent`: default `AlignContent.normal`
-//!   - `getAlignItems() AlignItems`: default `AlignItems.normal`
-//!   - `getJustifyContent() JustifyContent`: default `JustifyContent.normal`
-//!
-//! ## FlexboxItemStyle (`FlexboxItemStyleDefaults`), in addition to CoreStyle
-//!
-//!   - `getFlexBasis() Dimension`: default `Dimension.auto`
-//!   - `getFlexGrow() f32`: default `0.0`
-//!   - `getFlexShrink() f32`: default `1.0`
-//!   - `getAlignSelf() ?AlignSelf`: default `null`
-//!
-//! ## GridContainerStyle (`GridContainerStyleDefaults`), in addition to CoreStyle
-//!
-//! Upstream returns iterators through associated types (`TemplateTrackList`, `AutoTrackList`,
-//! `TemplateLineNames`, `GridTemplateAreas`, `Repetition`); laffy returns slices instead.
-//!
-//!   - `getGridTemplateRows() ?[]const GridTemplateComponent`: required
-//!   - `getGridTemplateColumns() ?[]const GridTemplateComponent`: required
-//!   - `getGridAutoRows() []const TrackSizingFunction`: required
-//!   - `getGridAutoColumns() []const TrackSizingFunction`: required
-//!   - `getGridTemplateAreas() ?[]const GridTemplateArea`: required
-//!   - `getGridTemplateAreaRowCount() u16`: default: the maximum of `max(area.row_end, 1) - 1`
-//!     over `getGridTemplateAreas()` (0 if there are no areas)
-//!   - `getGridTemplateAreaColumnCount() u16`: default: the maximum of `max(area.column_end, 1) - 1`
-//!     over `getGridTemplateAreas()` (0 if there are no areas)
-//!   - `getGridTemplateColumnNames() ?[]const []const []const u8`: required
-//!   - `getGridTemplateRowNames() ?[]const []const []const u8`: required
-//!   - `getGridAutoFlow() GridAutoFlow`: default `.row`
-//!   - `getGap() Size(LengthPercentage)`: default `Size(LengthPercentage).zero`
-//!   - `getAlignContent() AlignContent`: default `AlignContent.normal`
-//!   - `getJustifyContent() JustifyContent`: default `JustifyContent.normal`
-//!   - `getAlignItems() AlignItems`: default `AlignItems.normal`
-//!   - `getJustifyItems() AlignItems`: default `AlignItems.normal`
-//!   - `getGridTemplateTracks(axis: AbsoluteAxis) ?[]const GridTemplateComponent`: default:
-//!     columns for `.horizontal`, rows for `.vertical`
-//!   - `getGridAlignContent(axis: AbstractAxis) AlignContent`: default: `getJustifyContent()` for
-//!     `.inline`, `getAlignContent()` for `.block`, with `normal` resolved to `stretch`
-//!
-//! ## GridItemStyle (`GridItemStyleDefaults`), in addition to CoreStyle
-//!
-//!   - `getGridRow() Line(GridPlacement)`: default `Line(GridPlacement).auto`
-//!   - `getGridColumn() Line(GridPlacement)`: default `Line(GridPlacement).auto`
-//!   - `getAlignSelf() ?AlignSelf`: default `null`
-//!   - `getJustifySelf() ?AlignSelf`: default `null`
-//!   - `getGridPlacement(axis: AbsoluteAxis) Line(GridPlacement)`: default: `getGridColumn()` for
-//!     `.horizontal`, `getGridRow()` for `.vertical`
-//!
-//! ## BlockContainerStyle (`BlockContainerStyleDefaults`), in addition to CoreStyle
-//!
-//!   - `getTextAlign() TextAlign`: default `.auto`
-//!   - `getAlignContent() AlignContent`: default `AlignContent.normal`
-//!   - `getJustifyItems() AlignItems`: default `AlignItems.normal`
-//!
-//! ## BlockItemStyle (`BlockItemStyleDefaults`), in addition to CoreStyle
-//!
-//!   - `isTable() bool`: default `false`
-//!   - `getAlignSelf() ?AlignSelf`: default `null`
-//!   - `getJustifySelf() ?AlignSelf`: default `null`
-//!   - `getAlignContent() AlignContent`: default `AlignContent.normal`
-//!   - `getFloat() Float`: default `.none`
-//!   - `getClear() Clear`: default `.none`
-//!
-//! Upstream also implements every trait for `&T`. In Zig a `*const T` can be used to call the
-//! same methods, so nothing extra is needed.
+//! Layout algorithms read a node's style as a `*const Style` and use its fields directly.
 const std = @import("std");
 const geometry = @import("geometry.zig");
 const Point = geometry.Point;
@@ -278,7 +157,7 @@ pub const Position = enum(u8) {
 
 /// Which out-of-flow positions a node establishes a containing block for.
 ///
-/// Returned by the `isContainingBlock` style accessor.
+/// Returned by `Style.isContainingBlock`.
 pub const ContainingBlockClaims = struct {
     /// Whether the node is the containing block for `position: absolute` boxes
     absolute: bool,
@@ -609,420 +488,72 @@ pub const Style = struct {
     /// The default style (upstream `Style::DEFAULT`)
     pub const default: Style = .{};
 
-    // CoreStyle
-
-    pub fn getBoxGenerationMode(self: *const Style) BoxGenerationMode {
+    /// Whether the node generates a box (`display: none` does not)
+    pub fn boxGenerationMode(self: *const Style) BoxGenerationMode {
         return switch (self.display) {
             .none => .none,
             else => .normal,
         };
     }
+
+    /// Whether the node is a block container that takes part in its parent's block formatting
+    /// context (true only for `display: block`, not `flow-root`)
     pub fn isBlock(self: *const Style) bool {
         return self.display == .block;
     }
+
+    /// Whether the node is a replaced element that can be compressed below its natural size
     pub fn isCompressibleReplaced(self: *const Style) bool {
         return self.item_is_replaced or self.item_is_compressible_replaced;
     }
-    pub fn isReplaced(self: *const Style) bool {
-        return self.item_is_replaced;
-    }
-    pub fn getBoxSizing(self: *const Style) BoxSizing {
-        return self.box_sizing;
-    }
-    pub fn getDirection(self: *const Style) Direction {
-        return self.direction;
-    }
-    pub fn getOverflow(self: *const Style) Point(Overflow) {
-        return self.overflow;
-    }
-    pub fn getScrollbarWidth(self: *const Style) f32 {
-        return self.scrollbar_width;
-    }
-    pub fn getPosition(self: *const Style) Position {
-        return self.position;
-    }
-    pub fn getInset(self: *const Style) Rect(LengthPercentageAuto) {
-        return self.inset;
-    }
+
+    /// Which out-of-flow boxes the node is the containing block for
     pub fn isContainingBlock(self: *const Style) ContainingBlockClaims {
-        return CoreStyleDefaults.isContainingBlock(self);
-    }
-    pub fn getSize(self: *const Style) Size(Dimension) {
-        return self.size;
-    }
-    pub fn getMinSize(self: *const Style) Size(LengthPercentageAuto) {
-        return self.min_size;
-    }
-    pub fn getMaxSize(self: *const Style) Size(LengthPercentageAuto) {
-        return self.max_size;
-    }
-    pub fn getAspectRatio(self: *const Style) ?f32 {
-        return self.aspect_ratio;
-    }
-    pub fn getMargin(self: *const Style) Rect(LengthPercentageAuto) {
-        return self.margin;
-    }
-    pub fn getPadding(self: *const Style) Rect(LengthPercentage) {
-        return self.padding;
-    }
-    pub fn getBorder(self: *const Style) Rect(LengthPercentage) {
-        return self.border;
-    }
-    pub fn getContain(self: *const Style) Contain {
-        return self.contain;
+        return .{ .absolute = self.position.isPositioned(), .fixed = false };
     }
 
-    // OofItemStyle / BlockItemStyle / FlexboxItemStyle / GridItemStyle
-
-    pub fn getAlignSelf(self: *const Style) ?AlignSelf {
-        return self.align_self;
-    }
-    pub fn getJustifySelf(self: *const Style) ?AlignSelf {
-        return self.justify_self;
-    }
-    pub fn isTable(self: *const Style) bool {
-        return self.item_is_table;
-    }
-    pub fn getGridRow(self: *const Style) Line(GridPlacement) {
-        return self.grid_row;
-    }
-    pub fn getGridColumn(self: *const Style) Line(GridPlacement) {
-        return self.grid_column;
-    }
-    pub fn getGridPlacement(self: *const Style, axis: AbsoluteAxis) Line(GridPlacement) {
-        return GridItemStyleDefaults.getGridPlacement(self, axis);
-    }
-    pub fn getFloat(self: *const Style) Float {
-        return self.float;
-    }
-    pub fn getClear(self: *const Style) Clear {
-        return self.clear;
-    }
-
-    // BlockContainerStyle
-
-    pub fn getTextAlign(self: *const Style) TextAlign {
-        return self.text_align;
-    }
-
-    // Shared by the container interfaces
-
-    pub fn getAlignContent(self: *const Style) AlignContent {
-        return self.align_content;
-    }
-    pub fn getJustifyItems(self: *const Style) AlignItems {
-        return self.justify_items;
-    }
-    pub fn getAlignItems(self: *const Style) AlignItems {
-        return self.align_items;
-    }
-    pub fn getJustifyContent(self: *const Style) JustifyContent {
-        return self.justify_content;
-    }
-    pub fn getGap(self: *const Style) Size(LengthPercentage) {
-        return self.gap;
-    }
-
-    // FlexboxContainerStyle
-
-    pub fn getFlexDirection(self: *const Style) FlexDirection {
-        return self.flex_direction;
-    }
-    pub fn getFlexWrap(self: *const Style) FlexWrap {
-        return self.flex_wrap;
-    }
-    pub fn getFlexLineCount(self: *const Style) u16 {
-        return self.flex_line_count;
-    }
-
-    // FlexboxItemStyle
-
-    pub fn getFlexBasis(self: *const Style) Dimension {
-        return self.flex_basis;
-    }
-    pub fn getFlexGrow(self: *const Style) f32 {
-        return self.flex_grow;
-    }
-    pub fn getFlexShrink(self: *const Style) f32 {
-        return self.flex_shrink;
-    }
-
-    // GridContainerStyle
-
-    pub fn getGridTemplateRows(self: *const Style) ?[]const GridTemplateComponent {
-        return self.grid_template_rows;
-    }
-    pub fn getGridTemplateColumns(self: *const Style) ?[]const GridTemplateComponent {
-        return self.grid_template_columns;
-    }
-    pub fn getGridAutoRows(self: *const Style) []const TrackSizingFunction {
-        return self.grid_auto_rows;
-    }
-    pub fn getGridAutoColumns(self: *const Style) []const TrackSizingFunction {
-        return self.grid_auto_columns;
-    }
-    pub fn getGridAutoFlow(self: *const Style) GridAutoFlow {
-        return self.grid_auto_flow;
-    }
-    pub fn getGridTemplateAreas(self: *const Style) ?[]const GridTemplateArea {
-        return if (self.grid_template_areas) |template| template.areas else null;
-    }
-    pub fn getGridTemplateAreaRowCount(self: *const Style) u16 {
-        return if (self.grid_template_areas) |template| template.row_count else 0;
-    }
-    pub fn getGridTemplateAreaColumnCount(self: *const Style) u16 {
-        return if (self.grid_template_areas) |template| template.column_count else 0;
-    }
-    pub fn getGridTemplateColumnNames(self: *const Style) ?[]const []const []const u8 {
-        return self.grid_template_column_names;
-    }
-    pub fn getGridTemplateRowNames(self: *const Style) ?[]const []const []const u8 {
-        return self.grid_template_row_names;
-    }
-    pub fn getGridTemplateTracks(self: *const Style, axis: AbsoluteAxis) ?[]const GridTemplateComponent {
-        return GridContainerStyleDefaults.getGridTemplateTracks(self, axis);
-    }
-    pub fn getGridAlignContent(self: *const Style, axis: AbstractAxis) AlignContent {
-        return GridContainerStyleDefaults.getGridAlignContent(self, axis);
-    }
-};
-
-/// Upstream default implementations of the `CoreStyle` methods (see the file documentation)
-pub const CoreStyleDefaults = struct {
-    pub fn getBoxGenerationMode(_: anytype) BoxGenerationMode {
-        return BoxGenerationMode.default;
-    }
-    pub fn isBlock(_: anytype) bool {
-        return false;
-    }
-    pub fn isCompressibleReplaced(_: anytype) bool {
-        return false;
-    }
-    pub fn isReplaced(_: anytype) bool {
-        return false;
-    }
-    pub fn getBoxSizing(_: anytype) BoxSizing {
-        return .border_box;
-    }
-    pub fn getDirection(_: anytype) Direction {
-        return .ltr;
-    }
-    pub fn getOverflow(_: anytype) Point(Overflow) {
-        return Style.default.overflow;
-    }
-    pub fn getScrollbarWidth(_: anytype) f32 {
-        return 0.0;
-    }
-    pub fn getPosition(_: anytype) Position {
-        return Style.default.position;
-    }
-    pub fn getInset(_: anytype) Rect(LengthPercentageAuto) {
-        return Style.default.inset;
-    }
-    pub fn isContainingBlock(self: anytype) ContainingBlockClaims {
-        return .{ .absolute = self.getPosition().isPositioned(), .fixed = false };
-    }
-    pub fn getSize(_: anytype) Size(Dimension) {
-        return Style.default.size;
-    }
-    pub fn getMinSize(_: anytype) Size(LengthPercentageAuto) {
-        return Style.default.min_size;
-    }
-    pub fn getMaxSize(_: anytype) Size(LengthPercentageAuto) {
-        return Style.default.max_size;
-    }
-    pub fn getAspectRatio(_: anytype) ?f32 {
-        return Style.default.aspect_ratio;
-    }
-    pub fn getMargin(_: anytype) Rect(LengthPercentageAuto) {
-        return Style.default.margin;
-    }
-    pub fn getPadding(_: anytype) Rect(LengthPercentage) {
-        return Style.default.padding;
-    }
-    pub fn getBorder(_: anytype) Rect(LengthPercentage) {
-        return Style.default.border;
-    }
-    pub fn getContain(_: anytype) Contain {
-        return Contain.none;
-    }
-};
-
-/// Upstream default implementations of the `OofItemStyle` methods
-pub const OofItemStyleDefaults = struct {
-    pub fn getAlignSelf(_: anytype) ?AlignSelf {
-        return null;
-    }
-    pub fn getJustifySelf(_: anytype) ?AlignSelf {
-        return null;
-    }
-    pub fn isTable(_: anytype) bool {
-        return false;
-    }
-    pub fn getGridRow(_: anytype) Line(GridPlacement) {
-        return Line(GridPlacement).auto;
-    }
-    pub fn getGridColumn(_: anytype) Line(GridPlacement) {
-        return Line(GridPlacement).auto;
-    }
-};
-
-/// Upstream default implementations of the `FlexboxContainerStyle` methods
-pub const FlexboxContainerStyleDefaults = struct {
-    pub fn getFlexDirection(_: anytype) FlexDirection {
-        return Style.default.flex_direction;
-    }
-    pub fn getFlexWrap(_: anytype) FlexWrap {
-        return Style.default.flex_wrap;
-    }
-    pub fn getFlexLineCount(_: anytype) u16 {
-        return Style.default.flex_line_count;
-    }
-    pub fn getGap(_: anytype) Size(LengthPercentage) {
-        return Style.default.gap;
-    }
-    pub fn getAlignContent(_: anytype) AlignContent {
-        return Style.default.align_content;
-    }
-    pub fn getAlignItems(_: anytype) AlignItems {
-        return Style.default.align_items;
-    }
-    pub fn getJustifyContent(_: anytype) JustifyContent {
-        return Style.default.justify_content;
-    }
-};
-
-/// Upstream default implementations of the `FlexboxItemStyle` methods
-pub const FlexboxItemStyleDefaults = struct {
-    pub fn getFlexBasis(_: anytype) Dimension {
-        return Style.default.flex_basis;
-    }
-    pub fn getFlexGrow(_: anytype) f32 {
-        return Style.default.flex_grow;
-    }
-    pub fn getFlexShrink(_: anytype) f32 {
-        return Style.default.flex_shrink;
-    }
-    pub fn getAlignSelf(_: anytype) ?AlignSelf {
-        return Style.default.align_self;
-    }
-};
-
-/// Upstream default implementations of the `GridContainerStyle` methods. The track list, area
-/// and line name accessors have no default and must be implemented by every grid container style.
-pub const GridContainerStyleDefaults = struct {
-    pub fn getGridTemplateAreaRowCount(self: anytype) u16 {
-        const areas = self.getGridTemplateAreas() orelse return 0;
-        var result: ?u16 = null;
-        for (areas) |area| {
-            const v = @max(area.row_end, 1) - 1;
-            result = if (result) |r| @max(r, v) else v;
-        }
-        return result orelse 0;
-    }
-    pub fn getGridTemplateAreaColumnCount(self: anytype) u16 {
-        const areas = self.getGridTemplateAreas() orelse return 0;
-        var result: ?u16 = null;
-        for (areas) |area| {
-            const v = @max(area.column_end, 1) - 1;
-            result = if (result) |r| @max(r, v) else v;
-        }
-        return result orelse 0;
-    }
-    pub fn getGridAutoFlow(_: anytype) GridAutoFlow {
-        return Style.default.grid_auto_flow;
-    }
-    pub fn getGap(_: anytype) Size(LengthPercentage) {
-        return Style.default.gap;
-    }
-    pub fn getAlignContent(_: anytype) AlignContent {
-        return Style.default.align_content;
-    }
-    pub fn getJustifyContent(_: anytype) JustifyContent {
-        return Style.default.justify_content;
-    }
-    pub fn getAlignItems(_: anytype) AlignItems {
-        return Style.default.align_items;
-    }
-    pub fn getJustifyItems(_: anytype) AlignItems {
-        return Style.default.justify_items;
-    }
-    /// Get a grid container's template tracks for the axis passed
-    pub fn getGridTemplateTracks(self: anytype, axis: AbsoluteAxis) ?[]const GridTemplateComponent {
+    /// The node's grid placement in the passed axis
+    pub fn gridPlacement(self: *const Style, axis: AbsoluteAxis) Line(GridPlacement) {
         return switch (axis) {
-            .horizontal => self.getGridTemplateColumns(),
-            .vertical => self.getGridTemplateRows(),
+            .horizontal => self.grid_column,
+            .vertical => self.grid_row,
         };
     }
-    /// Get a grid container's align-content or justify-content alignment depending on the axis passed
-    /// (with `normal` resolved to `stretch`)
-    pub fn getGridAlignContent(self: anytype, axis: AbstractAxis) AlignContent {
+
+    /// The named grid areas, if any
+    pub fn gridTemplateAreas(self: *const Style) ?[]const GridTemplateArea {
+        return if (self.grid_template_areas) |template| template.areas else null;
+    }
+
+    /// The number of rows spanned by the named grid areas
+    pub fn gridTemplateAreaRowCount(self: *const Style) u16 {
+        return if (self.grid_template_areas) |template| template.row_count else 0;
+    }
+
+    /// The number of columns spanned by the named grid areas
+    pub fn gridTemplateAreaColumnCount(self: *const Style) u16 {
+        return if (self.grid_template_areas) |template| template.column_count else 0;
+    }
+
+    /// The track template in the passed axis
+    pub fn gridTemplateTracks(self: *const Style, axis: AbsoluteAxis) []const GridTemplateComponent {
+        return switch (axis) {
+            .horizontal => self.grid_template_columns,
+            .vertical => self.grid_template_rows,
+        };
+    }
+
+    /// A grid container's align-content or justify-content alignment depending on the axis
+    /// passed (with `normal` resolved to `stretch`)
+    pub fn gridAlignContent(self: *const Style, axis: AbstractAxis) AlignContent {
         const align_value = switch (axis) {
-            .@"inline" => self.getJustifyContent(),
-            .block => self.getAlignContent(),
+            .@"inline" => self.justify_content,
+            .block => self.align_content,
         };
         return switch (align_value.keyword) {
             .normal => AlignContent.stretch,
             else => align_value,
         };
-    }
-};
-
-/// Upstream default implementations of the `GridItemStyle` methods
-pub const GridItemStyleDefaults = struct {
-    pub fn getGridRow(_: anytype) Line(GridPlacement) {
-        return Line(GridPlacement).auto;
-    }
-    pub fn getGridColumn(_: anytype) Line(GridPlacement) {
-        return Line(GridPlacement).auto;
-    }
-    pub fn getAlignSelf(_: anytype) ?AlignSelf {
-        return Style.default.align_self;
-    }
-    pub fn getJustifySelf(_: anytype) ?AlignSelf {
-        return Style.default.justify_self;
-    }
-    /// Get a grid item's row or column placement depending on the axis passed
-    pub fn getGridPlacement(self: anytype, axis: AbsoluteAxis) Line(GridPlacement) {
-        return switch (axis) {
-            .horizontal => self.getGridColumn(),
-            .vertical => self.getGridRow(),
-        };
-    }
-};
-
-/// Upstream default implementations of the `BlockContainerStyle` methods
-pub const BlockContainerStyleDefaults = struct {
-    pub fn getTextAlign(_: anytype) TextAlign {
-        return Style.default.text_align;
-    }
-    pub fn getAlignContent(_: anytype) AlignContent {
-        return Style.default.align_content;
-    }
-    pub fn getJustifyItems(_: anytype) AlignItems {
-        return Style.default.justify_items;
-    }
-};
-
-/// Upstream default implementations of the `BlockItemStyle` methods
-pub const BlockItemStyleDefaults = struct {
-    pub fn isTable(_: anytype) bool {
-        return false;
-    }
-    pub fn getAlignSelf(_: anytype) ?AlignSelf {
-        return null;
-    }
-    pub fn getJustifySelf(_: anytype) ?AlignSelf {
-        return null;
-    }
-    pub fn getAlignContent(_: anytype) AlignContent {
-        return AlignContent.normal;
-    }
-    pub fn getFloat(_: anytype) Float {
-        return .none;
-    }
-    pub fn getClear(_: anytype) Clear {
-        return .none;
     }
 };
 
@@ -1159,213 +690,75 @@ test "enums and helpers" {
     try testing.expectEqualStrings("NONE", try std.fmt.bufPrint(&buf, "{f}", .{Display.none}));
 }
 
-/// Checks every accessor of a style type against the upstream defaults
+/// Checks the default value of every style field
 fn expectDefaultAccessors(s: anytype) !void {
     // CoreStyle
-    try testing.expectEqual(BoxGenerationMode.normal, s.getBoxGenerationMode());
+    try testing.expectEqual(BoxGenerationMode.normal, s.boxGenerationMode());
     try testing.expect(!s.isBlock());
     try testing.expect(!s.isCompressibleReplaced());
-    try testing.expect(!s.isReplaced());
-    try testing.expectEqual(BoxSizing.border_box, s.getBoxSizing());
-    try testing.expectEqual(Direction.ltr, s.getDirection());
-    try testing.expectEqual(Point(Overflow){ .x = .visible, .y = .visible }, s.getOverflow());
-    try testing.expectEqual(@as(f32, 0.0), s.getScrollbarWidth());
-    try testing.expectEqual(Position.static, s.getPosition());
-    try testing.expectEqual(Rect(LengthPercentageAuto).auto, s.getInset());
+    try testing.expect(!s.item_is_replaced);
+    try testing.expectEqual(BoxSizing.border_box, s.box_sizing);
+    try testing.expectEqual(Direction.ltr, s.direction);
+    try testing.expectEqual(Point(Overflow){ .x = .visible, .y = .visible }, s.overflow);
+    try testing.expectEqual(@as(f32, 0.0), s.scrollbar_width);
+    try testing.expectEqual(Position.static, s.position);
+    try testing.expectEqual(Rect(LengthPercentageAuto).auto, s.inset);
     try testing.expectEqual(ContainingBlockClaims{ .absolute = false, .fixed = false }, s.isContainingBlock());
-    try testing.expectEqual(Size(Dimension).auto, s.getSize());
-    try testing.expectEqual(Size(LengthPercentageAuto).auto, s.getMinSize());
-    try testing.expectEqual(Size(LengthPercentageAuto).auto, s.getMaxSize());
-    try testing.expectEqual(@as(?f32, null), s.getAspectRatio());
-    try testing.expectEqual(Rect(LengthPercentageAuto).zero, s.getMargin());
-    try testing.expectEqual(Rect(LengthPercentage).zero, s.getPadding());
-    try testing.expectEqual(Rect(LengthPercentage).zero, s.getBorder());
-    try testing.expect(s.getContain() == Contain.none);
+    try testing.expectEqual(Size(Dimension).auto, s.size);
+    try testing.expectEqual(Size(LengthPercentageAuto).auto, s.min_size);
+    try testing.expectEqual(Size(LengthPercentageAuto).auto, s.max_size);
+    try testing.expectEqual(@as(?f32, null), s.aspect_ratio);
+    try testing.expectEqual(Rect(LengthPercentageAuto).zero, s.margin);
+    try testing.expectEqual(Rect(LengthPercentage).zero, s.padding);
+    try testing.expectEqual(Rect(LengthPercentage).zero, s.border);
+    try testing.expect(s.contain == Contain.none);
     // OofItemStyle / BlockItemStyle / FlexboxItemStyle / GridItemStyle
-    try testing.expectEqual(@as(?AlignSelf, null), s.getAlignSelf());
-    try testing.expectEqual(@as(?AlignSelf, null), s.getJustifySelf());
-    try testing.expect(!s.isTable());
-    try testing.expectEqual(Line(GridPlacement).auto, s.getGridRow());
-    try testing.expectEqual(Line(GridPlacement).auto, s.getGridColumn());
-    try testing.expectEqual(Line(GridPlacement).auto, s.getGridPlacement(.horizontal));
-    try testing.expectEqual(Float.none, s.getFloat());
-    try testing.expectEqual(Clear.none, s.getClear());
+    try testing.expectEqual(@as(?AlignSelf, null), s.align_self);
+    try testing.expectEqual(@as(?AlignSelf, null), s.justify_self);
+    try testing.expect(!s.item_is_table);
+    try testing.expectEqual(Line(GridPlacement).auto, s.grid_row);
+    try testing.expectEqual(Line(GridPlacement).auto, s.grid_column);
+    try testing.expectEqual(Line(GridPlacement).auto, s.gridPlacement(.horizontal));
+    try testing.expectEqual(Float.none, s.float);
+    try testing.expectEqual(Clear.none, s.clear);
     // FlexboxContainerStyle
-    try testing.expectEqual(FlexDirection.row, s.getFlexDirection());
-    try testing.expectEqual(FlexWrap.no_wrap, s.getFlexWrap());
-    try testing.expectEqual(@as(u16, 1), s.getFlexLineCount());
-    try testing.expectEqual(Size(LengthPercentage).zero, s.getGap());
-    try testing.expect(s.getAlignContent() == AlignContent.normal);
-    try testing.expect(s.getAlignItems() == AlignItems.normal);
-    try testing.expect(s.getJustifyContent() == JustifyContent.normal);
+    try testing.expectEqual(FlexDirection.row, s.flex_direction);
+    try testing.expectEqual(FlexWrap.no_wrap, s.flex_wrap);
+    try testing.expectEqual(@as(u16, 1), s.flex_line_count);
+    try testing.expectEqual(Size(LengthPercentage).zero, s.gap);
+    try testing.expect(s.align_content == AlignContent.normal);
+    try testing.expect(s.align_items == AlignItems.normal);
+    try testing.expect(s.justify_content == JustifyContent.normal);
     // FlexboxItemStyle
-    try testing.expect(s.getFlexBasis() == Dimension.auto);
-    try testing.expectEqual(@as(f32, 0.0), s.getFlexGrow());
-    try testing.expectEqual(@as(f32, 1.0), s.getFlexShrink());
+    try testing.expect(s.flex_basis == Dimension.auto);
+    try testing.expectEqual(@as(f32, 0.0), s.flex_grow);
+    try testing.expectEqual(@as(f32, 1.0), s.flex_shrink);
     // GridContainerStyle
-    try testing.expectEqual(@as(usize, 0), s.getGridTemplateRows().?.len);
-    try testing.expectEqual(@as(usize, 0), s.getGridTemplateColumns().?.len);
-    try testing.expectEqual(@as(usize, 0), s.getGridAutoRows().len);
-    try testing.expectEqual(@as(usize, 0), s.getGridAutoColumns().len);
-    try testing.expectEqual(@as(?[]const GridTemplateArea, null), s.getGridTemplateAreas());
-    try testing.expectEqual(@as(u16, 0), s.getGridTemplateAreaRowCount());
-    try testing.expectEqual(@as(u16, 0), s.getGridTemplateAreaColumnCount());
-    try testing.expectEqual(@as(usize, 0), s.getGridTemplateColumnNames().?.len);
-    try testing.expectEqual(@as(usize, 0), s.getGridTemplateRowNames().?.len);
-    try testing.expectEqual(GridAutoFlow.row, s.getGridAutoFlow());
-    try testing.expect(s.getJustifyItems() == AlignItems.normal);
-    try testing.expectEqual(@as(usize, 0), s.getGridTemplateTracks(.vertical).?.len);
-    try testing.expect(s.getGridAlignContent(.@"inline") == AlignContent.stretch);
-    try testing.expect(s.getGridAlignContent(.block) == AlignContent.stretch);
+    try testing.expectEqual(@as(usize, 0), s.grid_template_rows.len);
+    try testing.expectEqual(@as(usize, 0), s.grid_template_columns.len);
+    try testing.expectEqual(@as(usize, 0), s.grid_auto_rows.len);
+    try testing.expectEqual(@as(usize, 0), s.grid_auto_columns.len);
+    try testing.expectEqual(@as(?[]const GridTemplateArea, null), s.gridTemplateAreas());
+    try testing.expectEqual(@as(u16, 0), s.gridTemplateAreaRowCount());
+    try testing.expectEqual(@as(u16, 0), s.gridTemplateAreaColumnCount());
+    try testing.expectEqual(@as(usize, 0), s.grid_template_column_names.len);
+    try testing.expectEqual(@as(usize, 0), s.grid_template_row_names.len);
+    try testing.expectEqual(GridAutoFlow.row, s.grid_auto_flow);
+    try testing.expect(s.justify_items == AlignItems.normal);
+    try testing.expectEqual(@as(usize, 0), s.gridTemplateTracks(.vertical).len);
+    try testing.expect(s.gridAlignContent(.@"inline") == AlignContent.stretch);
+    try testing.expect(s.gridAlignContent(.block) == AlignContent.stretch);
     // BlockContainerStyle
-    try testing.expectEqual(TextAlign.auto, s.getTextAlign());
+    try testing.expectEqual(TextAlign.auto, s.text_align);
 }
 
-test "Style accessors return upstream defaults" {
+test "Style field defaults" {
     const s: Style = .{};
     try expectDefaultAccessors(s);
     try expectDefaultAccessors(&s);
 }
 
-/// A custom style type that implements every interface using only the upstream defaults (plus
-/// the required grid accessors)
-const DefaultsOnlyStyle = struct {
-    const C = CoreStyleDefaults;
-    const O = OofItemStyleDefaults;
-    const FC = FlexboxContainerStyleDefaults;
-    const FI = FlexboxItemStyleDefaults;
-    const GC = GridContainerStyleDefaults;
-    const GI = GridItemStyleDefaults;
-    const BC = BlockContainerStyleDefaults;
-    const BI = BlockItemStyleDefaults;
-
-    areas: ?[]const GridTemplateArea = null,
-
-    pub const getBoxGenerationMode = C.getBoxGenerationMode;
-    pub const isBlock = C.isBlock;
-    pub const isCompressibleReplaced = C.isCompressibleReplaced;
-    pub const isReplaced = C.isReplaced;
-    pub const getBoxSizing = C.getBoxSizing;
-    pub const getDirection = C.getDirection;
-    pub const getOverflow = C.getOverflow;
-    pub const getScrollbarWidth = C.getScrollbarWidth;
-    pub const getPosition = C.getPosition;
-    pub const getInset = C.getInset;
-    pub const isContainingBlock = C.isContainingBlock;
-    pub const getSize = C.getSize;
-    pub const getMinSize = C.getMinSize;
-    pub const getMaxSize = C.getMaxSize;
-    pub const getAspectRatio = C.getAspectRatio;
-    pub const getMargin = C.getMargin;
-    pub const getPadding = C.getPadding;
-    pub const getBorder = C.getBorder;
-    pub const getContain = C.getContain;
-
-    pub const getAlignSelf = O.getAlignSelf;
-    pub const getJustifySelf = O.getJustifySelf;
-    pub const isTable = O.isTable;
-    pub const getGridRow = O.getGridRow;
-    pub const getGridColumn = O.getGridColumn;
-    pub const getGridPlacement = GI.getGridPlacement;
-    pub const getFloat = BI.getFloat;
-    pub const getClear = BI.getClear;
-
-    pub const getFlexDirection = FC.getFlexDirection;
-    pub const getFlexWrap = FC.getFlexWrap;
-    pub const getFlexLineCount = FC.getFlexLineCount;
-    pub const getGap = FC.getGap;
-    pub const getAlignContent = FC.getAlignContent;
-    pub const getAlignItems = FC.getAlignItems;
-    pub const getJustifyContent = FC.getJustifyContent;
-
-    pub const getFlexBasis = FI.getFlexBasis;
-    pub const getFlexGrow = FI.getFlexGrow;
-    pub const getFlexShrink = FI.getFlexShrink;
-
-    pub fn getGridTemplateRows(_: DefaultsOnlyStyle) ?[]const GridTemplateComponent {
-        return &.{};
-    }
-    pub fn getGridTemplateColumns(_: DefaultsOnlyStyle) ?[]const GridTemplateComponent {
-        return &.{};
-    }
-    pub fn getGridAutoRows(_: DefaultsOnlyStyle) []const TrackSizingFunction {
-        return &.{};
-    }
-    pub fn getGridAutoColumns(_: DefaultsOnlyStyle) []const TrackSizingFunction {
-        return &.{};
-    }
-    pub fn getGridTemplateAreas(self: DefaultsOnlyStyle) ?[]const GridTemplateArea {
-        return self.areas;
-    }
-    pub fn getGridTemplateColumnNames(_: DefaultsOnlyStyle) ?[]const []const []const u8 {
-        return &.{};
-    }
-    pub fn getGridTemplateRowNames(_: DefaultsOnlyStyle) ?[]const []const []const u8 {
-        return &.{};
-    }
-    pub const getGridTemplateAreaRowCount = GC.getGridTemplateAreaRowCount;
-    pub const getGridTemplateAreaColumnCount = GC.getGridTemplateAreaColumnCount;
-    pub const getGridAutoFlow = GC.getGridAutoFlow;
-    pub const getJustifyItems = GC.getJustifyItems;
-    pub const getGridTemplateTracks = GC.getGridTemplateTracks;
-    pub const getGridAlignContent = GC.getGridAlignContent;
-
-    pub const getTextAlign = BC.getTextAlign;
-
-    comptime {
-        // The remaining defaults are equivalent to the ones adopted above; reference them so
-        // that they are type-checked.
-        _ = GC.getGap;
-        _ = GC.getAlignContent;
-        _ = GC.getJustifyContent;
-        _ = GC.getAlignItems;
-        _ = GI.getGridRow;
-        _ = GI.getGridColumn;
-        _ = GI.getAlignSelf;
-        _ = GI.getJustifySelf;
-        _ = FI.getAlignSelf;
-        _ = BC.getAlignContent;
-        _ = BC.getJustifyItems;
-        _ = BI.isTable;
-        _ = BI.getAlignSelf;
-        _ = BI.getJustifySelf;
-        _ = BI.getAlignContent;
-    }
-};
-
-test "default accessor implementations match Style defaults" {
-    const s: DefaultsOnlyStyle = .{};
-    try expectDefaultAccessors(s);
-    try expectDefaultAccessors(&s);
-    // The remaining defaults, called directly
-    try testing.expectEqual(Size(LengthPercentage).zero, GridContainerStyleDefaults.getGap(s));
-    try testing.expect(GridContainerStyleDefaults.getAlignContent(s) == AlignContent.normal);
-    try testing.expect(GridContainerStyleDefaults.getJustifyContent(s) == JustifyContent.normal);
-    try testing.expect(GridContainerStyleDefaults.getAlignItems(s) == AlignItems.normal);
-    try testing.expectEqual(Line(GridPlacement).auto, GridItemStyleDefaults.getGridRow(s));
-    try testing.expectEqual(Line(GridPlacement).auto, GridItemStyleDefaults.getGridColumn(s));
-    try testing.expectEqual(@as(?AlignSelf, null), GridItemStyleDefaults.getAlignSelf(s));
-    try testing.expectEqual(@as(?AlignSelf, null), GridItemStyleDefaults.getJustifySelf(s));
-    try testing.expectEqual(@as(?AlignSelf, null), FlexboxItemStyleDefaults.getAlignSelf(s));
-    try testing.expect(BlockContainerStyleDefaults.getAlignContent(s) == AlignContent.normal);
-    try testing.expect(BlockContainerStyleDefaults.getJustifyItems(s) == AlignItems.normal);
-    try testing.expect(!BlockItemStyleDefaults.isTable(s));
-    try testing.expectEqual(@as(?AlignSelf, null), BlockItemStyleDefaults.getAlignSelf(s));
-    try testing.expectEqual(@as(?AlignSelf, null), BlockItemStyleDefaults.getJustifySelf(s));
-    try testing.expect(BlockItemStyleDefaults.getAlignContent(s) == AlignContent.normal);
-
-    // Computed default for the area template size
-    const areas = [_]GridTemplateArea{
-        .{ .name = "a", .row_start = 1, .row_end = 3, .column_start = 1, .column_end = 2 },
-        .{ .name = "b", .row_start = 3, .row_end = 4, .column_start = 2, .column_end = 5 },
-        .{ .name = "c", .row_start = 0, .row_end = 0, .column_start = 0, .column_end = 0 },
-    };
-    const with_areas: DefaultsOnlyStyle = .{ .areas = &areas };
-    try testing.expectEqual(@as(u16, 3), with_areas.getGridTemplateAreaRowCount());
-    try testing.expectEqual(@as(u16, 4), with_areas.getGridTemplateAreaColumnCount());
-}
-
-test "Style accessors read fields" {
+test "Style helpers read fields" {
     const rows = [_]GridTemplateComponent{GridTemplateComponent.auto};
     const cols = [_]GridTemplateComponent{ GridTemplateComponent.auto, GridTemplateComponent.zero };
     const areas = [_]GridTemplateArea{.{ .name = "a", .row_start = 1, .row_end = 2, .column_start = 1, .column_end = 2 }};
@@ -1382,16 +775,16 @@ test "Style accessors read fields" {
     };
     try testing.expect(s.isBlock());
     try testing.expect(s.isCompressibleReplaced());
-    try testing.expect(!s.isReplaced());
+    try testing.expect(!s.item_is_replaced);
     try testing.expectEqual(ContainingBlockClaims{ .absolute = true, .fixed = false }, s.isContainingBlock());
-    try testing.expectEqual(@as(usize, 2), s.getGridTemplateTracks(.horizontal).?.len);
-    try testing.expectEqual(@as(usize, 1), s.getGridTemplateTracks(.vertical).?.len);
-    try testing.expectEqual(@as(u16, 5), s.getGridTemplateAreaRowCount());
-    try testing.expectEqual(@as(u16, 6), s.getGridTemplateAreaColumnCount());
-    try testing.expectEqual(@as(usize, 1), s.getGridTemplateAreas().?.len);
-    try testing.expect(s.getGridPlacement(.vertical).start.eql(.{ .line = .{ .inner = 2 } }));
-    try testing.expect(s.getGridAlignContent(.@"inline") == AlignContent.center);
-    try testing.expect(s.getGridAlignContent(.block) == AlignContent.end);
+    try testing.expectEqual(@as(usize, 2), s.gridTemplateTracks(.horizontal).len);
+    try testing.expectEqual(@as(usize, 1), s.gridTemplateTracks(.vertical).len);
+    try testing.expectEqual(@as(u16, 5), s.gridTemplateAreaRowCount());
+    try testing.expectEqual(@as(u16, 6), s.gridTemplateAreaColumnCount());
+    try testing.expectEqual(@as(usize, 1), s.gridTemplateAreas().?.len);
+    try testing.expect(s.gridPlacement(.vertical).start.eql(.{ .line = .{ .inner = 2 } }));
+    try testing.expect(s.gridAlignContent(.@"inline") == AlignContent.center);
+    try testing.expect(s.gridAlignContent(.block) == AlignContent.end);
     const hidden: Style = .{ .display = .none };
-    try testing.expectEqual(BoxGenerationMode.none, hidden.getBoxGenerationMode());
+    try testing.expectEqual(BoxGenerationMode.none, hidden.boxGenerationMode());
 }

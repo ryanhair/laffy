@@ -44,17 +44,13 @@ fn trackDefiniteValue(sizing_function: TrackSizingFunction, parent_size: ?f32, c
 ///
 /// `calc_resolver` is any value with a `resolveCalcValue(ptr, basis) f32` method (usually the tree).
 pub fn computeExplicitGridSizeInAxis(
-    style: anytype,
+    style: *const Style,
     auto_fit_container_size: ?f32,
     auto_fit_strategy: AutoRepeatStrategy,
     calc_resolver: anytype,
     axis: AbsoluteAxis,
 ) ExplicitGridSize {
-    const maybe_template: ?[]const GridTemplateComponent = switch (axis) {
-        .horizontal => style.getGridTemplateColumns(),
-        .vertical => style.getGridTemplateRows(),
-    };
-    const template = maybe_template orelse return .{ 0, 0 };
+    const template = style.gridTemplateTracks(axis);
 
     // If template contains no tracks, then there are trivially zero explicit tracks
     const track_count = template.len;
@@ -149,7 +145,7 @@ pub fn computeExplicitGridSizeInAxis(
                 },
             };
         }
-        const gap_size = resolveOrZero(style.getGap().getAbs(axis), @as(?f32, inner_container_size), calc_resolver);
+        const gap_size = resolveOrZero(style.gap.getAbs(axis), @as(?f32, inner_container_size), calc_resolver);
 
         // Compute the amount of space that a single repetition of the repeated track list takes
         var per_repetition_track_used_space: f32 = -0.0;
@@ -220,15 +216,15 @@ pub fn initializeGridTracks(
     gpa: Allocator,
     tracks: *std.ArrayList(GridTrack),
     counts: TrackCounts,
-    style: anytype,
+    style: *const Style,
     axis: AbsoluteAxis,
     auto_repetition_count: u16,
     track_has_items: anytype,
 ) LayoutError!void {
     // Extract styles
-    const track_template: ?[]const GridTemplateComponent, const auto_tracks: []const TrackSizingFunction, const gap: LengthPercentage = switch (axis) {
-        .horizontal => .{ style.getGridTemplateColumns(), style.getGridAutoColumns(), style.getGap().width },
-        .vertical => .{ style.getGridTemplateRows(), style.getGridAutoRows(), style.getGap().height },
+    const track_template: []const GridTemplateComponent, const auto_tracks: []const TrackSizingFunction, const gap: LengthPercentage = switch (axis) {
+        .horizontal => .{ style.grid_template_columns, style.grid_auto_columns, style.gap.width },
+        .vertical => .{ style.grid_template_rows, style.grid_auto_rows, style.gap.height },
     };
 
     // Clear vector (in case this is a re-layout), reserve space for all tracks ahead of time to reduce allocations,
@@ -259,8 +255,8 @@ pub fn initializeGridTracks(
     // An explicit check against the count (rather than just relying on track_template being empty) is required here
     // because a count of zero can result from the track_template being invalid, in which case it should be ignored.
     if (counts.explicit > 0) {
-        if (track_template) |template| {
-            for (template) |track_sizing_function| {
+        {
+            for (track_template) |track_sizing_function| {
                 switch (track_sizing_function) {
                     .single => |sizing_function| {
                         if (current_track_index < explicit_track_limit) {

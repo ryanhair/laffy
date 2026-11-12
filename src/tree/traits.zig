@@ -17,10 +17,8 @@
 //!     error set of every function in the layout call graph.
 //!   - A method marked "default" has an upstream default implementation, available in the named
 //!     `*Defaults` namespace. A method marked "required" has none.
-//!   - Style return types (`CoreStyle`, `OofItemStyle`, ...) are any value implementing the
-//!     corresponding style interface documented at the top of `src/style.zig`; `*const Style` is
-//!     the usual choice. Upstream's associated types (`CoreContainerStyle<'a>`, `CustomIdent`,
-//!     `ChildIter<'a>`) become whatever the method returns.
+//!   - Styles are returned as `*const Style`. A tree whose nodes store something else keeps a
+//!     `Style` per node, or builds one on demand in memory that outlives the call.
 //!
 //! ## Trait dependency tree
 //!
@@ -75,7 +73,7 @@
 //!     required (laffy addition). Replace the node's stored candidates with a copy of
 //!     `candidates`. Called for every node whose final layout is computed, so a tree that keeps
 //!     one list per node always holds the candidates that belong to the node's current layout.
-//!   - `getCoreContainerStyle(self, node_id: NodeId) CoreStyle`: required. Only called for the node
+//!   - `getCoreContainerStyle(self, node_id: NodeId) *const Style`: required. Only called for the node
 //!     being laid out, never for its children (those go through the `get*ChildStyle` methods), so
 //!     it may be expressed in the node's own axes while child styles are expressed in the axes of
 //!     the node laying them out.
@@ -94,7 +92,7 @@
 //! the absolute/fixed boxes for which a node acts as the containing block. Required by
 //! `computeOofLayout` and `computeRootLayout`.
 //!
-//!   - `getOofItemStyle(self, node_id: NodeId) OofItemStyle`: required. The style of an
+//!   - `getOofItemStyle(self, node_id: NodeId) *const Style`: required. The style of an
 //!     out-of-flow box being positioned by its containing block, interpreted in the containing
 //!     block's axes.
 //!   - `clearHoistedChildren(self, node_id: NodeId) void`: required. Clear the list of
@@ -159,14 +157,14 @@
 //!
 //! ## LayoutFlexboxContainer (requires LayoutPartialTree)
 //!
-//!   - `getFlexboxContainerStyle(self, node_id: NodeId) FlexboxContainerStyle`: required.
-//!   - `getFlexboxChildStyle(self, child_node_id: NodeId) FlexboxItemStyle`: required.
+//!   - `getFlexboxContainerStyle(self, node_id: NodeId) *const Style`: required.
+//!   - `getFlexboxChildStyle(self, child_node_id: NodeId) *const Style`: required.
 //!     Interpreted in the container's axes.
 //!
 //! ## LayoutGridContainer (requires LayoutPartialTree)
 //!
-//!   - `getGridContainerStyle(self, node_id: NodeId) GridContainerStyle`: required.
-//!   - `getGridChildStyle(self, child_node_id: NodeId) GridItemStyle`: required. Interpreted in
+//!   - `getGridContainerStyle(self, node_id: NodeId) *const Style`: required.
+//!   - `getGridChildStyle(self, child_node_id: NodeId) *const Style`: required. Interpreted in
 //!     the container's axes.
 //!   - `detailedGridInfo(self, node_id: NodeId) LayoutError!?*DetailedGridInfo`: default
 //!     (`LayoutGridContainerDefaults.detailedGridInfo`, returns `null`). The storage that the
@@ -179,8 +177,8 @@
 //!
 //! ## LayoutBlockContainer (requires LayoutPartialTree)
 //!
-//!   - `getBlockContainerStyle(self, node_id: NodeId) BlockContainerStyle`: required.
-//!   - `getBlockChildStyle(self, child_node_id: NodeId) BlockItemStyle`: required. Interpreted
+//!   - `getBlockContainerStyle(self, node_id: NodeId) *const Style`: required.
+//!   - `getBlockChildStyle(self, child_node_id: NodeId) *const Style`: required. Interpreted
 //!     in the container's axes.
 //!   - `computeBlockChildLayout(self, node_id: NodeId, inputs: LayoutInput, block_ctx: ?*BlockContext) LayoutError!LayoutOutput`:
 //!     default (`LayoutBlockContainerDefaults.computeBlockChildLayout`, ignores `block_ctx` and

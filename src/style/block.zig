@@ -1,7 +1,5 @@
 //! Style types for Block layout
 //!
-//! The `BlockContainerStyle` and `BlockItemStyle` accessor interfaces are documented in
-//! `src/style.zig` together with the other style accessor interfaces.
 
 /// Used by block layout to implement the legacy behaviour of `<center>` and `<div align="left | right | center">`
 pub const TextAlign = enum(u8) {

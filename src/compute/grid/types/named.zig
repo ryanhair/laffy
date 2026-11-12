@@ -10,6 +10,7 @@
 //! `style/grid.zig`), including the area names derived from `<name>-start`/`<name>-end` line names
 //! (which are sub-slices of the line names). The maps own only their storage.
 const std = @import("std");
+const GridTemplateComponent = @import("../../../style.zig").GridTemplateComponent;
 const Allocator = std.mem.Allocator;
 const geometry = @import("../../../geometry.zig");
 const AbsoluteAxis = geometry.AbsoluteAxis;
@@ -348,7 +349,7 @@ pub const NamedLineResolver = struct {
     /// Create and initialise a new `NamedLineResolver`
     pub fn new(
         gpa: Allocator,
-        style: anytype,
+        style: *const Style,
         column_auto_repetitions: u16,
         row_auto_repetitions: u16,
     ) LayoutError!NamedLineResolver {
@@ -358,9 +359,9 @@ pub const NamedLineResolver = struct {
         // The size of the area template may be larger than the extents of the named areas
         // due to unnamed (`.`) cells, so it is taken from the style rather than being derived
         // from the areas themselves.
-        self.area_column_count = style.getGridTemplateAreaColumnCount();
-        self.area_row_count = style.getGridTemplateAreaRowCount();
-        if (style.getGridTemplateAreas()) |area_list| {
+        self.area_column_count = style.gridTemplateAreaColumnCount();
+        self.area_row_count = style.gridTemplateAreaRowCount();
+        if (style.gridTemplateAreas()) |area_list| {
             for (area_list) |area| {
                 const lines: AreaLines = .{
                     .row_start = area.row_start,
@@ -372,8 +373,8 @@ pub const NamedLineResolver = struct {
             }
         }
 
-        try collectAxisLineNames(gpa, &self.column_lines, &self.areas, &self.column_line_name_pairs, .column, style.getGridTemplateColumns(), style.getGridTemplateColumnNames(), column_auto_repetitions);
-        try collectAxisLineNames(gpa, &self.row_lines, &self.areas, &self.row_line_name_pairs, .row, style.getGridTemplateRows(), style.getGridTemplateRowNames(), row_auto_repetitions);
+        try collectAxisLineNames(gpa, &self.column_lines, &self.areas, &self.column_line_name_pairs, .column, style.grid_template_columns, style.grid_template_column_names, column_auto_repetitions);
+        try collectAxisLineNames(gpa, &self.row_lines, &self.areas, &self.row_line_name_pairs, .row, style.grid_template_rows, style.grid_template_row_names, row_auto_repetitions);
 
         // Sort and dedup lines for each column name
         sortAndDedupLines(&self.column_lines);
@@ -390,13 +391,11 @@ pub const NamedLineResolver = struct {
         areas: *GridAreasMap,
         pairs: *std.ArrayList(LineNamePair),
         axis: GridAreaAxis,
-        maybe_tracks: anytype,
-        maybe_line_names: ?[]const []const []const u8,
+        tracks: []const GridTemplateComponent,
+        line_names_list: []const []const []const u8,
         auto_repetitions: u16,
     ) LayoutError!void {
         var current_line: u32 = 0;
-        const tracks = maybe_tracks orelse return;
-        const line_names_list = maybe_line_names orelse return;
         var track_index: usize = 0;
         for (line_names_list) |line_names| {
             current_line += 1;

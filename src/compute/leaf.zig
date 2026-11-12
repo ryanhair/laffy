@@ -27,7 +27,7 @@ const finalizeScrollableOverflow = @import("common/scrollable_overflow.zig").fin
 /// A definite `inputs.available_space` is treated as the space available to the node's border box:
 /// the caller is expected to have already subtracted the node's margins from it.
 ///
-/// - `style` implements the `CoreStyle` interface (see `src/style.zig`), e.g. `*const Style`.
+/// - `style` is the node's style.
 /// - `calc` is the `calc()` resolver: any value with a `resolveCalcValue(ptr: *const anyopaque, basis: f32) f32`
 ///   method (`NoCalc{}` when `calc()` is not supported, or the tree).
 /// - `measure_function` is called at most once, as
@@ -36,7 +36,7 @@ const finalizeScrollableOverflow = @import("common/scrollable_overflow.zig").fin
 ///   size of the node's content box and cannot fail.
 pub fn computeLeafLayout(
     inputs: LayoutInput,
-    style: anytype,
+    style: *const Style,
     calc: anytype,
     measure_function: anytype,
 ) LayoutOutput {
@@ -48,11 +48,11 @@ pub fn computeLeafLayout(
 
     // Note: both horizontal and vertical percentage padding/borders are resolved against the container's inline size (i.e. width).
     // This is not a bug, but is how CSS is specified (see: https://developer.mozilla.org/en-US/docs/Web/CSS/padding#values)
-    const padding = resolveOrZero(style.getPadding(), parent_size.width, calc);
-    const border = resolveOrZero(style.getBorder(), parent_size.width, calc);
+    const padding = resolveOrZero(style.padding, parent_size.width, calc);
+    const border = resolveOrZero(style.border, parent_size.width, calc);
     const padding_border = padding.add(border);
     const pb_sum = padding_border.sumAxes();
-    const box_sizing_adjustment = if (style.getBoxSizing() == .content_box) pb_sum else Size(f32).zero;
+    const box_sizing_adjustment = if (style.box_sizing == .content_box) pb_sum else Size(f32).zero;
 
     // Resolve node's preferred/min/max sizes (width/heights) against the available space (percentages resolve to pixel values)
     // For content_size mode, we pretend that the node has no size styles as these should be ignored.
@@ -68,10 +68,10 @@ pub fn computeLeafLayout(
             aspect_ratio = null;
         },
         .inherent_size => {
-            aspect_ratio = style.getAspectRatio();
-            const style_size = maybeAdd(maybeResolve(style.getSize(), parent_size, calc).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
-            const style_min_size = maybeAdd(maybeResolve(style.getMinSize(), parent_size, calc).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
-            const style_max_size = maybeAdd(maybeResolve(style.getMaxSize(), parent_size, calc), box_sizing_adjustment);
+            aspect_ratio = style.aspect_ratio;
+            const style_size = maybeAdd(maybeResolve(style.size, parent_size, calc).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
+            const style_min_size = maybeAdd(maybeResolve(style.min_size, parent_size, calc).maybeApplyAspectRatio(aspect_ratio), box_sizing_adjustment);
+            const style_max_size = maybeAdd(maybeResolve(style.max_size, parent_size, calc), box_sizing_adjustment);
 
             node_size = known_dimensions.@"or"(style_size);
             node_min_size = style_min_size;
@@ -82,10 +82,10 @@ pub fn computeLeafLayout(
     // Scrollbar gutters are reserved when the `overflow` property is set to `Overflow.scroll`.
     // However, the axis are switched (transposed) because a node that scrolls vertically needs
     // *horizontal* space to be reserved for a scrollbar
-    const overflow = style.getOverflow();
+    const overflow = style.overflow;
     const scrollbar_gutter: Point(f32) = .{
-        .x = if (overflow.y == .scroll) style.getScrollbarWidth() else 0.0,
-        .y = if (overflow.x == .scroll) style.getScrollbarWidth() else 0.0,
+        .x = if (overflow.y == .scroll) style.scrollbar_width else 0.0,
+        .y = if (overflow.x == .scroll) style.scrollbar_width else 0.0,
     };
     // TODO: make side configurable based on the `direction` property
     var content_box_inset = padding_border;
@@ -95,8 +95,8 @@ pub fn computeLeafLayout(
     const has_styles_preventing_being_collapsed_through = !style.isBlock() or
         overflow.x.isScrollContainer() or
         overflow.y.isScrollContainer() or
-        style.getPosition().isOutOfFlow() or
-        style.getContain().establishesIndependentFormattingContext() or
+        style.position.isOutOfFlow() or
+        style.contain.establishesIndependentFormattingContext() or
         padding.top > 0.0 or
         padding.bottom > 0.0 or
         border.top > 0.0 or
@@ -172,7 +172,7 @@ pub fn computeLeafLayout(
     // containers do not extend their overflow region by their own padding.
     const scrollable_overflow_rect = blk: {
         const is_scroll_container = overflow.x.isScrollContainer() or overflow.y.isScrollContainer();
-        const is_rtl = style.getDirection().isRtl();
+        const is_rtl = style.direction.isRtl();
         const start_padding = if (is_rtl) padding.right else padding.left;
         const end_padding = if (is_rtl) padding.left else padding.right;
         const client_width = @max(size.width - border.horizontalAxisSum() - scrollbar_gutter.x, 0.0);

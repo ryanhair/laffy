@@ -1,7 +1,4 @@
 //! Style types for Flexbox layout
-//!
-//! The `FlexboxContainerStyle` and `FlexboxItemStyle` accessor interfaces are documented in
-//! `src/style.zig` together with the other style accessor interfaces.
 const std = @import("std");
 const AbsoluteAxis = @import("../geometry.zig").AbsoluteAxis;
 
