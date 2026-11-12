@@ -15,6 +15,8 @@ parameters and time them the same way:
 zig build bench                       # all workloads
 zig build bench -- flex               # only workloads whose name contains "flex"
 zig build bench -- --verify           # print root size and a layout checksum per workload
+zig build bench -- flex-deep --profile-relayout=5000   # relayout time with and without rounding,
+                                      # then 5 s of relayouts for a sampling profiler to attach to
 
 cd benches/taffy-compare
 cargo run --release                   # same table, taffy

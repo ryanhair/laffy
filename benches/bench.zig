@@ -1,4 +1,4 @@
-//! laffy benchmark suite: `zig build bench -- [filter] [--verify]`.
+//! laffy benchmark suite: `zig build bench -- [filter] [--verify] [--profile-relayout=<ms>]`.
 //!
 //! Every workload is built deterministically (splitmix64 with fixed seeds, no clocks) and is mirrored
 //! exactly by `benches/taffy-compare/src/main.rs`; keep the two files in step. See `benches/README.md`.
@@ -467,6 +467,42 @@ fn timeRelayout(gpa: Allocator, io: std.Io, wl: Workload) !u64 {
     return median(&samples);
 }
 
+/// Relayout timing for profiling: the median relayout time with and without rounding, followed
+/// by `spin_ms` milliseconds of back-to-back relayouts for a sampling profiler to attach to.
+fn profileRelayout(out: *std.Io.Writer, gpa: Allocator, io: std.Io, wl: Workload, spin_ms: u64) !void {
+    var b = try Builder.init(gpa);
+    defer b.deinit();
+    try wl.build(&b);
+    try b.layout();
+    const target = b.leaves.items[b.leaves.items.len / 2];
+    var medians: [2]u64 = undefined;
+    for (&medians, [_]bool{ true, false }) |*result, rounding| {
+        b.tree.config.use_rounding = rounding;
+        var samples: [relayout_runs]u64 = undefined;
+        var run: usize = 0;
+        while (run < relayout_warmup + relayout_runs) : (run += 1) {
+            b.tree.markDirty(target);
+            const t0 = nowNs(io);
+            try b.layout();
+            const t1 = nowNs(io);
+            if (run >= relayout_warmup) samples[run - relayout_warmup] = @intCast(t1 - t0);
+        }
+        result.* = median(&samples);
+    }
+    b.tree.config.use_rounding = true;
+    try out.print("{s:<22} relayout {d:>9.1} us, without rounding {d:>9.1} us\n", .{
+        wl.name,
+        @as(f64, @floatFromInt(medians[0])) / 1000.0,
+        @as(f64, @floatFromInt(medians[1])) / 1000.0,
+    });
+    try out.flush();
+    const start = nowNs(io);
+    while (nowNs(io) - start < spin_ms * std.time.ns_per_ms) {
+        b.tree.markDirty(target);
+        try b.layout();
+    }
+}
+
 const AllocStats = struct { total: u64, peak: u64, count: u64 };
 
 fn measureAlloc(gpa: Allocator, wl: Workload) !AllocStats {
@@ -508,13 +544,20 @@ pub fn main(init: std.process.Init) !void {
 
     var filter: ?[]const u8 = null;
     var do_verify = false;
+    var profile_spin_ms: ?u64 = null;
     const args = try init.minimal.args.toSlice(arena);
     for (args[1..]) |arg| {
         const a: []const u8 = arg;
-        if (std.mem.eql(u8, a, "--verify")) do_verify = true else filter = a;
+        if (std.mem.eql(u8, a, "--verify")) {
+            do_verify = true;
+        } else if (std.mem.startsWith(u8, a, "--profile-relayout=")) {
+            profile_spin_ms = try std.fmt.parseInt(u64, a["--profile-relayout=".len..], 10);
+        } else {
+            filter = a;
+        }
     }
 
-    if (!do_verify) {
+    if (!do_verify and profile_spin_ms == null) {
         try out.print("{s:<22} {s:>7} {s:>12} {s:>12} {s:>11} {s:>11} {s:>9}\n", .{ "workload", "nodes", "full (us)", "relayout(us)", "alloc KiB", "peak KiB", "allocs" });
     }
     for (workloads) |wl| {
@@ -522,6 +565,10 @@ pub fn main(init: std.process.Init) !void {
         if (do_verify) {
             try verify(out, gpa, wl);
             try out.flush();
+            continue;
+        }
+        if (profile_spin_ms) |spin_ms| {
+            try profileRelayout(out, gpa, io, wl, spin_ms);
             continue;
         }
         var nodes: usize = 0;
