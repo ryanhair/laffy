@@ -71,4 +71,28 @@ pub fn build(b: *std.Build) void {
 
     const conformance_step = b.step("conformance", "Run fixture groups: [group ...] [--filter substring] [--verbose]");
     conformance_step.dependOn(&run_conformance.step);
+
+    // Benchmarks: `zig build bench -- [filter] [--verify]`. Always ReleaseFast, linked against libc
+    // so that the allocator is malloc (as in the Rust comparison program).
+    const bench_mod = b.createModule(.{
+        .root_source_file = b.path("src/root.zig"),
+        .target = target,
+        .optimize = .ReleaseFast,
+    });
+    const bench_exe = b.addExecutable(.{
+        .name = "bench",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("benches/bench.zig"),
+            .target = target,
+            .optimize = .ReleaseFast,
+            .link_libc = true,
+            .imports = &.{.{ .name = "laffy", .module = bench_mod }},
+        }),
+    });
+    const run_bench = b.addRunArtifact(bench_exe);
+    run_bench.has_side_effects = true;
+    run_bench.addPassthruArgs();
+
+    const bench_step = b.step("bench", "Run benchmarks: [filter] [--verify]");
+    bench_step.dependOn(&run_bench.step);
 }

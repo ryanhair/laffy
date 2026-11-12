@@ -1,0 +1,17 @@
+[package]
+name = "taffy-compare"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Not part of the Zig build. Pinned to the upstream commit that laffy tracks (tests/fixtures/UPSTREAM).
+[dependencies]
+taffy = { git = "https://github.com/DioxusLabs/taffy", rev = "d0345bac609a10b25278ecc0850e862be9504e74" }
+
+# Keep this crate out of any enclosing Cargo workspace.
+[workspace]
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
