@@ -14,6 +14,8 @@ pub const style_helpers = @import("style_helpers.zig");
 pub const util = @import("util.zig");
 pub const tree = @import("tree.zig");
 pub const compute = @import("compute.zig");
+/// The C ABI (`include/laffy.h`); see `docs/c-api.md`
+pub const c_api = @import("c_api.zig");
 
 // geometry (upstream `pub use crate::geometry::*`)
 pub const AbsoluteAxis = geometry.AbsoluteAxis;
@@ -182,5 +184,6 @@ test {
     _ = util;
     _ = tree;
     _ = compute;
+    _ = c_api;
     _ = @import("compute/grid/types/coordinates.zig");
 }

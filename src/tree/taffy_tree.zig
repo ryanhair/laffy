@@ -465,6 +465,12 @@ pub fn TaffyTree(comptime NodeContext: type) type {
             return self.nodes.count();
         }
 
+        /// Whether `node` is in this tree (false for ids of removed nodes and ids from other trees).
+        /// Never panics, so it can validate ids before calling the methods that panic on them.
+        pub fn containsNode(self: *const Self, node: NodeId) bool {
+            return self.nodes.contains(node.inner);
+        }
+
         /// Returns the `NodeId` of the parent node of the specified node (if it exists)
         ///
         /// - Return null if the specified node has no parent
