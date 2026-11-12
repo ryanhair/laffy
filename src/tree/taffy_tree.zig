@@ -773,11 +773,15 @@ pub fn TaffyTree(comptime NodeContext: type) type {
                 }
 
                 pub fn clearHoistedChildren(self: *ViewSelf, node_id: NodeId) void {
-                    self.taffy.nodeData(node_id).hoisted_children.clearRetainingCapacity();
+                    // Called for every container on every layout; most have no hoisted children
+                    const node = self.taffy.nodeData(node_id);
+                    if (node.hoisted_children.items.len == 0) return;
+                    node.hoisted_children.clearRetainingCapacity();
                     self.taffy.stampLayoutChange(node_id);
                 }
 
                 pub fn addHoistedChildren(self: *ViewSelf, node_id: NodeId, hoisted: []const NodeId) LayoutError!void {
+                    if (hoisted.len == 0) return;
                     try self.taffy.nodeData(node_id).hoisted_children.appendSlice(self.taffy.gpa, hoisted);
                     self.taffy.stampLayoutChange(node_id);
                 }

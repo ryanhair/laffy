@@ -1,4 +1,4 @@
-//! laffy benchmark suite: `zig build bench -- [filter] [--verify] [--profile-relayout=<ms>]`.
+//! laffy benchmark suite: `zig build bench -- [filter] [--verify] [--profile-relayout=<ms>] [--profile-full=<ms>]`.
 //!
 //! Every workload is built deterministically (splitmix64 with fixed seeds, no clocks) and is mirrored
 //! exactly by `benches/taffy-compare/src/main.rs`; keep the two files in step. See `benches/README.md`.
@@ -503,6 +503,27 @@ fn profileRelayout(out: *std.Io.Writer, gpa: Allocator, io: std.Io, wl: Workload
     }
 }
 
+/// Full layout for profiling: every leaf is marked dirty (which clears every cache in the tree)
+/// and the tree is laid out again, repeatedly, for `spin_ms` milliseconds.
+fn profileFull(out: *std.Io.Writer, gpa: Allocator, io: std.Io, wl: Workload, spin_ms: u64) !void {
+    var b = try Builder.init(gpa);
+    defer b.deinit();
+    try wl.build(&b);
+    try b.layout();
+    var passes: u64 = 0;
+    const start = nowNs(io);
+    while (nowNs(io) - start < spin_ms * std.time.ns_per_ms) : (passes += 1) {
+        for (b.leaves.items) |leaf| b.tree.markDirty(leaf);
+        try b.layout();
+    }
+    const elapsed = nowNs(io) - start;
+    try out.print("{s:<22} full layout of a built tree {d:>9.1} us\n", .{
+        wl.name,
+        @as(f64, @floatFromInt(elapsed)) / @as(f64, @floatFromInt(@max(passes, 1))) / 1000.0,
+    });
+    try out.flush();
+}
+
 const AllocStats = struct { total: u64, peak: u64, count: u64 };
 
 fn measureAlloc(gpa: Allocator, wl: Workload) !AllocStats {
@@ -545,6 +566,7 @@ pub fn main(init: std.process.Init) !void {
     var filter: ?[]const u8 = null;
     var do_verify = false;
     var profile_spin_ms: ?u64 = null;
+    var profile_full_ms: ?u64 = null;
     const args = try init.minimal.args.toSlice(arena);
     for (args[1..]) |arg| {
         const a: []const u8 = arg;
@@ -552,12 +574,14 @@ pub fn main(init: std.process.Init) !void {
             do_verify = true;
         } else if (std.mem.startsWith(u8, a, "--profile-relayout=")) {
             profile_spin_ms = try std.fmt.parseInt(u64, a["--profile-relayout=".len..], 10);
+        } else if (std.mem.startsWith(u8, a, "--profile-full=")) {
+            profile_full_ms = try std.fmt.parseInt(u64, a["--profile-full=".len..], 10);
         } else {
             filter = a;
         }
     }
 
-    if (!do_verify and profile_spin_ms == null) {
+    if (!do_verify and profile_spin_ms == null and profile_full_ms == null) {
         try out.print("{s:<22} {s:>7} {s:>12} {s:>12} {s:>11} {s:>11} {s:>9}\n", .{ "workload", "nodes", "full (us)", "relayout(us)", "alloc KiB", "peak KiB", "allocs" });
     }
     for (workloads) |wl| {
@@ -569,6 +593,10 @@ pub fn main(init: std.process.Init) !void {
         }
         if (profile_spin_ms) |spin_ms| {
             try profileRelayout(out, gpa, io, wl, spin_ms);
+            continue;
+        }
+        if (profile_full_ms) |spin_ms| {
+            try profileFull(out, gpa, io, wl, spin_ms);
             continue;
         }
         var nodes: usize = 0;
