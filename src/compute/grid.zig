@@ -46,6 +46,7 @@ const resolve = @import("../util/resolve.zig");
 const maybeResolve = resolve.maybeResolve;
 const resolveOrZero = resolve.resolveOrZero;
 const sys = @import("../util/sys.zig");
+const Scratch = @import("../util/scratch.zig");
 const scrollable_overflow = @import("common/scrollable_overflow.zig");
 const finalizeScrollableOverflow = scrollable_overflow.finalizeScrollableOverflow;
 const ScrollableOverflowContainer = scrollable_overflow.ScrollableOverflowContainer;
@@ -236,9 +237,9 @@ fn computeContainerConstants(tree: anytype, style: anytype, inputs: LayoutInput)
 }
 
 /// Free the grid items (and any out-of-flow candidates they still own)
-fn freeItems(gpa: Allocator, items: *std.ArrayList(GridItem)) void {
+fn freeItems(gpa: Allocator, scratch: Allocator, items: *std.ArrayList(GridItem)) void {
     for (items.items) |*item| item.oof_candidates.deinit(gpa);
-    items.deinit(gpa);
+    items.deinit(scratch);
 }
 
 /// The sum of the base sizes of `tracks`
@@ -273,6 +274,9 @@ const TrackIsOccupied = struct {
 pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) LayoutError!LayoutOutput {
     traits.assertImplements(@TypeOf(tree), &.{.layout_grid_container});
     const gpa = tree.allocator();
+    const frame = Scratch.Frame.begin(tree);
+    defer frame.end();
+    const scratch = frame.allocator();
     const known_dimensions = inputs.known_dimensions;
     const run_mode = inputs.run_mode;
 
@@ -378,11 +382,11 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
     // results drive both the grid size estimate and item placement below.
     const child_count = tree.childCount(node);
     var items: std.ArrayList(GridItem) = .empty;
-    defer freeItems(gpa, &items);
-    try items.ensureTotalCapacity(gpa, child_count);
+    defer freeItems(gpa, scratch, &items);
+    try items.ensureTotalCapacity(scratch, child_count);
     var placements: std.ArrayList(ItemPlacement) = .empty;
-    defer placements.deinit(gpa);
-    try placements.ensureTotalCapacity(gpa, child_count);
+    defer placements.deinit(scratch);
+    try placements.ensureTotalCapacity(scratch, child_count);
     {
         var child_iter = tree.childIds(node);
         var index: usize = 0;
@@ -412,11 +416,11 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
 
     // 5. Grid Item Placement
     // Match items (children) to a definite grid position (row start/end and column start/end position)
-    var cell_occupancy_matrix = try CellOccupancyMatrix.withTrackCounts(gpa, est_col_counts, est_row_counts);
-    defer cell_occupancy_matrix.deinit(gpa);
+    var cell_occupancy_matrix = try CellOccupancyMatrix.withTrackCounts(scratch, est_col_counts, est_row_counts);
+    defer cell_occupancy_matrix.deinit(scratch);
     // `items` is in document order from here on (placement only fills in each item's grid area). The track
     // sizing and baseline passes sort references to the items rather than the items themselves.
-    try placeGridItems(gpa, &cell_occupancy_matrix, items.items, placements.items, style.getGridAutoFlow());
+    try placeGridItems(scratch, &cell_occupancy_matrix, items.items, placements.items, style.getGridAutoFlow());
 
     // Extract track counts from previous step (auto-placement can expand the number of tracks)
     const final_col_counts = cell_occupancy_matrix.trackCounts(.horizontal);
@@ -426,11 +430,11 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
     // Initialize (explicit and implicit) grid tracks (and gutters)
     // This resolves the min and max track sizing functions for all tracks and gutters
     var columns: std.ArrayList(GridTrack) = .empty;
-    defer columns.deinit(gpa);
+    defer columns.deinit(scratch);
     var rows: std.ArrayList(GridTrack) = .empty;
-    defer rows.deinit(gpa);
+    defer rows.deinit(scratch);
     try initializeGridTracks(
-        gpa,
+        scratch,
         &columns,
         final_col_counts,
         style,
@@ -439,7 +443,7 @@ pub fn computeGridLayout(tree: anytype, node: NodeId, inputs: LayoutInput) Layou
         TrackIsOccupied{ .matrix = &cell_occupancy_matrix, .axis = .horizontal },
     );
     try initializeGridTracks(
-        gpa,
+        scratch,
         &rows,
         final_row_counts,
         style,

@@ -62,11 +62,13 @@
 //! extends `TraversePartialTree` (not `TraverseTree`): the algorithms are designed to lay out a
 //! single node that only has access to it's immediate children.
 //!
-//!   - `allocator(self) std.mem.Allocator`: required (laffy addition). The allocator algorithms
-//!     use for temporary lists and for `LayoutOutput.oof_candidates`. Algorithms free everything
-//!     they allocate (with `defer`), so any general-purpose allocator works. Out-of-flow candidate
-//!     lists and cached final layouts are allocated with it and live until they are consumed or
-//!     the cache entry is replaced, so it must not be reset between nested child layouts.
+//!   - `allocator(self) std.mem.Allocator`: required (laffy addition). The allocator for memory
+//!     that outlives a single algorithm invocation: `LayoutOutput.oof_candidates`, cached final
+//!     layouts and detailed grid info. It must be a general-purpose allocator and must not be
+//!     reset between nested child layouts.
+//!   - `scratch(self) *Scratch`: optional (laffy addition). A `util.Scratch` allocator for the
+//!     temporary lists of the algorithms, which release everything they took from it when they
+//!     return. Without it those lists come from `allocator()` and are freed individually.
 //!   - `getCoreContainerStyle(self, node_id: NodeId) CoreStyle`: required. Only called for the node
 //!     being laid out, never for its children (those go through the `get*ChildStyle` methods), so
 //!     it may be expressed in the node's own axes while child styles are expressed in the axes of

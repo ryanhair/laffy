@@ -54,57 +54,53 @@ that both sides built an equivalent tree and computed the same layout.
 ## Machine
 
 Apple M1 Max, 10 cores, 32 GiB, macOS 26.3 (Darwin 25.3.0, arm64). Zig 0.17.1, rustc 1.99.1.
-Date: 2026-11-12. Each program was run twice, alternating; the table shows the mean of the two runs.
+Date: 2026-11-12 (table refreshed the same day after the changes described below). Each program was run twice, alternating; the table shows the mean of the two runs.
 The machine was not isolated from background tasks and no frequency pinning was done.
 
 ## Results
 
 Times are medians in microseconds (mean of two program runs). Ratio is laffy / taffy, so above 1 means laffy is slower.
 
-| workload | nodes | laffy full | taffy full | ratio | laffy relayout | taffy relayout | ratio | alloc KiB, laffy / taffy |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| flex-wide-1000 | 1001 | 504 | 399 | 1.26 | 64 | 48 | 1.34 | 1102 / 544 |
-| flex-wide-10000 | 10001 | 5427 | 4240 | 1.28 | 1119 | 584 | 1.92 | 11180 / 5532 |
-| flex-deep-4000 | 3071 | 1731 | 1318 | 1.31 | 67 | 46 | 1.44 | 4138 / 1743 |
-| flex-deep-10000 | 8191 | 4658 | 3543 | 1.31 | 168 | 113 | 1.49 | 10552 / 4553 |
-| flex-deep-auto-4000 | 3071 | 4428 | 3125 | 1.42 | 82 | 55 | 1.48 | 10927 / 4601 |
-| flex-deep-auto-10000 | 8191 | 11018 | 7928 | 1.39 | 186 | 125 | 1.48 | 28015 / 12089 |
-| flex-chain-100 | 301 | 354 | 257 | 1.38 | 159 | 111 | 1.42 | 825 / 431 |
-| flex-chain-1000 | 3001 | 3754 | 2683 | 1.40 | 1666 | 1162 | 1.43 | 8334 / 4354 |
-| grid-flat-31x31 | 962 | 391 | 280 | 1.39 | 349 | 257 | 1.36 | 568 / 363 |
-| grid-flat-100x100 | 10001 | 4417 | 3666 | 1.20 | 3821 | 2958 | 1.29 | 5736 / 3704 |
-| grid-nested-3x3-d4 | 7381 | 10297 | 7167 | 1.44 | 189 | 143 | 1.32 | 26220 / 13919 |
-| grid-nested-2x2-d7 | 21845 | 37053 | 32291 | 1.15 | 977 | 708 | 1.38 | 99361 / 45922 |
-| block-wide-10000 | 10002 | 2113 | 4350 | 0.49 | 558 | 463 | 1.21 | 5887 / 4975 |
-| block-deep-10000 | 9557 | 5016 | 4279 | 1.17 | 223 | 137 | 1.62 | 6100 / 6997 |
+| workload | nodes | laffy full | taffy full | ratio | laffy relayout | taffy relayout | ratio | alloc KiB, laffy / taffy | allocation calls, laffy / taffy |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| flex-wide-1000 | 1001 | 683 | 696 | 0.98 | 79 | 92 | 0.86 | 109 / 544 | 2 / 1598 |
+| flex-wide-10000 | 10001 | 4153 | 4273 | 0.97 | 728 | 579 | 1.26 | 1079 / 5532 | 2 / 16118 |
+| flex-deep-4000 | 3071 | 1296 | 1339 | 0.97 | 64 | 46 | 1.39 | 16 / 1743 | 2 / 9260 |
+| flex-deep-10000 | 8191 | 3354 | 3508 | 0.96 | 169 | 116 | 1.45 | 16 / 4553 | 2 / 18502 |
+| flex-deep-auto-4000 | 3071 | 3094 | 3097 | 1.00 | 74 | 54 | 1.37 | 16 / 4601 | 2 / 24546 |
+| flex-deep-auto-10000 | 8191 | 7931 | 7939 | 1.00 | 172 | 120 | 1.43 | 16 / 12089 | 2 / 49122 |
+| flex-chain-100 | 301 | 268 | 254 | 1.06 | 119 | 112 | 1.06 | 112 / 431 | 4 / 1186 |
+| flex-chain-1000 | 3001 | 2744 | 2652 | 1.03 | 1232 | 1148 | 1.07 | 1008 / 4354 | 7 / 11986 |
+| grid-flat-31x31 | 962 | 317 | 286 | 1.11 | 292 | 263 | 1.11 | 1462 / 363 | 7 / 14 |
+| grid-flat-100x100 | 10001 | 3693 | 3662 | 1.01 | 3309 | 2901 | 1.14 | 6144 / 3704 | 7 / 14 |
+| grid-nested-3x3-d4 | 7381 | 8591 | 6678 | 1.29 | 171 | 140 | 1.22 | 592 / 13919 | 3279 / 28651 |
+| grid-nested-2x2-d7 | 21845 | 30236 | 31978 | 0.95 | 981 | 708 | 1.39 | 3375 / 45922 | 21843 / 180140 |
+| block-wide-10000 | 10002 | 1853 | 4063 | 0.46 | 534 | 442 | 1.21 | 1474 / 4975 | 2 / 2870 |
+| block-deep-10000 | 9557 | 4512 | 3805 | 1.19 | 209 | 135 | 1.55 | 16 / 6997 | 2 / 5461 |
 
 `--verify` output was byte-identical between the two programs for all 14 workloads (node counts, root sizes and
 per-node layout checksums), so the trees and the computed layouts are equivalent.
 
 ## Reading the results
 
-- For full layouts laffy is about 1.15 to 1.45 times slower than taffy, with one outlier in the other direction
-  (`block-wide-10000`, about twice as fast; I did not find out why, and it is a single workload, so do not read much
-  into it). The gap is steady across flex, grid and block, which points to a uniform per-node cost rather than a
-  problem in one algorithm.
-- Relayout after dirtying one leaf is slower in relative terms (1.3 to 1.9 times; 1.9 on `flex-wide-10000`, 1.6 on
-  `block-deep-10000`). A relayout re-runs the parents of the dirty leaf (the root has about 3,300 children in the wide
-  case), re-reads cache entries of every clean child, and then rounds the whole tree again, so it measures cache
-  lookup, child iteration and `roundLayout` more than it measures the algorithms. A sampling profile of the
-  `flex-wide-10000` relayout (laffy only) shows the time in `computeFlexboxLayout` (about 35%), `roundLayoutInner`
-  (about 30%), `cacheGet` (about 10%) and `maybeResolve`; there is no allocator time at all. It is a
-  memory-bound walk over large per-node records, not an allocation or missing-inline problem I could point at,
-  and nothing in it can be fixed in a few lines without a structural change (for example the layout of `NodeData`).
-  That is documented here and not changed. No file under `src/` was modified.
-- Memory: laffy requests about 2 times the bytes taffy does for flexbox and grid layouts (the allocation call counts
-  are identical on the flex workloads and higher on grid, e.g. 76 calls against 14 on `grid-flat-31x31`).
-  Same count, double the bytes, suggests larger element types and Zig's `ArrayList` growth policy
-  (`minimum + minimum / 2 + 128 / @sizeOf(T)` on first growth) against `Vec`'s doubling from a small minimum.
-  I did not verify this. It does not look like the main source of the time gap, because the sampled relayout has no
-  allocator time, but a full layout does allocate, so it may contribute a little there. A scratch arena per layout
-  pass (the design in `PLAN.md`) would remove most of the allocator cost.
-- Peak live bytes during layout are small compared with the tree itself on all the deep workloads (a few KiB), and
-  larger on wide and grid ones; see the raw tables printed by each program.
+- Full layout is within a few percent of taffy on the flexbox workloads (0.96 to 1.06) and on three of the four
+  grid workloads (0.95 to 1.11). `grid-nested-3x3-d4` (1.29) and `block-deep-10000` (1.19) are slower, and
+  `block-wide-10000` is about twice as fast; the cause of neither outlier is known.
+- Relayout after dirtying one leaf is 1.1 to 1.55 times slower, except `flex-wide-1000` (0.86). A relayout re-runs
+  the parents of the dirty leaf, re-reads the cache entries of every clean child and rounds the whole tree again, so
+  it measures cache lookup, child iteration and `roundLayout` more than it measures the algorithms. An earlier
+  sampling profile of the `flex-wide-10000` relayout showed the time in `computeFlexboxLayout` (about 35%),
+  `roundLayoutInner` (about 30%), `cacheGet` (about 10%) and `maybeResolve`, with no allocator time. That profile
+  has not been repeated since the changes below.
+- Memory: the temporary lists of the algorithms come from a scratch allocator owned by the tree
+  (`src/util/scratch.zig`), which hands out memory from a few large chunks and releases it when each algorithm
+  returns. A layout pass therefore makes only a handful of allocation calls, apart from grids, which allocate
+  their detailed grid info per container. The "alloc KiB" column for laffy is mostly the size of those chunks; on
+  the flat grid workloads it is larger than taffy's total because chunk sizes grow in steps. The tree keeps up to
+  1 MiB of scratch chunks between layout passes and frees the rest.
+- Two changes since the first version of this table account for the difference from the 1.15 to 1.45 slowdown
+  recorded then: functions are no longer force-inlined (4 to 18 percent faster on full layout), and the scratch
+  allocator (a further 0 to 17 percent).
 
 ## Caveats
 

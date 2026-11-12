@@ -28,6 +28,10 @@ const DetailedLayoutInfo = layout_mod.DetailedLayoutInfo;
 const DetailedGridInfo = @import("../compute/grid.zig").DetailedGridInfo;
 const Layout = layout_mod.Layout;
 const LayoutError = layout_mod.LayoutError;
+const Scratch = @import("../util/scratch.zig");
+
+/// The most scratch memory (in bytes) that a tree keeps between layout passes
+const scratch_retain_limit = 1024 * 1024;
 const LayoutInput = layout_mod.LayoutInput;
 const LayoutOutput = layout_mod.LayoutOutput;
 const cache_mod = @import("cache.zig");
@@ -138,6 +142,8 @@ pub fn TaffyTree(comptime NodeContext: type) type {
         nodes: SlotMap(NodeData),
         /// Layout mode configuration
         config: TaffyConfig = .{},
+        /// Temporary memory for layout algorithms, reused between layout passes
+        scratch_allocator: Scratch,
 
         /// Creates a new `TaffyTree`
         ///
@@ -148,7 +154,7 @@ pub fn TaffyTree(comptime NodeContext: type) type {
 
         /// Creates a new `TaffyTree` that can store `capacity` nodes before reallocation
         pub fn withCapacity(gpa: Allocator, capacity: usize) Allocator.Error!Self {
-            return .{ .gpa = gpa, .nodes = try .initCapacity(gpa, capacity) };
+            return .{ .gpa = gpa, .nodes = try .initCapacity(gpa, capacity), .scratch_allocator = .init(gpa) };
         }
 
         /// Frees all memory owned by the tree
@@ -156,6 +162,7 @@ pub fn TaffyTree(comptime NodeContext: type) type {
             var iter = self.nodes.iterator();
             while (iter.next()) |entry| entry.value.deinit(self.gpa);
             self.nodes.deinit(self.gpa);
+            self.scratch_allocator.deinit();
         }
 
         /// The data of a node; panics if the id is not in the tree
@@ -565,6 +572,8 @@ pub fn TaffyTree(comptime NodeContext: type) type {
         ) LayoutError!void {
             const use_rounding = self.config.use_rounding;
             var taffy_view: View(@TypeOf(measurer)) = .{ .taffy = self, .measurer = measurer };
+            // Keep a modest amount of scratch memory for the next layout pass
+            defer self.scratch_allocator.trim(scratch_retain_limit);
             try compute_mod.computeRootLayout(&taffy_view, node_id, available_space);
             if (use_rounding) {
                 compute_mod.roundLayout(&taffy_view, node_id);
@@ -675,6 +684,10 @@ pub fn TaffyTree(comptime NodeContext: type) type {
 
                 pub fn allocator(self: *const ViewSelf) Allocator {
                     return self.taffy.gpa;
+                }
+
+                pub fn scratch(self: *const ViewSelf) *Scratch {
+                    return &self.taffy.scratch_allocator;
                 }
 
                 pub fn getCoreContainerStyle(self: *const ViewSelf, node_id: NodeId) *const Style {

@@ -15,6 +15,7 @@ const AvailableSpace = style_mod.AvailableSpace;
 const CompactLength = style_mod.CompactLength;
 const LayoutError = @import("../../tree/layout.zig").LayoutError;
 const traits = @import("../../tree/traits.zig");
+const Scratch = @import("../../util/scratch.zig");
 const math = @import("../../util/math.zig");
 const maybeMin = math.maybeMin;
 const resolveOrZero = @import("../../util/resolve.zig").resolveOrZero;
@@ -451,8 +452,9 @@ fn resolveItemBaselines(tree: anytype, axis: AbstractAxis, items_in: []GridItem,
     // Sort items by track in the other axis (row) start position so that we can iterate items in groups which
     // are in the same track in the other axis (row)
     const other_axis = axis.other();
-    const items = try gpa.alloc(*GridItem, items_in.len);
-    defer gpa.free(items);
+    const scratch = Scratch.allocatorOf(tree);
+    const items = try scratch.alloc(*GridItem, items_in.len);
+    defer scratch.free(items);
     for (items, items_in) |*ptr, *item| ptr.* = item;
     std.mem.sort(*GridItem, items, other_axis, lessThanOtherAxisStart);
 
@@ -545,7 +547,7 @@ fn resolveIntrinsicTrackSizes(
     inner_node_size: Size(?f32),
     get_track_size_estimate: TrackSizeEstimate,
 ) LayoutError!void {
-    const gpa = tree.allocator();
+    const scratch = Scratch.allocatorOf(tree);
     // Step 1. Shim baseline-aligned items so their intrinsic size contributions reflect their baseline alignment.
 
     // Already done at this point. See resolveItemBaselines function.
@@ -559,7 +561,7 @@ fn resolveIntrinsicTrackSizes(
     // Items that cross a flexible track are all processed together in a single batch (regardless of their span), so
     // they only need to be moved to the end of the list. And the order in which items within a batch are processed
     // does not affect the result, so the remaining items only need to be sorted if any of them span more than one track.
-    var partitioned_items = try FrontBackVecBuilder(*GridItem).withCapacity(gpa, all_items.len);
+    var partitioned_items = try FrontBackVecBuilder(*GridItem).withCapacity(scratch, all_items.len);
     var needs_sort = false;
     for (all_items) |*item| {
         if (item.crossesFlexibleTrack(axis)) {
@@ -570,7 +572,7 @@ fn resolveIntrinsicTrackSizes(
         }
     }
     const items, const non_flex_item_count = partitioned_items.intoSlice();
-    defer gpa.free(items);
+    defer scratch.free(items);
     if (needs_sort) {
         std.mem.sort(*GridItem, items[0..non_flex_item_count], axis, lessThanSpan);
     }

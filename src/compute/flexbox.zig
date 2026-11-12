@@ -43,6 +43,7 @@ const resolve = @import("../util/resolve.zig");
 const maybeResolve = resolve.maybeResolve;
 const resolveOrZero = resolve.resolveOrZero;
 const sys = @import("../util/sys.zig");
+const Scratch = @import("../util/scratch.zig");
 const alignment = @import("common/alignment.zig");
 const applyAlignmentFallback = alignment.applyAlignmentFallback;
 const childFirstBaseline = alignment.childFirstBaseline;
@@ -372,14 +373,17 @@ fn minMaxDefinite(min: ?f32, max: ?f32) ?f32 {
 }
 
 /// Free the flex items (and any out-of-flow candidates they still own)
-fn freeFlexItems(gpa: std.mem.Allocator, flex_items: []FlexItem) void {
+fn freeFlexItems(gpa: std.mem.Allocator, scratch: std.mem.Allocator, flex_items: []FlexItem) void {
     for (flex_items) |*item| item.oof_candidates.deinit(gpa);
-    gpa.free(flex_items);
+    scratch.free(flex_items);
 }
 
 /// Compute a preliminary size for an item
 fn computePreliminary(tree: anytype, node: NodeId, inputs: LayoutInput) LayoutError!LayoutOutput {
     const gpa = tree.allocator();
+    const frame = Scratch.Frame.begin(tree);
+    defer frame.end();
+    const scratch = frame.allocator();
     const known_dimensions = inputs.known_dimensions;
     const parent_size = inputs.parent_size;
     const run_mode = inputs.run_mode;
@@ -406,7 +410,7 @@ fn computePreliminary(tree: anytype, node: NodeId, inputs: LayoutInput) LayoutEr
 
     // 1. Generate anonymous flex items as described in §4 Flex Items.
     const flex_items = try generateAnonymousFlexItems(tree, node, &constants);
-    defer freeFlexItems(gpa, flex_items);
+    defer freeFlexItems(gpa, scratch, flex_items);
 
     // 9.2. Line Length Determination
 
@@ -423,10 +427,10 @@ fn computePreliminary(tree: anytype, node: NodeId, inputs: LayoutInput) LayoutEr
 
     // 5. Collect flex items into flex lines.
     var flex_lines_list = if (constants.is_balance)
-        try collectBalancedFlexLines(gpa, &constants, available_space, flex_items)
+        try collectBalancedFlexLines(scratch, &constants, available_space, flex_items)
     else
-        try collectFlexLines(gpa, &constants, available_space, flex_items);
-    defer flex_lines_list.deinit(gpa);
+        try collectFlexLines(scratch, &constants, available_space, flex_items);
+    defer flex_lines_list.deinit(scratch);
     const flex_lines = flex_lines_list.items;
 
     // If container size is undefined, determine the container's main size
@@ -785,9 +789,9 @@ fn resolveRelativeInset(inset: Rect(?f32), constants: *const AlgoConstants) Size
 ///
 /// - [**Generate anonymous flex items**](https://www.w3.org/TR/css-flexbox-1/#algo-anon-box) as described in [§4 Flex Items](https://www.w3.org/TR/css-flexbox-1/#flex-items).
 ///
-/// The returned slice is allocated with the tree's allocator and owned by the caller.
+/// The returned slice is scratch memory owned by the caller.
 fn generateAnonymousFlexItems(tree: anytype, node: NodeId, constants: *const AlgoConstants) LayoutError![]FlexItem {
-    const gpa = tree.allocator();
+    const gpa = Scratch.allocatorOf(tree);
     // Percentage sizes of items resolve against the container's inner size, but only if that size
     // is definite. A known main size which is derived from the container's own content is treated
     // as indefinite here.
@@ -1434,7 +1438,7 @@ fn determineContainerMainSize(
                 if (item_count == 0) {
                     break :blk size;
                 }
-                const gpa = tree.allocator();
+                const gpa = Scratch.allocatorOf(tree);
                 const item_lengths = try gpa.alloc(f32, item_count);
                 defer gpa.free(item_lengths);
                 var fill: usize = 0;

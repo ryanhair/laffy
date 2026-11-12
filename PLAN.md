@@ -25,7 +25,7 @@ decisions behind the port and the milestone roadmap.
 | taffy (Rust) | laffy (Zig) |
 | --- | --- |
 | Tree traits (`LayoutPartialTree`, `LayoutFlexboxContainer`, ...) | Duck-typed `comptime Tree: type` parameters |
-| `Vec` allocations during layout | Explicit allocator, scratch arena per layout pass |
+| `Vec` allocations during layout | `util.Scratch`, a mark-and-release allocator owned by the tree; a general allocator for memory that outlives an algorithm |
 | Infallible layout | `error{OutOfMemory}!void`, with explicit error sets because layout recurses through generic functions |
 | `CompactLength` tagged pointer | `packed struct(u64)` holding tag, `f32` and calc pointer |
 | `slotmap` in `TaffyTree` | Generational-index arena; `NodeId` stays `u64` |
@@ -86,9 +86,19 @@ decisions behind the port and the milestone roadmap.
 ### 6. Polish
 
 - Benchmarks against taffy, documentation, CI, optional C ABI.
-- Status: done. `zig build bench` and `benches/README.md` (laffy is about 1.15 to 1.45 times
-  slower than taffy on full layout); C API in `src/c_api.zig` and `include/laffy.h`; CI on Linux
-  and macOS.
+- Status: done. `zig build bench` and `benches/README.md`; C API in `src/c_api.zig` and
+  `include/laffy.h`; CI on Linux and macOS.
+
+### 7. Drift from upstream
+
+laffy no longer aims to stay file-for-file in step with taffy. Rust idioms that do not suit Zig are
+being replaced:
+
+- Done: builtins instead of the `sys` float wrappers; declarations on types instead of generic
+  constructor helpers; no forced inlining; a scratch allocator with mark and release for the
+  temporary lists of the algorithms (full layout is now about level with taffy).
+- Candidates: plain-value `LayoutOutput` without an owned candidate list; direct field access
+  instead of style accessors; a tagged union instead of the packed `CompactLength`.
 
 ## Risks to check early
 

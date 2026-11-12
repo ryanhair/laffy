@@ -48,6 +48,7 @@ const resolve = @import("../util/resolve.zig");
 const maybeResolve = resolve.maybeResolve;
 const resolveOrZero = resolve.resolveOrZero;
 const sys = @import("../util/sys.zig");
+const Scratch = @import("../util/scratch.zig");
 const float = @import("float.zig");
 const BfcSlot = float.BfcSlot;
 const ContentSlot = float.ContentSlot;
@@ -444,9 +445,9 @@ const BlockItem = struct {
 };
 
 /// Free the block items (and any out-of-flow candidates they still own)
-fn freeBlockItems(gpa: Allocator, items: []BlockItem) void {
+fn freeBlockItems(gpa: Allocator, scratch: Allocator, items: []BlockItem) void {
     for (items) |*item| item.oof_candidates.deinit(gpa);
-    gpa.free(items);
+    scratch.free(items);
 }
 
 /// `Some(min)` if both `min` and `max` are set and `max <= min`
@@ -554,6 +555,8 @@ pub fn computeBlockLayout(tree: anytype, node_id: NodeId, inputs: LayoutInput, b
 /// Computes the layout of a `LayoutBlockContainer` according to the block layout algorithm
 fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: *BlockContext) LayoutError!LayoutOutput {
     const gpa = tree.allocator();
+    const frame = Scratch.Frame.begin(tree);
+    defer frame.end();
     const known_dimensions_in = inputs.known_dimensions;
     const parent_size = inputs.parent_size;
     const available_space = inputs.available_space;
@@ -656,7 +659,7 @@ fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: 
 
     // 1. Generate items
     const items = try generateItemList(tree, node_id, container_content_box_size);
-    defer freeBlockItems(gpa, items);
+    defer freeBlockItems(gpa, frame.allocator(), items);
 
     // 2. Compute container width
     const container_outer_width = if (known_dimensions.width) |width| width else blk: {
@@ -944,7 +947,7 @@ fn computeInner(tree: anytype, node_id: NodeId, inputs: LayoutInput, block_ctx: 
 /// Create a list of `BlockItem` structs where each item in the list represents a child of the current node.
 /// The caller owns the returned slice (free it with `freeBlockItems`).
 fn generateItemList(tree: anytype, node: NodeId, node_inner_size: Size(?f32)) LayoutError![]BlockItem {
-    const gpa = tree.allocator();
+    const gpa = Scratch.allocatorOf(tree);
     var items: std.ArrayList(BlockItem) = .empty;
     errdefer items.deinit(gpa);
     try items.ensureTotalCapacity(gpa, tree.childCount(node));

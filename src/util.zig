@@ -10,6 +10,7 @@ pub const print = @import("util/print.zig");
 pub const slot_map = @import("util/slot_map.zig");
 pub const front_back_vec_builder = @import("util/front_back_vec_builder.zig");
 pub const FrontBackVecBuilder = front_back_vec_builder.FrontBackVecBuilder;
+pub const Scratch = @import("util/scratch.zig");
 
 pub const maybeMin = math.maybeMin;
 pub const maybeMax = math.maybeMax;
@@ -33,4 +34,5 @@ test {
     _ = print;
     _ = slot_map;
     _ = front_back_vec_builder;
+    _ = Scratch;
 }
