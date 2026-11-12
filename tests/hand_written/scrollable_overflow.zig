@@ -142,10 +142,10 @@ fn containerWithAbsoluteChild(
     const child = try tree.newLeaf(.{
         .position = .absolute,
         .inset = .{
-            .left = if (inset_left) |v| lpa(v) else LengthPercentageAuto.auto,
-            .right = if (inset_right) |v| lpa(v) else LengthPercentageAuto.auto,
+            .left = if (inset_left) |v| lpa(v) else @as(LengthPercentageAuto, .auto),
+            .right = if (inset_right) |v| lpa(v) else @as(LengthPercentageAuto, .auto),
             .top = lpa(0.0),
-            .bottom = LengthPercentageAuto.auto,
+            .bottom = .auto,
         },
         .size = size(CHILD, CHILD),
     });
@@ -212,7 +212,7 @@ test "absolute_only_containers_include_scroll_container_end_padding" {
         defer tree.deinit();
         const abs = try tree.newLeaf(.{
             .position = .absolute,
-            .inset = .{ .left = lpa(0.0), .right = LengthPercentageAuto.auto, .top = lpa(0.0), .bottom = LengthPercentageAuto.auto },
+            .inset = .{ .left = lpa(0.0), .right = .auto, .top = lpa(0.0), .bottom = .auto },
             .size = size(5.0, 5.0),
         });
         const node = try tree.newWithChildren(
@@ -245,7 +245,7 @@ fn nestedOverflowLayout(display: Display, child_overflow: Point(Overflow)) !Layo
     // Grandchild overflowing the child in the y axis (extends to y=300 in a 200-high child)
     const grandchild = try tree.newLeaf(.{
         .position = .absolute,
-        .inset = .{ .left = lpa(0.0), .right = LengthPercentageAuto.auto, .top = lpa(CONTAINER), .bottom = LengthPercentageAuto.auto },
+        .inset = .{ .left = lpa(0.0), .right = .auto, .top = lpa(CONTAINER), .bottom = .auto },
         .size = size(CHILD, CHILD),
     });
     const child = try tree.newWithChildren(
@@ -450,8 +450,8 @@ test "reversed_flex_origins_clip_unreachable_absolute_overflow" {
                 .inset = .{
                     .left = lpa(if (row) offset else 0.0),
                     .top = lpa(if (row) 0.0 else offset),
-                    .right = LengthPercentageAuto.auto,
-                    .bottom = LengthPercentageAuto.auto,
+                    .right = .auto,
+                    .bottom = .auto,
                 },
                 .size = size(CHILD, CHILD),
             });

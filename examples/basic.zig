@@ -10,13 +10,13 @@ pub fn main() !void {
     defer tree.deinit();
 
     const sidebar = try tree.newLeaf(.{
-        .size = .{ .width = laffy.Dimension.fromLength(80), .height = laffy.Dimension.auto },
+        .size = .{ .width = .{ .length = 80 }, .height = .auto },
     });
     const content = try tree.newLeaf(.{ .flex_grow = 1 });
     const root = try tree.newWithChildren(.{
         .display = .flex,
-        .size = .{ .width = laffy.Dimension.fromLength(300), .height = laffy.Dimension.fromLength(100) },
-        .gap = .{ .width = laffy.LengthPercentage.fromLength(10), .height = laffy.LengthPercentage.zero },
+        .size = .{ .width = .{ .length = 300 }, .height = .{ .length = 100 } },
+        .gap = .{ .width = .{ .length = 10 }, .height = .zero },
     }, &.{ sidebar, content });
 
     try tree.computeLayout(root, .{ .width = .max_content, .height = .max_content });

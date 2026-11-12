@@ -36,7 +36,7 @@ test "relayout" {
     const node0 = try taffy.newWithChildren(
         .{
             .align_self = AlignSelf.center,
-            .size = .{ .width = Dimension.auto, .height = Dimension.auto },
+            .size = .{ .width = .auto, .height = .auto },
             // size: taffy::geometry::Size { width: Dimension::Percent(1.0), height: Dimension::Percent(1.0) },
         },
         &.{node1},
@@ -253,19 +253,19 @@ test "relayout_is_stable_with_rounding" {
     //     </div>
     // </div>
 
-    const inner = try taffy.newLeaf(.{ .min_size = .{ .width = LengthPercentageAuto.fromLength(300.0), .height = LengthPercentageAuto.auto } });
+    const inner = try taffy.newLeaf(.{ .min_size = .{ .width = LengthPercentageAuto.fromLength(300.0), .height = .auto } });
     const wrapper = try taffy.newWithChildren(
         .{
-            .size = .{ .width = dim(150.0), .height = Dimension.auto },
+            .size = .{ .width = dim(150.0), .height = .auto },
             .justify_content = JustifyContent.end,
         },
         &.{inner},
     );
     const outer = try taffy.newWithChildren(
         .{
-            .size = .{ .width = Dimension.fromPercent(1.0), .height = Dimension.auto },
+            .size = .{ .width = Dimension.fromPercent(1.0), .height = .auto },
             .position = .relative,
-            .inset = .{ .left = lpa(1.5), .right = LengthPercentageAuto.auto, .top = LengthPercentageAuto.auto, .bottom = LengthPercentageAuto.auto },
+            .inset = .{ .left = lpa(1.5), .right = .auto, .top = .auto, .bottom = .auto },
         },
         &.{wrapper},
     );
@@ -388,13 +388,13 @@ fn relayoutBlockParentAs(container_style: Style) !void {
             inner_margin.top = lpa(20.0);
             const inner = try tree.newLeaf(.{
                 .display = .block,
-                .size = .{ .width = Dimension.auto, .height = dim(10.0) },
+                .size = .{ .width = .auto, .height = dim(10.0) },
                 .margin = inner_margin,
             });
             const middle = try tree.newWithChildren(
                 .{
                     .display = .block,
-                    .size = .{ .width = Dimension.auto, .height = dim(50.0) },
+                    .size = .{ .width = .auto, .height = dim(50.0) },
                 },
                 &.{inner},
             );
@@ -441,20 +441,20 @@ test "block_child_does_not_keep_collapsed_margin_as_grid_item" {
 test "flex_base_size_is_not_answered_by_an_inherent_size_measurement" {
     const BuildTree = struct {
         fn container(display: laffy.Display) Style {
-            return .{ .display = display, .size = .{ .width = dim(100.0), .height = Dimension.auto } };
+            return .{ .display = display, .size = .{ .width = dim(100.0), .height = .auto } };
         }
 
         fn build(tree: *TaffyTree, root_style: Style) error{OutOfMemory}!Built {
             const first = try tree.newLeaf(.{
                 .display = .grid,
                 .flex_grow = 1.0,
-                .size = .{ .width = Dimension.auto, .height = dim(20.0) },
-                .min_size = .{ .width = LengthPercentageAuto.fromLength(40.0), .height = LengthPercentageAuto.auto },
+                .size = .{ .width = .auto, .height = dim(20.0) },
+                .min_size = .{ .width = LengthPercentageAuto.fromLength(40.0), .height = .auto },
             });
             const second = try tree.newLeaf(.{
                 .display = .block,
                 .flex_grow = 1.0,
-                .size = .{ .width = Dimension.auto, .height = dim(20.0) },
+                .size = .{ .width = .auto, .height = dim(20.0) },
             });
             const root = try tree.newWithChildren(root_style, &.{ first, second });
             return .{ root, first, second, root };
@@ -485,7 +485,7 @@ test "a_percentage_height_is_not_reused_after_its_containing_block_loses_its_hei
         fn build(tree: *TaffyTree, middle_style: Style) error{OutOfMemory}!Built {
             const leaf = try tree.newLeaf(.{
                 .display = .block,
-                .size = .{ .width = Dimension.auto, .height = Dimension.fromLength(19.0) },
+                .size = .{ .width = .auto, .height = Dimension.fromLength(19.0) },
             });
             const item = try tree.newWithChildren(
                 .{
@@ -499,7 +499,7 @@ test "a_percentage_height_is_not_reused_after_its_containing_block_loses_its_hei
                 .{
                     .display = .flex,
                     .flex_direction = .column,
-                    .size = .{ .width = Dimension.fromLength(78.0), .height = Dimension.auto },
+                    .size = .{ .width = Dimension.fromLength(78.0), .height = .auto },
                 },
                 &.{middle},
             );
@@ -509,7 +509,7 @@ test "a_percentage_height_is_not_reused_after_its_containing_block_loses_its_hei
 
     const result = try relayoutAndFresh(
         BuildTree.block(Dimension.fromLength(62.0)),
-        BuildTree.block(Dimension.auto),
+        BuildTree.block(@as(Dimension, .auto)),
         BuildTree.build,
     );
     try testing.expectEqual(@as(f32, 19.0), result.fresh[1].size.height);

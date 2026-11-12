@@ -30,12 +30,10 @@ pub const JustifyItems = alignment.JustifyItems;
 pub const JustifySelf = alignment.JustifySelf;
 pub const AvailableSpace = available_space.AvailableSpace;
 pub const CompactLength = compact_length.CompactLength;
+pub const CalcHandle = compact_length.CalcHandle;
 pub const NoCalc = compact_length.NoCalc;
 pub const ConstCalc = compact_length.ConstCalc;
 pub const Dimension = dimension.Dimension;
-pub const ExpandedDimension = dimension.ExpandedDimension;
-pub const ExpandedLengthPercentage = dimension.ExpandedLengthPercentage;
-pub const ExpandedLengthPercentageAuto = dimension.ExpandedLengthPercentageAuto;
 pub const LengthPercentage = dimension.LengthPercentage;
 pub const LengthPercentageAuto = dimension.LengthPercentageAuto;
 pub const TextAlign = block.TextAlign;
@@ -44,8 +42,6 @@ pub const FlexWrap = flex.FlexWrap;
 pub const Clear = float.Clear;
 pub const Float = float.Float;
 pub const FloatDirection = float.FloatDirection;
-pub const ExpandedMaxTrackSizingFunction = grid.ExpandedMaxTrackSizingFunction;
-pub const ExpandedMinTrackSizingFunction = grid.ExpandedMinTrackSizingFunction;
 pub const GenericGridPlacement = grid.GenericGridPlacement;
 pub const GenericGridTemplateComponent = grid.GenericGridTemplateComponent;
 pub const GridAutoFlow = grid.GridAutoFlow;
@@ -449,7 +445,7 @@ pub const Style = struct {
 
     // Flexbox item properties
     /// Sets the initial main axis size of the item
-    flex_basis: Dimension = Dimension.auto,
+    flex_basis: Dimension = .auto,
     /// The relative rate at which this item grows when it is expanding to fill space
     ///
     /// 0.0 is the default value, and this value must be positive.
@@ -601,7 +597,7 @@ test "defaults match" {
         .text_align = TextAlign.default,
         .flex_grow = 0.0,
         .flex_shrink = 1.0,
-        .flex_basis = Dimension.auto,
+        .flex_basis = .auto,
         .size = Size(Dimension).auto,
         .min_size = Size(LengthPercentageAuto).auto,
         .max_size = Size(LengthPercentageAuto).auto,
@@ -730,7 +726,7 @@ fn expectDefaultAccessors(s: anytype) !void {
     try testing.expect(s.align_items == AlignItems.normal);
     try testing.expect(s.justify_content == JustifyContent.normal);
     // FlexboxItemStyle
-    try testing.expect(s.flex_basis == Dimension.auto);
+    try testing.expect(s.flex_basis == .auto);
     try testing.expectEqual(@as(f32, 0.0), s.flex_grow);
     try testing.expectEqual(@as(f32, 1.0), s.flex_shrink);
     // GridContainerStyle

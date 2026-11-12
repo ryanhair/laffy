@@ -28,7 +28,7 @@ const finalizeScrollableOverflow = @import("common/scrollable_overflow.zig").fin
 /// the caller is expected to have already subtracted the node's margins from it.
 ///
 /// - `style` is the node's style.
-/// - `calc` is the `calc()` resolver: any value with a `resolveCalcValue(ptr: *const anyopaque, basis: f32) f32`
+/// - `calc` is the `calc()` resolver: any value with a `resolveCalcValue(handle: CalcHandle, basis: f32) f32`
 ///   method (`NoCalc{}` when `calc()` is not supported, or the tree).
 /// - `measure_function` is called at most once, as
 ///   `measure_function.measure(known_dimensions: Size(?f32), available_space: Size(AvailableSpace)) Size(f32)`.
@@ -263,7 +263,7 @@ test "leaf with measure function, padding and border" {
 
 test "leaf with definite size, percentages, min/max and aspect ratio" {
     var style: Style = .{};
-    style.size = .{ .width = Dimension.fromPercent(0.5), .height = Dimension.auto };
+    style.size = .{ .width = Dimension.fromPercent(0.5), .height = .auto };
     style.aspect_ratio = 2.0;
     style.max_size.width = .fromLength(80.0);
     var m: FixedMeasure = .{ .size = .{ .width = 1.0, .height = 1.0 } };

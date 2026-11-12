@@ -117,7 +117,7 @@ test "block_scroll_container_child_without_baseline_synthesizes_from_border_box"
     const item_a = try taffy.newWithChildren(
         .{
             .display = .block,
-            .size = .{ .width = dim(40.0), .height = Dimension.auto },
+            .size = .{ .width = dim(40.0), .height = .auto },
             .padding = bottomPadding(20.0),
         },
         &.{scroll_child},
@@ -166,7 +166,7 @@ test "block_non_scroll_container_child_without_baseline_contributes_nothing" {
     const item_a = try taffy.newWithChildren(
         .{
             .display = .block,
-            .size = .{ .width = dim(40.0), .height = Dimension.auto },
+            .size = .{ .width = dim(40.0), .height = .auto },
             .padding = bottomPadding(20.0),
         },
         &.{plain_child},
@@ -222,7 +222,7 @@ test "block_scroll_container_child_baseline_is_clamped_to_border_box" {
     const item_a = try taffy.newWithChildren(
         .{
             .display = .block,
-            .size = .{ .width = dim(40.0), .height = Dimension.auto },
+            .size = .{ .width = dim(40.0), .height = .auto },
             .padding = bottomPadding(20.0),
         },
         &.{scroll_child},

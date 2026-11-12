@@ -65,7 +65,7 @@ test "auto_height_uses_aspect_ratio_despite_insets" {
         .position = .absolute,
         .item_is_replaced = true,
         .inset = allInsets(10.0),
-        .size = .{ .width = Dimension.fromLength(200.0), .height = Dimension.auto },
+        .size = .{ .width = Dimension.fromLength(200.0), .height = .auto },
     });
     try testing.expectEqual(Size(f32){ .width = 200.0, .height = 100.0 }, layout.size);
 }

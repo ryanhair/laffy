@@ -28,7 +28,7 @@ decisions behind the port and the milestone roadmap.
 | `Vec` allocations during layout | `util.Scratch`, a mark-and-release allocator owned by the tree; a general allocator for memory that outlives an algorithm |
 | `LayoutOutput` owning its out-of-flow candidate `Vec` | Plain-value `LayoutOutput`; candidates stored per node (`oofCandidates` / `setOofCandidates`) |
 | Infallible layout | `error{OutOfMemory}!void`, with explicit error sets because layout recurses through generic functions |
-| `CompactLength` tagged pointer | `packed struct(u64)` holding tag, `f32` and calc pointer |
+| `CompactLength` tagged pointer | Tagged unions (`Dimension`, `LengthPercentage`, ...), 8 bytes each; `calc()` is a `u32` handle |
 | `slotmap` in `TaffyTree` | Generational-index arena; `NodeId` stays `u64` |
 | Cargo feature flags | Not ported initially; build options can be added later |
 | `serde`, `strict_provenance` | Not ported |
@@ -103,7 +103,9 @@ being replaced:
   detailed grid info refilled in place; rounding skips subtrees that did not change since they
   were last rounded (relayout of a deep tree is now 3 to 50 times faster than taffy).
   Style accessor interfaces are gone: algorithms read `Style` fields.
-- Candidates: a tagged union instead of the packed `CompactLength`; a smaller per-node record.
+  Lengths are tagged unions instead of a packed tagged pointer, which also removes the
+  64-bit-only restriction.
+- Candidates: a smaller per-node record.
 
 ## Risks to check early
 
@@ -137,7 +139,8 @@ These apply to every file in the port so that independently written pieces fit t
 - **Closures.** `map(|x| ...)` style helpers become explicit code at the call site, or take a
   `comptime` function parameter where that reads better.
 - **Calc resolver.** Where upstream takes `calc: impl Fn(*const (), f32) -> f32`, laffy takes
-  `calc: anytype` and calls `calc.resolveCalcValue(ptr, basis)`. Layout code passes the tree.
+  `calc: anytype` and calls `calc.resolveCalcValue(handle, basis)` with a `u32` handle. Layout
+  code passes the tree.
 - **Errors and allocation.** Layout can fail only with `error{OutOfMemory}`. Declare that error set
   explicitly on every function in the layout call graph (inferred error sets do not work across
   the recursion). Temporary allocations use the scratch allocator the tree provides.

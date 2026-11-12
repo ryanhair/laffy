@@ -910,7 +910,7 @@ fn elementAuto(comptime T: type) T {
     if (@typeInfo(T) == .optional) {
         return elementAuto(@typeInfo(T).optional.child);
     } else {
-        return T.auto;
+        return @as(T, .auto);
     }
 }
 
@@ -919,7 +919,7 @@ fn elementMinContent(comptime T: type) T {
     if (@typeInfo(T) == .optional) {
         return elementMinContent(@typeInfo(T).optional.child);
     } else {
-        return T.min_content;
+        return @as(T, .min_content);
     }
 }
 
@@ -928,7 +928,7 @@ fn elementMaxContent(comptime T: type) T {
     if (@typeInfo(T) == .optional) {
         return elementMaxContent(@typeInfo(T).optional.child);
     } else {
-        return T.max_content;
+        return @as(T, .max_content);
     }
 }
 
@@ -1110,21 +1110,21 @@ test "style helper declarations on generic geometry types" {
     try testing.expect(Size(TrackSizingFunction).fitContent(lp).height.eql(expected));
     try testing.expect(Rect(TrackSizingFunction).fitContent(lp).bottom.eql(expected));
     try testing.expect(Point(TrackSizingFunction).fitContent(lp).y.eql(expected));
-    try testing.expect(Size(Dimension).fromPercent(0.5).width == Dimension.fromPercent(0.5));
-    try testing.expect(Point(Dimension).fromPercent(0.5).x == Dimension.fromPercent(0.5));
-    try testing.expect(Line(Dimension).fromPercent(0.5).end == Dimension.fromPercent(0.5));
-    try testing.expect(Rect(Dimension).fromLength(2).left == Dimension.fromLength(2));
-    try testing.expect(Line(Dimension).fromLength(2).start == Dimension.fromLength(2));
-    try testing.expect(Size(Dimension).min_content.width == Dimension.min_content);
-    try testing.expect(Size(Dimension).max_content.height == Dimension.max_content);
-    try testing.expect(Rect(Dimension).min_content.top == Dimension.min_content);
-    try testing.expect(Rect(Dimension).max_content.right == Dimension.max_content);
-    try testing.expect(Line(Dimension).max_content.start == Dimension.max_content);
-    try testing.expect(Line(Dimension).auto.end == Dimension.auto);
-    try testing.expect(Point(Dimension).auto.y == Dimension.auto);
-    try testing.expect(Point(Dimension).min_content.x == Dimension.min_content);
-    try testing.expect(Size(Dimension).zero.width == Dimension.zero);
-    try testing.expect(Rect(Dimension).auto.left == Dimension.auto);
+    try testing.expect(std.meta.eql(Size(Dimension).fromPercent(0.5).width, Dimension.fromPercent(0.5)));
+    try testing.expect(std.meta.eql(Point(Dimension).fromPercent(0.5).x, Dimension.fromPercent(0.5)));
+    try testing.expect(std.meta.eql(Line(Dimension).fromPercent(0.5).end, Dimension.fromPercent(0.5)));
+    try testing.expect(std.meta.eql(Rect(Dimension).fromLength(2).left, Dimension.fromLength(2)));
+    try testing.expect(std.meta.eql(Line(Dimension).fromLength(2).start, Dimension.fromLength(2)));
+    try testing.expect(Size(Dimension).min_content.width == .min_content);
+    try testing.expect(Size(Dimension).max_content.height == .max_content);
+    try testing.expect(Rect(Dimension).min_content.top == .min_content);
+    try testing.expect(Rect(Dimension).max_content.right == .max_content);
+    try testing.expect(Line(Dimension).max_content.start == .max_content);
+    try testing.expect(Line(Dimension).auto.end == .auto);
+    try testing.expect(Point(Dimension).auto.y == .auto);
+    try testing.expect(Point(Dimension).min_content.x == .min_content);
+    try testing.expect(std.meta.eql(Size(Dimension).zero.width, Dimension.zero));
+    try testing.expect(Rect(Dimension).auto.left == .auto);
     const neg = struct {
         fn f(x: f32) f32 {
             return -x;

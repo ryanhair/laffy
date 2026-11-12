@@ -118,7 +118,7 @@ const Builder = struct {
 
 fn randomDimension(rng: *Rng) Dimension {
     const r = rng.unit();
-    if (r < 0.2) return Dimension.auto;
+    if (r < 0.2) return .auto;
     if (r < 0.8) return Dimension.fromLength(rng.range(0.0, 500.0));
     return Dimension.fromPercent(rng.range(0.0, 1.0));
 }
@@ -152,7 +152,7 @@ fn genLeaf(b: *Builder, gen: Gen) Style {
             const mb = b.rng.range(0.0, 8.0);
             return .{
                 .display = .block,
-                .size = .{ .width = Dimension.auto, .height = Dimension.fromLength(h) },
+                .size = .{ .width = .auto, .height = Dimension.fromLength(h) },
                 .margin = .{
                     .left = LengthPercentageAuto.zero,
                     .right = LengthPercentageAuto.zero,

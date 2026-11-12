@@ -288,10 +288,8 @@ fn parseEntirely(
 // calc()
 // ---------------------------------------------------------------------------------------------
 
-/// A node of a parsed `calc()` expression. `calc()` values in a `Style` are opaque pointers to
-/// the root node (allocated from the caller's allocator), and `resolveCalc` evaluates them. The
-/// zero-sized `_align` field makes the alignment 8 on every target, as `CompactLength.calc`
-/// requires the low 3 pointer bits to be clear.
+/// A node of a parsed `calc()` expression. `calc()` values in a `Style` hold a handle to the
+/// root node (allocated from the caller's allocator), and `resolveCalc` evaluates them.
 pub const CalcNode = struct {
     pub const Op = enum { px, percent, number, add, sub, mul, div };
 
@@ -300,11 +298,6 @@ pub const CalcNode = struct {
     value: f32 = 0,
     lhs: ?*const CalcNode = null,
     rhs: ?*const CalcNode = null,
-    _align: [0]u64 = .{},
-
-    comptime {
-        std.debug.assert(@alignOf(CalcNode) >= 8);
-    }
 
     fn eval(node: *const CalcNode, basis: f32) f32 {
         return switch (node.op) {
@@ -318,12 +311,21 @@ pub const CalcNode = struct {
     }
 };
 
-/// Evaluates a `calc()` value made by this file: the root `CalcNode` that `ptr` points to is
+/// The root nodes of every `calc()` expression parsed so far. A style's calc handle is an index
+/// into this list. The list is never emptied, and an entry is only valid for as long as the
+/// allocator that the expression was parsed with keeps its nodes alive.
+var calc_roots: std.ArrayList(*const CalcNode) = .empty;
+
+fn registerCalc(node: *const CalcNode) ParseError!laffy.CalcHandle {
+    calc_roots.append(std.heap.page_allocator, node) catch return error.OutOfMemory;
+    return @intCast(calc_roots.items.len - 1);
+}
+
+/// Evaluates a `calc()` value made by this file: the expression that `handle` refers to is
 /// evaluated with percentages resolved against `basis`. Plug this into a tree's
-/// `resolveCalcValue`. `ptr` must come from a style produced by this file.
-pub fn resolveCalc(ptr: *const anyopaque, basis: f32) f32 {
-    const node: *const CalcNode = @ptrCast(@alignCast(ptr));
-    return node.eval(basis);
+/// `resolveCalcValue`. `handle` must come from a style produced by this file.
+pub fn resolveCalc(handle: laffy.CalcHandle, basis: f32) f32 {
+    return calc_roots.items[handle].eval(basis);
 }
 
 const CalcKind = enum { length, number };
@@ -399,29 +401,29 @@ fn parseCalcBlock(allocator: Allocator, p: *Parser) ParseError!CalcExpr {
 }
 
 /// Parses a complete `calc(...)` function (`text` is e.g. `calc(100% - 10px)`) and returns the
-/// opaque pointer to store in a style with the `calc` constructors. The result must be a length.
-pub fn parseCalc(allocator: Allocator, text: []const u8) ParseError!*const anyopaque {
-    return parseEntirely(allocator, text, *const anyopaque, calcFromParser);
+/// handle to store in a style as a `calc` value. The result must be a length.
+pub fn parseCalc(allocator: Allocator, text: []const u8) ParseError!laffy.CalcHandle {
+    return parseEntirely(allocator, text, laffy.CalcHandle, calcFromParser);
 }
 
-fn calcFromParser(allocator: Allocator, p: *Parser) ParseError!*const anyopaque {
+fn calcFromParser(allocator: Allocator, p: *Parser) ParseError!laffy.CalcHandle {
     const t = p.next() orelse return error.InvalidValue;
     if (t != .function or !eqlIc(t.function, "calc")) return error.InvalidValue;
     return calcBody(allocator, p);
 }
 
 /// Parses the body of a `calc(` whose function token was just consumed from `p`.
-fn calcBody(allocator: Allocator, p: *Parser) ParseError!*const anyopaque {
+fn calcBody(allocator: Allocator, p: *Parser) ParseError!laffy.CalcHandle {
     const expr = try parseCalcBlock(allocator, p);
     if (expr.kind != .length) return error.InvalidValue;
-    return expr.node;
+    return registerCalc(expr.node);
 }
 
 // ---------------------------------------------------------------------------------------------
 // Lengths and dimensions
 // ---------------------------------------------------------------------------------------------
 
-const LpValue = union(enum) { px: f32, percent: f32, calc: *const anyopaque };
+const LpValue = union(enum) { px: f32, percent: f32, calc: laffy.CalcHandle };
 
 /// Interprets `t` as `<length-percentage>` (`<n>px`, `<n>%` or `calc()`, the latter consuming its
 /// block from `p`). Returns null, consuming nothing more, for any other token.
@@ -453,18 +455,18 @@ fn lengthPercentageFrom(allocator: Allocator, p: *Parser) ParseError!LengthPerce
     return switch (v) {
         .px => |x| LengthPercentage.fromLength(x),
         .percent => |x| LengthPercentage.fromPercent(x),
-        .calc => |c| LengthPercentage.calc(c),
+        .calc => |c| LengthPercentage.fromCalc(c),
     };
 }
 
 fn lengthPercentageAutoFrom(allocator: Allocator, p: *Parser) ParseError!LengthPercentageAuto {
     const t = p.next() orelse return error.InvalidValue;
-    if (t == .ident and eql(t.ident, "auto")) return LengthPercentageAuto.auto;
+    if (t == .ident and eql(t.ident, "auto")) return .auto;
     const v = (try lpValue(allocator, p, t)) orelse return error.InvalidValue;
     return switch (v) {
         .px => |x| LengthPercentageAuto.fromLength(x),
         .percent => |x| LengthPercentageAuto.fromPercent(x),
-        .calc => |c| LengthPercentageAuto.calc(c),
+        .calc => |c| LengthPercentageAuto.fromCalc(c),
     };
 }
 
@@ -472,12 +474,12 @@ fn dimensionFrom(allocator: Allocator, p: *Parser) ParseError!Dimension {
     const t = p.next() orelse return error.InvalidValue;
     switch (t) {
         .ident => |id| {
-            if (eql(id, "auto")) return Dimension.auto;
-            if (eql(id, "min-content")) return Dimension.min_content;
-            if (eql(id, "max-content")) return Dimension.max_content;
-            if (eql(id, "fit-content")) return Dimension.fit_content;
-            if (eql(id, "stretch")) return Dimension.stretch;
-            if (eql(id, "content")) return Dimension.content;
+            if (eql(id, "auto")) return .auto;
+            if (eql(id, "min-content")) return .min_content;
+            if (eql(id, "max-content")) return .max_content;
+            if (eql(id, "fit-content")) return .fit_content;
+            if (eql(id, "stretch")) return .stretch;
+            if (eql(id, "content")) return .content;
             return error.InvalidValue;
         },
         .function => |name| if (eql(name, "fit-content")) {
@@ -493,7 +495,7 @@ fn dimensionFrom(allocator: Allocator, p: *Parser) ParseError!Dimension {
     return switch (v) {
         .px => |x| Dimension.fromLength(x),
         .percent => |x| Dimension.fromPercent(x),
-        .calc => |c| Dimension.calc(c),
+        .calc => |c| Dimension.fromCalc(c),
     };
 }
 
@@ -547,16 +549,16 @@ pub fn parseAvailableSpace(text: []const u8) ParseError!AvailableSpace {
 fn minTrackFrom(allocator: Allocator, p: *Parser) ParseError!MinTrackSizingFunction {
     const t = p.next() orelse return error.InvalidValue;
     if (t == .ident) {
-        if (eql(t.ident, "auto")) return MinTrackSizingFunction.auto;
-        if (eql(t.ident, "min-content")) return MinTrackSizingFunction.min_content;
-        if (eql(t.ident, "max-content")) return MinTrackSizingFunction.max_content;
+        if (eql(t.ident, "auto")) return .auto;
+        if (eql(t.ident, "min-content")) return .min_content;
+        if (eql(t.ident, "max-content")) return .max_content;
         return error.InvalidValue;
     }
     const v = (try lpValue(allocator, p, t)) orelse return error.InvalidValue;
     return switch (v) {
         .px => |x| MinTrackSizingFunction.fromLength(x),
         .percent => |x| MinTrackSizingFunction.fromPercent(x),
-        .calc => |c| MinTrackSizingFunction.calc(c),
+        .calc => |c| MinTrackSizingFunction.fromCalc(c),
     };
 }
 
@@ -564,9 +566,9 @@ fn maxTrackFrom(allocator: Allocator, p: *Parser) ParseError!MaxTrackSizingFunct
     const t = p.next() orelse return error.InvalidValue;
     switch (t) {
         .ident => |id| {
-            if (eql(id, "auto")) return MaxTrackSizingFunction.auto;
-            if (eql(id, "min-content")) return MaxTrackSizingFunction.min_content;
-            if (eql(id, "max-content")) return MaxTrackSizingFunction.max_content;
+            if (eql(id, "auto")) return .auto;
+            if (eql(id, "min-content")) return .min_content;
+            if (eql(id, "max-content")) return .max_content;
             return error.InvalidValue;
         },
         .dimension => |d| if (eql(d.unit, "fr")) {
@@ -586,7 +588,7 @@ fn maxTrackFrom(allocator: Allocator, p: *Parser) ParseError!MaxTrackSizingFunct
     return switch (v) {
         .px => |x| MaxTrackSizingFunction.fromLength(x),
         .percent => |x| MaxTrackSizingFunction.fromPercent(x),
-        .calc => |c| MaxTrackSizingFunction.calc(c),
+        .calc => |c| MaxTrackSizingFunction.fromCalc(c),
     };
 }
 
@@ -1413,7 +1415,7 @@ test "length-percentage" {
 
 test "length-percentage-auto" {
     const a = testing.allocator;
-    try testing.expectEqual(LengthPercentageAuto.auto, try parseLengthPercentageAuto(a, "auto"));
+    try testing.expectEqual(@as(LengthPercentageAuto, .auto), try parseLengthPercentageAuto(a, "auto"));
     try testing.expectEqual(LengthPercentageAuto.fromLength(3), try parseLengthPercentageAuto(a, "3px"));
     try testing.expectEqual(LengthPercentageAuto.fromPercent(0.2), try parseLengthPercentageAuto(a, "20%"));
     try expectInvalid(parseLengthPercentageAuto, .{ a, "AUTO" });
@@ -1423,14 +1425,14 @@ test "length-percentage-auto" {
 
 test "dimension" {
     const a = testing.allocator;
-    try testing.expectEqual(Dimension.auto, try parseDimension(a, "auto"));
+    try testing.expectEqual(@as(Dimension, .auto), try parseDimension(a, "auto"));
     try testing.expectEqual(Dimension.fromLength(200), try parseDimension(a, "200px"));
     try testing.expectEqual(Dimension.fromPercent(0.5), try parseDimension(a, "50%"));
-    try testing.expectEqual(Dimension.min_content, try parseDimension(a, "min-content"));
-    try testing.expectEqual(Dimension.max_content, try parseDimension(a, "max-content"));
-    try testing.expectEqual(Dimension.fit_content, try parseDimension(a, "fit-content"));
-    try testing.expectEqual(Dimension.stretch, try parseDimension(a, "stretch"));
-    try testing.expectEqual(Dimension.content, try parseDimension(a, "content"));
+    try testing.expectEqual(@as(Dimension, .min_content), try parseDimension(a, "min-content"));
+    try testing.expectEqual(@as(Dimension, .max_content), try parseDimension(a, "max-content"));
+    try testing.expectEqual(@as(Dimension, .fit_content), try parseDimension(a, "fit-content"));
+    try testing.expectEqual(@as(Dimension, .stretch), try parseDimension(a, "stretch"));
+    try testing.expectEqual(@as(Dimension, .content), try parseDimension(a, "content"));
     try testing.expectEqual(Dimension.fitContentPx(30), try parseDimension(a, "fit-content(30px)"));
     try testing.expectEqual(Dimension.fitContentPercent(0.5), try parseDimension(a, "fit-content(50%)"));
     try expectInvalid(parseDimension, .{ a, "fit-content(auto)" });
@@ -1458,20 +1460,19 @@ test "calc: representation and evaluation" {
     const a = arena_state.allocator();
 
     const simple = try parseDimension(a, "calc(100% - 10px)");
-    try testing.expect(simple.inner.isPlainCalc());
-    try testing.expectEqual(@as(usize, 0), @intFromPtr(simple.inner.calcValue()) & 0b111);
-    try testing.expectEqual(@as(f32, 190), resolveCalc(simple.inner.calcValue(), 200));
-    try testing.expectEqual(@as(f32, 40), resolveCalc(simple.inner.calcValue(), 50));
+    try testing.expect(simple == .calc);
+    try testing.expectEqual(@as(f32, 190), resolveCalc(simple.calc, 200));
+    try testing.expectEqual(@as(f32, 40), resolveCalc(simple.calc, 50));
 
     // Nested arithmetic, parentheses, nested calc(), precedence
     const nested = try parseLengthPercentage(a, "calc((50% + 10px) * 2 - 4px / 2)");
-    try testing.expectEqual(@as(f32, 118), resolveCalc(nested.inner.calcValue(), 100));
+    try testing.expectEqual(@as(f32, 118), resolveCalc(nested.calc, 100));
     const inner_calc = try parseLengthPercentage(a, "calc(calc(10% + 1px) * 3 + 2 * (1px + 1px))");
-    try testing.expectEqual(@as(f32, 37), resolveCalc(inner_calc.inner.calcValue(), 100));
+    try testing.expectEqual(@as(f32, 37), resolveCalc(inner_calc.calc, 100));
     const prec = try parseLengthPercentageAuto(a, "calc(1px + 2px * 3 / 3 - 1px)");
-    try testing.expectEqual(@as(f32, 2), resolveCalc(prec.inner.calcValue(), 0));
+    try testing.expectEqual(@as(f32, 2), resolveCalc(prec.calc, 0));
     const upper = try parseLengthPercentageAuto(a, "CALC(10px)");
-    try testing.expectEqual(@as(f32, 10), resolveCalc(upper.inner.calcValue(), 0));
+    try testing.expectEqual(@as(f32, 10), resolveCalc(upper.calc, 0));
 
     // Direct entry point
     const raw = try parseCalc(a, "calc(25% + 5px)");
@@ -1480,14 +1481,14 @@ test "calc: representation and evaluation" {
     // fit-content(calc()) and track functions
     const fit = try parseDimension(a, "fit-content(calc(10% + 70px))");
     try testing.expect(fit.isFitContentCalc());
-    try testing.expectEqual(@as(f32, 100), resolveCalc(fit.calcValue(), 300));
+    try testing.expectEqual(@as(f32, 100), resolveCalc(fit.fit_content_calc, 300));
     const track = try parseTrackSizingFunction(a, "minmax(calc(10px + 1px), calc(100% / 4))");
-    try testing.expect(track.min.inner.isPlainCalc());
-    try testing.expect(track.max.inner.isPlainCalc());
-    try testing.expectEqual(@as(f32, 11), resolveCalc(track.min.inner.calcValue(), 0));
-    try testing.expectEqual(@as(f32, 50), resolveCalc(track.max.inner.calcValue(), 200));
+    try testing.expect(track.min == .calc);
+    try testing.expect(track.max == .calc);
+    try testing.expectEqual(@as(f32, 11), resolveCalc(track.min.calc, 0));
+    try testing.expectEqual(@as(f32, 50), resolveCalc(track.max.calc, 200));
     const fit_track = try parseMaxTrackSizingFunction(a, "fit-content(calc(10px))");
-    try testing.expect(fit_track.inner.isFitContentCalc());
+    try testing.expect(fit_track == .fit_content_calc);
 
     // Dimensionally invalid or malformed expressions
     try expectInvalid(parseDimension, .{ a, "calc(1px + 1)" });
@@ -1506,9 +1507,9 @@ test "track sizing functions" {
     const a = testing.allocator;
     try testing.expectEqual(MinTrackSizingFunction.fromLength(10), try parseMinTrackSizingFunction(a, "10px"));
     try testing.expectEqual(MinTrackSizingFunction.fromPercent(0.2), try parseMinTrackSizingFunction(a, "20%"));
-    try testing.expectEqual(MinTrackSizingFunction.auto, try parseMinTrackSizingFunction(a, "auto"));
-    try testing.expectEqual(MinTrackSizingFunction.min_content, try parseMinTrackSizingFunction(a, "min-content"));
-    try testing.expectEqual(MinTrackSizingFunction.max_content, try parseMinTrackSizingFunction(a, "max-content"));
+    try testing.expectEqual(@as(MinTrackSizingFunction, .auto), try parseMinTrackSizingFunction(a, "auto"));
+    try testing.expectEqual(@as(MinTrackSizingFunction, .min_content), try parseMinTrackSizingFunction(a, "min-content"));
+    try testing.expectEqual(@as(MinTrackSizingFunction, .max_content), try parseMinTrackSizingFunction(a, "max-content"));
     try expectInvalid(parseMinTrackSizingFunction, .{ a, "1fr" });
     try expectInvalid(parseMinTrackSizingFunction, .{ a, "fit-content(10px)" });
 
@@ -1531,7 +1532,7 @@ test "track sizing functions" {
     try testing.expectEqual(MinTrackSizingFunction.fromLength(10), mm.min);
     try testing.expectEqual(MaxTrackSizingFunction.fromFr(1), mm.max);
     const mm2 = try parseTrackSizingFunction(a, "minmax(min-content, 20%)");
-    try testing.expectEqual(MinTrackSizingFunction.min_content, mm2.min);
+    try testing.expectEqual(@as(MinTrackSizingFunction, .min_content), mm2.min);
     try testing.expectEqual(MaxTrackSizingFunction.fromPercent(0.2), mm2.max);
     try expectInvalid(parseTrackSizingFunction, .{ a, "minmax(1fr, 2px)" });
     try expectInvalid(parseTrackSizingFunction, .{ a, "minmax(1px)" });
@@ -1863,15 +1864,15 @@ test "parseStyle: defaults and mapping" {
     }), null);
     try testing.expectEqual(laffy.Display.grid, s.display);
     try testing.expectEqual(Dimension.fromPercent(0.5), s.size.width);
-    try testing.expectEqual(Dimension.max_content, s.size.height);
+    try testing.expectEqual(@as(Dimension, .max_content), s.size.height);
     try testing.expectEqual(LengthPercentageAuto.fromLength(5), s.min_size.width);
-    try testing.expectEqual(LengthPercentageAuto.auto, s.max_size.height);
-    try testing.expectEqual(LengthPercentageAuto.auto, s.margin.left);
+    try testing.expectEqual(@as(LengthPercentageAuto, .auto), s.max_size.height);
+    try testing.expectEqual(@as(LengthPercentageAuto, .auto), s.margin.left);
     try testing.expectEqual(LengthPercentageAuto.zero, s.margin.right);
     try testing.expectEqual(LengthPercentage.fromLength(3), s.padding.top);
     try testing.expectEqual(LengthPercentage.fromLength(2), s.border.right);
     try testing.expectEqual(LengthPercentageAuto.fromLength(-4), s.inset.top);
-    try testing.expectEqual(LengthPercentageAuto.auto, s.inset.left);
+    try testing.expectEqual(@as(LengthPercentageAuto, .auto), s.inset.left);
     try testing.expectEqual(LengthPercentage.fromLength(7), s.gap.width);
     try testing.expectEqual(LengthPercentage.fromLength(9), s.gap.height);
     try testing.expectEqual(@as(?f32, 2), s.aspect_ratio);

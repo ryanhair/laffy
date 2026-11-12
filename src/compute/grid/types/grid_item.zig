@@ -214,7 +214,7 @@ pub const GridItem = struct {
     /// <https://www.w3.org/TR/css-grid-1/#row-align> such items do not participate in baseline
     /// alignment and are aligned using their fallback alignment instead.
     pub fn hasCyclicBlockSizeDependency(self: *const GridItem) bool {
-        return self.size.height.inner.usesPercentage() and (self.crosses_intrinsic_row or self.crosses_flexible_row);
+        return self.size.height.usesPercentage() and (self.crosses_intrinsic_row or self.crosses_flexible_row);
     }
 
     /// Returns true if the item participates in baseline alignment: it has `align-self: baseline`

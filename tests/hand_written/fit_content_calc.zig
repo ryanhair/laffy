@@ -2,6 +2,7 @@
 //! through `LayoutPartialTree.resolveCalcValue`, so these tests use a minimal custom tree whose calc
 //! values are `pct * basis + px`.
 const std = @import("std");
+const CalcHandle = @import("laffy").CalcHandle;
 const laffy = @import("laffy");
 
 const testing = std.testing;
@@ -22,27 +23,30 @@ const GridTemplateComponent = laffy.GridTemplateComponent;
 const BlockContext = laffy.BlockContext;
 const DetailedLayoutInfo = laffy.DetailedLayoutInfo;
 
-/// A calc() value of the form `pct * basis + px`. 8-byte aligned so that its address can be tagged.
+/// A calc() value of the form `pct * basis + px`
 const Calc = struct {
-    px: f32 align(8),
+    px: f32,
     pct: f32,
 };
 
-/// Upstream leaks the calc value with `Box::leak`; the page allocator is not leak-checked.
+/// Every calc() value made by the tests in this file. A style's calc handle is an index into it.
+var calc_values: [8]Calc = undefined;
+var calc_count: u32 = 0;
+
 fn calc(px: f32, pct: f32) LengthPercentage {
-    const ptr = std.heap.page_allocator.create(Calc) catch @panic("OOM");
-    ptr.* = .{ .px = px, .pct = pct };
-    return LengthPercentage.calc(ptr);
+    calc_values[calc_count] = .{ .px = px, .pct = pct };
+    calc_count += 1;
+    return .{ .calc = calc_count - 1 };
 }
 
-fn resolveCalc(val: *const anyopaque, basis: f32) f32 {
-    const c: *const Calc = @ptrCast(@alignCast(val));
+fn resolveCalc(handle: CalcHandle, basis: f32) f32 {
+    const c = calc_values[handle];
     return c.pct * basis + c.px;
 }
 
 /// The `calc` resolver handed to `computeLeafLayout`
 const CalcResolver = struct {
-    pub fn resolveCalcValue(_: CalcResolver, val: *const anyopaque, basis: f32) f32 {
+    pub fn resolveCalcValue(_: CalcResolver, val: CalcHandle, basis: f32) f32 {
         return resolveCalc(val, basis);
     }
 };
@@ -158,7 +162,7 @@ const Node = struct {
         self.nodeFromIdMut(node_id).layout = l.*;
     }
 
-    pub fn resolveCalcValue(_: *const Node, val: *const anyopaque, basis: f32) f32 {
+    pub fn resolveCalcValue(_: *const Node, val: CalcHandle, basis: f32) f32 {
         return resolveCalc(val, basis);
     }
 
@@ -260,7 +264,7 @@ test "grid_track_fit_content_calc_limit" {
         0.0,
         0.0,
         400.0,
-        .{ .min_size = .{ .width = LengthPercentageAuto.auto, .height = LengthPercentageAuto.fromLength(0.0) } },
+        .{ .min_size = .{ .width = .auto, .height = LengthPercentageAuto.fromLength(0.0) } },
     )};
     var root = Node.new(
         .grid,
@@ -279,18 +283,18 @@ test "grid_track_fit_content_calc_limit" {
 // `width: fit-content(calc(10% + 70px))` on a block-level box in a 300px wide container is
 // `fit-content(100px)`: the max-content width clamped by the limit and floored by the min-content width.
 test "block_item_fit_content_calc_width" {
-    const limit = Dimension.fitContentCalc(calc(70.0, 0.1).intoRaw().calcValue());
+    const limit = Dimension.fitContent(calc(70.0, 0.1));
     var children = [_]Node{Node.leaf(
         50.0,
         400.0,
         10.0,
-        .{ .size = .{ .width = limit, .height = Dimension.auto } },
+        .{ .size = .{ .width = limit, .height = .auto } },
     )};
     var root = Node.new(
         .block,
         .{
             .display = .block,
-            .size = .{ .width = Dimension.fromLength(300.0), .height = Dimension.auto },
+            .size = .{ .width = Dimension.fromLength(300.0), .height = .auto },
         },
         &children,
     );
@@ -341,17 +345,17 @@ test "grid_track_fit_content_calc_matches_equivalent_length_and_percentage" {
     // Indefinite (shrink-to-fit) container: calc(50% + 0px) == 50%
     for ([_]AvailableSpace{ .{ .definite = 200.0 }, .max_content, .min_content }) |available_width| {
         errdefer std.debug.print("available width: {any}\n", .{available_width});
-        const calc_r = try layoutSingleColumnGrid(GridTemplateComponent.fitContent(calc(0.0, 0.5)), Dimension.auto, available_width);
+        const calc_r = try layoutSingleColumnGrid(GridTemplateComponent.fitContent(calc(0.0, 0.5)), @as(Dimension, .auto), available_width);
         const pct_r = try layoutSingleColumnGrid(
             GridTemplateComponent.fitContent(LengthPercentage.fromPercent(0.5)),
-            Dimension.auto,
+            @as(Dimension, .auto),
             available_width,
         );
         try testing.expectEqual(pct_r, calc_r);
     }
     // ... and the percentage really is resolved against the container's width
     const container_width, const item_width =
-        try layoutSingleColumnGrid(GridTemplateComponent.fitContent(calc(0.0, 0.5)), Dimension.auto, .max_content);
+        try layoutSingleColumnGrid(GridTemplateComponent.fitContent(calc(0.0, 0.5)), @as(Dimension, .auto), .max_content);
     try testing.expectEqual(@as(f32, 150.0), container_width);
     try testing.expectEqual(@as(f32, 75.0), item_width);
 }

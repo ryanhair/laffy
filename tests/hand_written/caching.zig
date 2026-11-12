@@ -89,7 +89,7 @@ test "measure_count_nested_grid" {
     const inner = try taffy.newWithChildren(style, &.{leaf});
     const middle = try taffy.newWithChildren(style, &.{inner});
     var outer_style = style;
-    outer_style.size = .{ .width = dim(50.0), .height = Dimension.auto };
+    outer_style.size = .{ .width = dim(50.0), .height = .auto };
     const outer = try taffy.newWithChildren(outer_style, &.{middle});
 
     try compute(&taffy, outer);
@@ -105,7 +105,7 @@ test "measure_count_grid_item_with_known_width" {
     defer taffy.deinit();
 
     const leaf = try taffy.newLeafWithContext(
-        .{ .size = .{ .width = dim(40.0), .height = Dimension.auto } },
+        .{ .size = .{ .width = dim(40.0), .height = .auto } },
         ahem(),
     );
     const grid = try taffy.newWithChildren(.{ .display = .grid }, &.{leaf});
@@ -164,7 +164,7 @@ test "measure_count_flex_in_grid" {
         const grid = try taffy.newWithChildren(
             .{
                 .display = .grid,
-                .size = .{ .width = dim(50.0), .height = Dimension.auto },
+                .size = .{ .width = dim(50.0), .height = .auto },
             },
             &.{flex},
         );
@@ -210,7 +210,7 @@ test "grid_block_item_height_not_polluted_by_width_measure" {
         .{
             .display = .grid,
             .grid_template_columns = &columns,
-            .size = .{ .width = dim(1000.0), .height = Dimension.auto },
+            .size = .{ .width = dim(1000.0), .height = .auto },
         },
         &.{ a, b, c },
     );

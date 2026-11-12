@@ -16,6 +16,7 @@
 //!   - `compute_layout_with_measure` takes a "measurer" value instead of a closure (see
 //!     `computeLayoutWithMeasure`).
 const std = @import("std");
+const CalcHandle = @import("../style/compact_length.zig").CalcHandle;
 const Allocator = std.mem.Allocator;
 const geometry = @import("../geometry.zig");
 const Size = geometry.Size;
@@ -754,7 +755,7 @@ pub fn TaffyTree(comptime NodeContext: type) type {
                     self.taffy.stampLayoutChange(node_id);
                 }
 
-                pub fn resolveCalcValue(self: *const ViewSelf, val: *const anyopaque, basis: f32) f32 {
+                pub fn resolveCalcValue(self: *const ViewSelf, val: CalcHandle, basis: f32) f32 {
                     _ = self;
                     _ = val;
                     _ = basis;
@@ -1545,7 +1546,7 @@ test "the layout view implements every interface method" {
     info.items = try testing.allocator.alloc(@import("../compute/grid.zig").DetailedGridItemsInfo, 2);
     try testing.expect((try view.detailedGridInfo(root)).? == info);
     try testing.expectEqual(@as(usize, 2), taffy.detailedLayoutInfo(root).grid.items.len);
-    try testing.expectEqual(@as(f32, 0.0), traits.calc(&view, @ptrCast(&view), 1.0));
+    try testing.expectEqual(@as(f32, 0.0), traits.calc(&view, 1, 1.0));
     try testing.expect(!view.isOutOfFlow(child));
 
     // Lay out the leaf child directly through the block-child entry point, without a block context

@@ -39,7 +39,7 @@ test "non_finite_flex_factor_terminates" {
             .size = .{ .width = dim(10.0), .height = dim(10.0) },
         });
         const columns = [_]GridTemplateComponent{.{ .single = .{
-            .min = MinTrackSizingFunction.auto,
+            .min = .auto,
             .max = MaxTrackSizingFunction.fromFr(flex_factor),
         } }};
         const root = try tree.newWithChildren(

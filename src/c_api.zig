@@ -434,7 +434,7 @@ fn toLengthPercentageAuto(v: LaffyLengthPercentageAuto) CError!LengthPercentageA
     return switch (try enumFromC(LaffyUnit, v.unit)) {
         .length => LengthPercentageAuto.fromLength(try number(v.value)),
         .percent => LengthPercentageAuto.fromPercent(try number(v.value)),
-        .auto => LengthPercentageAuto.auto,
+        .auto => .auto,
         else => error.InvalidArgument,
     };
 }
@@ -443,14 +443,14 @@ fn toDimension(v: LaffyDimension) CError!Dimension {
     return switch (try enumFromC(LaffyUnit, v.unit)) {
         .length => Dimension.fromLength(try number(v.value)),
         .percent => Dimension.fromPercent(try number(v.value)),
-        .auto => Dimension.auto,
-        .min_content => Dimension.min_content,
-        .max_content => Dimension.max_content,
+        .auto => .auto,
+        .min_content => .min_content,
+        .max_content => .max_content,
         .fit_content_length => Dimension.fitContentPx(try number(v.value)),
         .fit_content_percent => Dimension.fitContentPercent(try number(v.value)),
-        .fit_content => Dimension.fit_content,
-        .stretch => Dimension.stretch,
-        .content => Dimension.content,
+        .fit_content => .fit_content,
+        .stretch => .stretch,
+        .content => .content,
         .fr => error.InvalidArgument,
     };
 }
@@ -459,9 +459,9 @@ fn toMinTrack(v: LaffyMinTrackSizing) CError!MinTrackSizingFunction {
     return switch (try enumFromC(LaffyUnit, v.unit)) {
         .length => MinTrackSizingFunction.fromLength(try number(v.value)),
         .percent => MinTrackSizingFunction.fromPercent(try number(v.value)),
-        .auto => MinTrackSizingFunction.auto,
-        .min_content => MinTrackSizingFunction.min_content,
-        .max_content => MinTrackSizingFunction.max_content,
+        .auto => .auto,
+        .min_content => .min_content,
+        .max_content => .max_content,
         else => error.InvalidArgument,
     };
 }
@@ -470,9 +470,9 @@ fn toMaxTrack(v: LaffyMaxTrackSizing) CError!MaxTrackSizingFunction {
     return switch (try enumFromC(LaffyUnit, v.unit)) {
         .length => MaxTrackSizingFunction.fromLength(try number(v.value)),
         .percent => MaxTrackSizingFunction.fromPercent(try number(v.value)),
-        .auto => MaxTrackSizingFunction.auto,
-        .min_content => MaxTrackSizingFunction.min_content,
-        .max_content => MaxTrackSizingFunction.max_content,
+        .auto => .auto,
+        .min_content => .min_content,
+        .max_content => .max_content,
         .fit_content_length => MaxTrackSizingFunction.fitContentPx(try number(v.value)),
         .fit_content_percent => MaxTrackSizingFunction.fitContentPercent(try number(v.value)),
         .fr => MaxTrackSizingFunction.fromFr(try number(v.value)),

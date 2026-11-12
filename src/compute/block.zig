@@ -1144,7 +1144,7 @@ fn blockItemKnownDimensions(
     // The automatic width of a block-level box whose `justify-self` is neither `normal` nor `stretch`
     // is equivalent to `fit-content` rather than `stretch`
     const width_style = if (is_fit_content and item.size_style.width.isAuto())
-        Dimension.fit_content
+        @as(Dimension, .fit_content)
     else
         item.size_style.width;
 
@@ -1890,7 +1890,7 @@ fn layoutNestedBlockTree(gpa: Allocator) !void {
     fixed_style.position = .fixed;
     fixed_style.size = Size(Dimension).fromLengths(2.0, 3.0);
     var leaf_style: Style = .{ .display = .block };
-    leaf_style.size = .{ .width = Dimension.auto, .height = Dimension.fromLength(10.0) };
+    leaf_style.size = .{ .width = .auto, .height = Dimension.fromLength(10.0) };
     var float_left_style: Style = .{ .display = .block, .float = .left };
     float_left_style.size = Size(Dimension).fromLengths(50.0, 30.0);
     var float_right_style: Style = .{ .display = .block, .float = .right };
@@ -1907,7 +1907,7 @@ fn layoutNestedBlockTree(gpa: Allocator) !void {
     const nested_float_fixed = try taffy.newLeaf(fixed_style);
     const nested_float_leaf = try taffy.newLeaf(leaf_style);
     var nested_float_style = float_left_style;
-    nested_float_style.size = .{ .width = Dimension.auto, .height = Dimension.auto };
+    nested_float_style.size = .{ .width = .auto, .height = .auto };
     const nested_float = try taffy.newWithChildren(nested_float_style, &.{ nested_float_leaf, nested_float_abs, nested_float_fixed });
     var relative_float_style = float_right_style;
     relative_float_style.position = .relative;
@@ -1935,7 +1935,7 @@ fn layoutNestedBlockTree(gpa: Allocator) !void {
     // An `align-content: center` container (which establishes a new block formatting context)
     var centered_style: Style = .{ .display = .block };
     centered_style.align_content = AlignContent.center;
-    centered_style.size = .{ .width = Dimension.auto, .height = Dimension.fromLength(50.0) };
+    centered_style.size = .{ .width = .auto, .height = Dimension.fromLength(50.0) };
     centered_style.text_align = .legacy_center;
     var narrow_style = leaf_style;
     narrow_style.size = Size(Dimension).fromLengths(20.0, 10.0);
@@ -1944,7 +1944,7 @@ fn layoutNestedBlockTree(gpa: Allocator) !void {
     const centered = try taffy.newWithChildren(centered_style, &.{ centered_leaf, centered_abs });
 
     var root_style: Style = .{ .display = .block };
-    root_style.size = .{ .width = Dimension.fromLength(200.0), .height = Dimension.auto };
+    root_style.size = .{ .width = Dimension.fromLength(200.0), .height = .auto };
     root_style.padding = Rect(LengthPercentage).fromLength(4.0);
     root_style.overflow = .{ .x = .visible, .y = .scroll };
     root_style.scrollbar_width = 6.0;
@@ -1985,14 +1985,14 @@ test "adjoining sibling margins collapse" {
     defer taffy.deinit();
 
     var a_style: Style = .{ .display = .block };
-    a_style.size = .{ .width = Dimension.auto, .height = Dimension.fromLength(10.0) };
+    a_style.size = .{ .width = .auto, .height = Dimension.fromLength(10.0) };
     a_style.margin = .{ .left = .fromLength(0.0), .right = .fromLength(0.0), .top = .fromLength(0.0), .bottom = .fromLength(20.0) };
     var b_style = a_style;
     b_style.margin = .{ .left = .fromLength(0.0), .right = .fromLength(0.0), .top = .fromLength(30.0), .bottom = .fromLength(0.0) };
     const a = try taffy.newLeaf(a_style);
     const b = try taffy.newLeaf(b_style);
     var root_style: Style = .{ .display = .block };
-    root_style.size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.auto };
+    root_style.size = .{ .width = Dimension.fromLength(100.0), .height = .auto };
     const root = try taffy.newWithChildren(root_style, &.{ a, b });
 
     try taffy.computeLayout(root, Size(AvailableSpace).max_content);
@@ -2006,7 +2006,7 @@ test "legacy text-align centers narrow children" {
 
     const child = try taffy.newLeaf(.{ .display = .block, .size = Size(Dimension).fromLengths(40.0, 10.0) });
     var root_style: Style = .{ .display = .block, .text_align = .legacy_center };
-    root_style.size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.auto };
+    root_style.size = .{ .width = Dimension.fromLength(100.0), .height = .auto };
     const root = try taffy.newWithChildren(root_style, &.{child});
 
     try taffy.computeLayout(root, Size(AvailableSpace).max_content);

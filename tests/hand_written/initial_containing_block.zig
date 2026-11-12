@@ -71,8 +71,8 @@ test "bottom_right_insets_resolve_against_viewport" {
         const oof = try tree.newLeaf(oofStyle(
             position,
             .{
-                .left = LengthPercentageAuto.auto,
-                .top = LengthPercentageAuto.auto,
+                .left = .auto,
+                .top = .auto,
                 .right = LengthPercentageAuto.fromLength(0.0),
                 .bottom = LengthPercentageAuto.fromLength(0.0),
             },
@@ -111,10 +111,10 @@ test "fixed_root_is_positioned_by_its_insets" {
         .display = .block,
         .position = .fixed,
         .inset = .{
-            .left = LengthPercentageAuto.auto,
+            .left = .auto,
             .top = LengthPercentageAuto.fromPercent(0.1),
             .right = LengthPercentageAuto.fromLength(10.0),
-            .bottom = LengthPercentageAuto.auto,
+            .bottom = .auto,
         },
         .size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.fromLength(50.0) },
     });

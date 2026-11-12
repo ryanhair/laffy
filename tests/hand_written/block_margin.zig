@@ -12,7 +12,7 @@ const TaffyTree = laffy.TaffyTree(measure.TestNodeContext);
 fn block(margin_top: f32, margin_bottom: f32, height: Dimension) Style {
     return .{
         .display = .block,
-        .size = .{ .width = Dimension.auto, .height = height },
+        .size = .{ .width = .auto, .height = height },
         .margin = .{
             .left = LengthPercentageAuto.zero,
             .right = LengthPercentageAuto.zero,
@@ -27,12 +27,12 @@ test "layout_margin_excludes_collapsed_margins" {
     var taffy = try TaffyTree.init(testing.allocator);
     defer taffy.deinit();
     const inner = try taffy.newLeaf(block(13.0, 20.0, Dimension.fromLength(10.0)));
-    const outer = try taffy.newWithChildren(block(8.0, 5.0, Dimension.auto), &.{inner});
+    const outer = try taffy.newWithChildren(block(8.0, 5.0, @as(Dimension, .auto)), &.{inner});
     const sibling = try taffy.newLeaf(block(30.0, 0.0, Dimension.fromLength(10.0)));
     const root = try taffy.newWithChildren(
         .{
             .display = .flow_root,
-            .size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.auto },
+            .size = .{ .width = Dimension.fromLength(100.0), .height = .auto },
         },
         &.{ outer, sibling },
     );

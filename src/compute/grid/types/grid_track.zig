@@ -142,10 +142,6 @@ pub const GridTrack = struct {
 
     /// Returns the track's flex factor if it is a flex track, else 0.
     pub fn flexFactor(self: *const GridTrack) f32 {
-        if (self.max_track_sizing_function.isFr()) {
-            return self.max_track_sizing_function.inner.value();
-        } else {
-            return 0.0;
-        }
+        return self.max_track_sizing_function.flexFactor();
     }
 };

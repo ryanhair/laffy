@@ -41,7 +41,7 @@ fn layoutChild(container: Style, child_style: Style) !Layout {
 }
 
 fn blockContainer() Style {
-    return .{ .display = .block, .size = .{ .width = dim(400.0), .height = Dimension.auto } };
+    return .{ .display = .block, .size = .{ .width = dim(400.0), .height = .auto } };
 }
 
 fn positionedContainer() Style {
@@ -95,15 +95,15 @@ fn gridItemWidthWithPercentMaxWidth(replaced: bool, compressible_replaced: bool)
     const columns = [_]laffy.GridTemplateComponent{laffy.GridTemplateComponent.fromFr(1.0)};
     const container: Style = .{
         .display = .grid,
-        .size = .{ .width = dim(0.0), .height = Dimension.auto },
+        .size = .{ .width = dim(0.0), .height = .auto },
         .grid_template_columns = &columns,
     };
     const child: Style = .{
         .item_is_replaced = replaced,
         .item_is_compressible_replaced = compressible_replaced,
         .size = .{ .width = dim(100.0), .height = dim(20.0) },
-        .min_size = .{ .width = LengthPercentageAuto.fromLength(0.0), .height = LengthPercentageAuto.auto },
-        .max_size = .{ .width = LengthPercentageAuto.fromPercent(1.0), .height = LengthPercentageAuto.auto },
+        .min_size = .{ .width = LengthPercentageAuto.fromLength(0.0), .height = .auto },
+        .max_size = .{ .width = LengthPercentageAuto.fromPercent(1.0), .height = .auto },
     };
     return (try layoutChild(container, child)).size.width;
 }

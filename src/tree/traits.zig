@@ -77,7 +77,7 @@
 //!     being laid out, never for its children (those go through the `get*ChildStyle` methods), so
 //!     it may be expressed in the node's own axes while child styles are expressed in the axes of
 //!     the node laying them out.
-//!   - `resolveCalcValue(self, val: *const anyopaque, basis: f32) f32`: default
+//!   - `resolveCalcValue(self, val: CalcHandle, basis: f32) f32`: default
 //!     (`LayoutPartialTreeDefaults.resolveCalcValue`, returns `0.0`). Resolves a `calc()` value.
 //!     Because of this method, the tree itself is the `calc` resolver passed to `maybeResolve`
 //!     and `resolveOrZero`.
@@ -191,6 +191,7 @@
 //! Free functions taking `tree: anytype`: `measureChildSize`, `measureChildSizeBoth`,
 //! `performChildLayout` and `calc`.
 const std = @import("std");
+const CalcHandle = @import("../style/compact_length.zig").CalcHandle;
 const geometry = @import("../geometry.zig");
 const AbsoluteAxis = geometry.AbsoluteAxis;
 const Line = geometry.Line;
@@ -212,7 +213,7 @@ const DetailedGridInfo = @import("../compute/grid.zig").DetailedGridInfo;
 /// Default methods of `LayoutPartialTree`
 pub const LayoutPartialTreeDefaults = struct {
     /// Resolve calc value (default: `0.0`)
-    pub fn resolveCalcValue(self: anytype, val: *const anyopaque, basis: f32) f32 {
+    pub fn resolveCalcValue(self: anytype, val: CalcHandle, basis: f32) f32 {
         _ = self;
         _ = val;
         _ = basis;
@@ -384,7 +385,7 @@ pub fn performChildLayout(
 }
 
 /// Alias to `resolveCalcValue` with a shorter function name
-pub fn calc(tree: anytype, val: *const anyopaque, basis: f32) f32 {
+pub fn calc(tree: anytype, val: CalcHandle, basis: f32) f32 {
     return tree.resolveCalcValue(val, basis);
 }
 
@@ -397,9 +398,8 @@ test "interface method lists" {
         pub const detailedGridInfo = LayoutGridContainerDefaults.detailedGridInfo;
     };
     var dummy: Dummy = .{};
-    var x: u8 = 0;
-    try std.testing.expectEqual(@as(f32, 0.0), dummy.resolveCalcValue(@ptrCast(&x), 10.0));
-    try std.testing.expectEqual(@as(f32, 0.0), calc(&dummy, @ptrCast(&x), 10.0));
+    try std.testing.expectEqual(@as(f32, 0.0), dummy.resolveCalcValue(1, 10.0));
+    try std.testing.expectEqual(@as(f32, 0.0), calc(&dummy, 1, 10.0));
     try std.testing.expect(dummy.getDetailedLayoutInfo(NodeId.new(0)).* == .none);
     try std.testing.expect(try dummy.detailedGridInfo(NodeId.new(0)) == null);
     try std.testing.expect(TreeType(*Dummy) == Dummy);

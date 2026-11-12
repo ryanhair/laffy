@@ -1,6 +1,7 @@
 //! Helper functions for initialising GridTrack's from styles
 //! This mainly consists of evaluating GridAutoTracks
 const std = @import("std");
+const CalcHandle = @import("../../style/compact_length.zig").CalcHandle;
 const Allocator = std.mem.Allocator;
 const geometry = @import("../../geometry.zig");
 const AbsoluteAxis = geometry.AbsoluteAxis;
@@ -380,7 +381,7 @@ const GridTrackKind = types.GridTrackKind;
 
 /// The calc resolver used by the upstream tests (`|_, _| 42.42`)
 const Calc4242 = struct {
-    pub fn resolveCalcValue(_: Calc4242, _: *const anyopaque, _: f32) f32 {
+    pub fn resolveCalcValue(_: Calc4242, _: CalcHandle, _: f32) f32 {
         return 42.42;
     }
 };
@@ -526,8 +527,8 @@ test "auto repeat clamping preserves template source order" {
         var tracks: std.ArrayList(GridTrack) = .empty;
         defer tracks.deinit(gpa);
         try initializeGridTracks(gpa, &tracks, TrackCounts.fromRaw(0, track_count, 0), &auto_repeat_first, .horizontal, repetitions, NoItems{});
-        try testing.expect(tracks.items[1].min_track_sizing_function == MinTrackSizingFunction.fromLength(2.0));
-        try testing.expect(tracks.items[3].min_track_sizing_function == MinTrackSizingFunction.fromLength(37.0));
+        try testing.expect(std.meta.eql(tracks.items[1].min_track_sizing_function, MinTrackSizingFunction.fromLength(2.0)));
+        try testing.expect(std.meta.eql(tracks.items[3].min_track_sizing_function, MinTrackSizingFunction.fromLength(37.0)));
     }
     {
         const cols = [_]GridTemplateComponent{ repeatOf(.{ .count = 10_000 }, &.{len(37.0)}), repeatOf(.auto_fill, &.{len(2.0)}) };
@@ -538,12 +539,12 @@ test "auto repeat clamping preserves template source order" {
     }
 }
 
-var calc_handle: u64 align(8) = 0;
+const calc_handle: CalcHandle = 7;
 
 /// Resolves the `min(100%, 300px)` calc handle of the test below
 const Min100Percent300px = struct {
-    pub fn resolveCalcValue(_: Min100Percent300px, ptr: *const anyopaque, basis: f32) f32 {
-        std.debug.assert(ptr == @as(*const anyopaque, &calc_handle));
+    pub fn resolveCalcValue(_: Min100Percent300px, ptr: CalcHandle, basis: f32) f32 {
+        std.debug.assert(ptr == calc_handle);
         return @min(basis, 300.0);
     }
 };
@@ -552,9 +553,8 @@ const Min100Percent300px = struct {
 // fixed sizing function, so the template is valid and the repetition count uses its resolved
 // value (here two 300px tracks and a 8px gap fit in 800px).
 test "explicit grid sizing auto fit calc min track" {
-    const calc_ptr: *const anyopaque = &calc_handle;
     for ([_]RepetitionCount{ .auto_fit, .auto_fill }) |count| {
-        const tracks = [_]TrackSizingFunction{.{ .min = MinTrackSizingFunction.calc(calc_ptr), .max = MaxTrackSizingFunction.fromFr(1.0) }};
+        const tracks = [_]TrackSizingFunction{.{ .min = MinTrackSizingFunction.fromCalc(calc_handle), .max = MaxTrackSizingFunction.fromFr(1.0) }};
         const cols = [_]GridTemplateComponent{repeatOf(count, &tracks)};
         var grid_style: Style = .{ .display = .grid };
         grid_style.size = .{ .width = .fromLength(800.0), .height = .auto };
@@ -613,8 +613,8 @@ test "initialize grid tracks" {
 
     // Assertions
     const Expected = struct { GridTrackKind, MinTrackSizingFunction, MaxTrackSizingFunction };
-    const auto_min = MinTrackSizingFunction.auto;
-    const auto_max = MaxTrackSizingFunction.auto;
+    const auto_min: MinTrackSizingFunction = .auto;
+    const auto_max: MaxTrackSizingFunction = .auto;
     const expected = [_]Expected{
         // Gutter
         .{ .gutter, minpx0, maxpx0 },
@@ -645,7 +645,7 @@ test "initialize grid tracks" {
 
     for (tracks.items, expected) |actual, e| {
         try testing.expectEqual(e[0], actual.kind);
-        try testing.expect(e[1] == actual.min_track_sizing_function);
-        try testing.expect(e[2] == actual.max_track_sizing_function);
+        try testing.expect(std.meta.eql(e[1], actual.min_track_sizing_function));
+        try testing.expect(std.meta.eql(e[2], actual.max_track_sizing_function));
     }
 }

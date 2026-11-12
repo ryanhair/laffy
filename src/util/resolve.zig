@@ -22,9 +22,10 @@
 //!
 //! Comptime numbers are treated as `f32` and a bare `null` as `?f32`.
 //!
-//! `calc` is any value with a `resolveCalcValue(ptr: *const anyopaque, basis: f32) f32` method
+//! `calc` is any value with a `resolveCalcValue(handle: CalcHandle, basis: f32) f32` method
 //! (see `NoCalc` / `ConstCalc` in `style/compact_length.zig`). It is only called for `calc()` values.
 const std = @import("std");
+const CalcHandle = @import("../style/compact_length.zig").CalcHandle;
 const geometry = @import("../geometry.zig");
 const Size = geometry.Size;
 const Rect = geometry.Rect;
@@ -72,7 +73,7 @@ pub fn maybeResolve(value: anytype, context: anytype, calc: anytype) MaybeResolv
     if (comptime isLeaf(V)) {
         // Upstream implements `MaybeResolve<f32>` generically by wrapping the context in `Some`
         const ctx: ?f32 = @as(C, context);
-        return resolveLeaf(V, value.inner, ctx, calc);
+        return resolveLeaf(value, ctx, calc);
     } else {
         const ctx: C = context;
         return .{
@@ -88,7 +89,7 @@ pub fn resolveOrZero(value: anytype, context: anytype, calc: anytype) ResolveOrZ
     const C = Norm(@TypeOf(context));
     const ctx: C = context;
     if (comptime isLeaf(V)) {
-        return maybeResolve(value, @as(?f32, ctx), calc) orelse 0.0;
+        return resolveLeaf(value, @as(?f32, ctx), calc) orelse 0.0;
     } else if (comptime geometry.isSize(V)) {
         return .{
             .width = resolveOrZero(value.width, ctx.width, calc),
@@ -113,19 +114,27 @@ pub fn resolveOrZero(value: anytype, context: anytype, calc: anytype) ResolveOrZ
     }
 }
 
-/// `maybe_resolve` for `LengthPercentage`, `LengthPercentageAuto` and `Dimension`
-fn resolveLeaf(comptime V: type, inner: CompactLength, context: ?f32, calc: anytype) ?f32 {
-    const tag = inner.tag();
-    if ((V == LengthPercentageAuto or V == Dimension) and tag == CompactLength.auto_tag) return null;
-    // The content keyword is only valid for flex-basis. In any other context it behaves as auto.
-    if (V == Dimension and tag == CompactLength.content_tag) return null;
-    if (tag == CompactLength.length_tag) return inner.value();
-    if (tag == CompactLength.percent_tag) return if (context) |dim| dim * inner.value() else null;
-    if (inner.isPlainCalc()) return if (context) |dim| calc.resolveCalcValue(inner.calcValue(), dim) else null;
-    // Intrinsic sizing keywords cannot be resolved to a definite size out of context.
-    // Layout algorithms that support them must handle them explicitly.
-    if (V == Dimension and inner.isSizingKeyword()) return null;
-    unreachable;
+/// `maybeResolve` for `LengthPercentage`, `LengthPercentageAuto` and `Dimension`
+inline fn resolveLeaf(value: anytype, context: ?f32, calc: anytype) ?f32 {
+    // This runs for every side of every box, so each type gets its own switch on its own tag
+    // instead of first being widened to a common type
+    if (@TypeOf(value) == LengthPercentage) {
+        return switch (value) {
+            .length => |length| length,
+            .percent => |fraction| if (context) |dim| dim * fraction else null,
+            .calc => |handle| if (context) |dim| calc.resolveCalcValue(handle, dim) else null,
+        };
+    }
+    return switch (value) {
+        .length => |length| length,
+        .percent => |fraction| if (context) |dim| dim * fraction else null,
+        .calc => |handle| if (context) |dim| calc.resolveCalcValue(handle, dim) else null,
+        // `auto` has no definite size. The `content` keyword is only valid for flex-basis; in
+        // any other context it behaves as `auto`. Intrinsic sizing keywords cannot be resolved
+        // to a definite size out of context: layout algorithms that support them must handle
+        // them explicitly.
+        else => null,
+    };
 }
 
 const testing = std.testing;
@@ -151,10 +160,10 @@ fn rozCase(input: anytype, context: anytype, expected: ResolveOrZeroOutput(@Type
 //
 // The parent / context should not affect the outcome.
 test "maybe_resolve_dimension: resolve_auto" {
-    try mrCase(Dimension.auto, none, none);
-    try mrCase(Dimension.auto, some(5.0), none);
-    try mrCase(Dimension.auto, some(-5.0), none);
-    try mrCase(Dimension.auto, some(0.0), none);
+    try mrCase(@as(Dimension, .auto), none, none);
+    try mrCase(@as(Dimension, .auto), some(5.0), none);
+    try mrCase(@as(Dimension, .auto), some(-5.0), none);
+    try mrCase(@as(Dimension, .auto), some(0.0), none);
 }
 
 // `Dimension.length` should always return the inner absolute length.
@@ -214,10 +223,10 @@ test "maybe_resolve_size_dimension: maybe_resolve_percent" {
 // resolve_or_zero_dimension_to_option_f32
 
 test "resolve_or_zero_dimension_to_option_f32: resolve_or_zero_auto" {
-    try rozCase(Dimension.auto, none, 0.0);
-    try rozCase(Dimension.auto, some(5.0), 0.0);
-    try rozCase(Dimension.auto, some(-5.0), 0.0);
-    try rozCase(Dimension.auto, some(0.0), 0.0);
+    try rozCase(@as(Dimension, .auto), none, 0.0);
+    try rozCase(@as(Dimension, .auto), some(5.0), 0.0);
+    try rozCase(@as(Dimension, .auto), some(-5.0), 0.0);
+    try rozCase(@as(Dimension, .auto), some(0.0), 0.0);
 }
 
 test "resolve_or_zero_dimension_to_option_f32: resolve_or_zero_length" {
@@ -284,9 +293,9 @@ test "resolve_or_zero_rect_dimension_to_rect_f32_via_option: resolve_or_zero_per
 
 test "maybeResolve other leaf types and contexts" {
     try mrCase(LengthPercentage.fromPercent(0.5), @as(f32, 10.0), some(5.0));
-    try mrCase(LengthPercentageAuto.auto, @as(f32, 10.0), none);
-    try mrCase(Dimension.content, some(10.0), none);
-    try mrCase(Dimension.min_content, some(10.0), none);
+    try mrCase(@as(LengthPercentageAuto, .auto), @as(f32, 10.0), none);
+    try mrCase(@as(Dimension, .content), some(10.0), none);
+    try mrCase(@as(Dimension, .min_content), some(10.0), none);
     try mrCase(Dimension.fitContentPx(3.0), some(10.0), none);
     try rozCase(LengthPercentage.fromLength(3.0), none, 3.0);
     try rozCase(LengthPercentageAuto.fromPercent(0.5), some(4.0), 2.0);
@@ -296,14 +305,12 @@ test "maybeResolve other leaf types and contexts" {
     try mrCase(Dimension.fromPercent(0.5), null, none);
 }
 
-var calc_handle_storage: u64 align(8) = 0;
-
 test "maybeResolve calc values" {
-    const handle: *const anyopaque = &calc_handle_storage;
-    try mrCase(Dimension.calc(handle), some(10.0), some(42.42));
-    try mrCase(Dimension.calc(handle), none, none);
-    try mrCase(LengthPercentage.calc(handle), some(10.0), some(42.42));
-    try mrCase(LengthPercentageAuto.calc(handle), @as(f32, 1.0), some(42.42));
+    const handle: CalcHandle = 1;
+    try mrCase(Dimension.fromCalc(handle), some(10.0), some(42.42));
+    try mrCase(Dimension.fromCalc(handle), none, none);
+    try mrCase(LengthPercentage.fromCalc(handle), some(10.0), some(42.42));
+    try mrCase(LengthPercentageAuto.fromCalc(handle), @as(f32, 1.0), some(42.42));
     try mrCase(Dimension.fitContentCalc(handle), some(10.0), none);
-    try rozCase(Dimension.calc(handle), none, 0.0);
+    try rozCase(Dimension.fromCalc(handle), none, 0.0);
 }

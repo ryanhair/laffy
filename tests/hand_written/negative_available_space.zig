@@ -70,7 +70,7 @@ fn layoutWithOversizedMargins(display: Display, flex_direction: FlexDirection) !
                 .top = LengthPercentageAuto.zero,
                 .bottom = LengthPercentageAuto.zero,
             },
-            .size = .{ .width = Dimension.auto, .height = Dimension.auto },
+            .size = .{ .width = .auto, .height = .auto },
         },
         TestNodeContext.zero(),
     );
@@ -79,7 +79,7 @@ fn layoutWithOversizedMargins(display: Display, flex_direction: FlexDirection) !
         .{
             .display = display,
             .flex_direction = flex_direction,
-            .size = .{ .width = Dimension.fromLength(20.0), .height = Dimension.auto },
+            .size = .{ .width = Dimension.fromLength(20.0), .height = .auto },
             .grid_template_columns = &columns,
         },
         &.{leaf},

@@ -3398,7 +3398,7 @@ fn layoutNestedTree(gpa: std.mem.Allocator) !void {
     column_style.position = .relative;
     column_style.flex_direction = .column;
     column_style.flex_wrap = .wrap;
-    column_style.size = .{ .width = Dimension.auto, .height = Dimension.fromLength(40.0) };
+    column_style.size = .{ .width = .auto, .height = Dimension.fromLength(40.0) };
     column_style.gap = Size(LengthPercentage).fromLength(3.0);
     const column_abs = try taffy.newLeaf(abs_style);
     const column_leaf_a = try taffy.newLeaf(leaf_style);
@@ -3409,7 +3409,7 @@ fn layoutNestedTree(gpa: std.mem.Allocator) !void {
     var balanced_style: Style = .{};
     balanced_style.flex_wrap = .balance;
     balanced_style.flex_line_count = 2;
-    balanced_style.size = .{ .width = Dimension.fromLength(60.0), .height = Dimension.auto };
+    balanced_style.size = .{ .width = Dimension.fromLength(60.0), .height = .auto };
     var percent_style: Style = .{};
     percent_style.size = .{ .width = Dimension.fromPercent(0.5), .height = Dimension.fromLength(5.0) };
     var auto_margin_style = leaf_style;

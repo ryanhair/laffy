@@ -40,7 +40,7 @@ test "float_no_higher_than_earlier_floats" {
     const root = try taffy.newWithChildren(
         .{
             .display = .block,
-            .size = .{ .width = Dimension.fromLength(400.0), .height = Dimension.auto },
+            .size = .{ .width = Dimension.fromLength(400.0), .height = .auto },
         },
         &.{ spacer, float_a, float_b, float_c },
     );
@@ -72,7 +72,7 @@ test "clear_past_zero_width_float" {
     const floated = try taffy.newLeaf(.{
         .display = .block,
         .float = .left,
-        .size = .{ .width = Dimension.auto, .height = Dimension.fromLength(1.0) },
+        .size = .{ .width = .auto, .height = Dimension.fromLength(1.0) },
     });
     const cleared = try taffy.newLeaf(.{ .display = .block, .clear = .left });
     var sibling_margin = Rect(LengthPercentageAuto).zero;
@@ -82,7 +82,7 @@ test "clear_past_zero_width_float" {
     const container = try taffy.newWithChildren(
         .{
             .display = .block,
-            .size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.auto },
+            .size = .{ .width = Dimension.fromLength(100.0), .height = .auto },
         },
         &.{ floated, cleared, sibling },
     );
@@ -105,7 +105,7 @@ fn floatBlock(width: f32, height: f32, float: Float) Style {
 }
 
 fn rootStyle(width: f32) Style {
-    return .{ .display = .block, .size = .{ .width = Dimension.fromLength(width), .height = Dimension.auto } };
+    return .{ .display = .block, .size = .{ .width = Dimension.fromLength(width), .height = .auto } };
 }
 
 // Regression test for <https://wpt.live/css/CSS2/floats/floats-rule3-outside-left-001.xht>
@@ -167,10 +167,10 @@ test "auto_margins_include_float_avoidance_offsets" {
                     .direction = direction,
                     .size = .{ .width = Dimension.fromLength(40.0), .height = Dimension.fromLength(10.0) },
                     .margin = .{
-                        .left = if (left_auto) LengthPercentageAuto.auto else LengthPercentageAuto.zero,
-                        .right = if (right_auto) LengthPercentageAuto.auto else LengthPercentageAuto.zero,
-                        .top = LengthPercentageAuto.auto,
-                        .bottom = LengthPercentageAuto.auto,
+                        .left = if (left_auto) @as(LengthPercentageAuto, .auto) else LengthPercentageAuto.zero,
+                        .right = if (right_auto) @as(LengthPercentageAuto, .auto) else LengthPercentageAuto.zero,
+                        .top = .auto,
+                        .bottom = .auto,
                     },
                 });
             }
@@ -179,7 +179,7 @@ test "auto_margins_include_float_avoidance_offsets" {
                 .{
                     .display = .flow_root,
                     .direction = direction,
-                    .size = .{ .width = Dimension.fromLength(100.0), .height = Dimension.auto },
+                    .size = .{ .width = Dimension.fromLength(100.0), .height = .auto },
                     .padding = Rect(LengthPercentage).fromLength(5.0),
                 },
                 &children,
@@ -221,8 +221,8 @@ test "float_avoiding_auto_margins_in_nested_block_ignore_relative_insets_and_cle
             .direction = direction,
             .size = .{ .width = Dimension.fromLength(40.0), .height = Dimension.fromLength(10.0) },
             .margin = .{
-                .left = LengthPercentageAuto.auto,
-                .right = LengthPercentageAuto.auto,
+                .left = .auto,
+                .right = .auto,
                 .top = LengthPercentageAuto.zero,
                 .bottom = LengthPercentageAuto.zero,
             },
@@ -260,7 +260,7 @@ test "float_avoiding_auto_margins_in_nested_block_ignore_relative_insets_and_cle
             .{
                 .display = .flow_root,
                 .direction = direction,
-                .size = .{ .width = Dimension.fromLength(200.0), .height = Dimension.auto },
+                .size = .{ .width = Dimension.fromLength(200.0), .height = .auto },
                 .padding = Rect(LengthPercentage).fromLength(10.0),
             },
             &.{ left_float, right_float, nested },

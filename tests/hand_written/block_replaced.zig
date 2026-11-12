@@ -25,7 +25,7 @@ fn badge() TestNodeContext {
 }
 
 fn blockContainer(width: f32) Style {
-    return .{ .display = .block, .size = .{ .width = Dimension.fromLength(width), .height = Dimension.auto } };
+    return .{ .display = .block, .size = .{ .width = Dimension.fromLength(width), .height = .auto } };
 }
 
 fn layout(taffy: *TaffyTree, root: NodeId) !void {
@@ -80,7 +80,7 @@ test "max_width_clamps_intrinsic_size" {
         .{
             .display = .block,
             .item_is_replaced = true,
-            .max_size = .{ .width = LengthPercentageAuto.fromPercent(1.0), .height = LengthPercentageAuto.auto },
+            .max_size = .{ .width = LengthPercentageAuto.fromPercent(1.0), .height = .auto },
         },
         badge(),
     );
@@ -99,8 +99,8 @@ test "auto_margins_center_replaced_child" {
             .display = .block,
             .item_is_replaced = true,
             .margin = .{
-                .left = LengthPercentageAuto.auto,
-                .right = LengthPercentageAuto.auto,
+                .left = .auto,
+                .right = .auto,
                 .top = LengthPercentageAuto.zero,
                 .bottom = LengthPercentageAuto.zero,
             },
@@ -137,7 +137,7 @@ test "percentage_width_has_zero_min_content_contribution" {
     const wrapper, const image = try shrinkToFitWrapperAroundImage(4.0, .{
         .display = .block,
         .item_is_replaced = true,
-        .size = .{ .width = Dimension.fromPercent(1.0), .height = Dimension.auto },
+        .size = .{ .width = Dimension.fromPercent(1.0), .height = .auto },
     });
     try testing.expectEqual(@as(f32, 4.0), wrapper);
     try testing.expectEqual(@as(f32, 4.0), image);
@@ -147,7 +147,7 @@ test "percentage_max_width_has_zero_min_content_contribution" {
     const wrapper, const image = try shrinkToFitWrapperAroundImage(4.0, .{
         .display = .block,
         .item_is_replaced = true,
-        .max_size = .{ .width = LengthPercentageAuto.fromPercent(1.0), .height = LengthPercentageAuto.auto },
+        .max_size = .{ .width = LengthPercentageAuto.fromPercent(1.0), .height = .auto },
     });
     try testing.expectEqual(@as(f32, 4.0), wrapper);
     try testing.expectEqual(@as(f32, 4.0), image);
@@ -157,7 +157,7 @@ test "percentage_width_max_content_contribution_is_intrinsic_size" {
     const wrapper, const image = try shrinkToFitWrapperAroundImage(100.0, .{
         .display = .block,
         .item_is_replaced = true,
-        .size = .{ .width = Dimension.fromPercent(1.0), .height = Dimension.auto },
+        .size = .{ .width = Dimension.fromPercent(1.0), .height = .auto },
     });
     try testing.expectEqual(@as(f32, 8.0), wrapper);
     try testing.expectEqual(@as(f32, 8.0), image);
@@ -170,7 +170,7 @@ test "percentage_width_min_content_size_of_container_is_zero" {
         .{
             .display = .block,
             .item_is_replaced = true,
-            .size = .{ .width = Dimension.fromPercent(1.0), .height = Dimension.auto },
+            .size = .{ .width = Dimension.fromPercent(1.0), .height = .auto },
             .padding = .{
                 .left = LengthPercentage.fromLength(1.0),
                 .right = LengthPercentage.fromLength(1.0),

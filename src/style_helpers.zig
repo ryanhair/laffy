@@ -106,25 +106,24 @@ test "repeat auto-fill str" {
 }
 
 test "zero / auto / min-content / max-content for every type" {
-    try testing.expect(Dimension.zero == Dimension.fromLength(0.0));
-    try testing.expect(LengthPercentage.zero == LengthPercentage.fromLength(0.0));
-    try testing.expect(CompactLength.zero == CompactLength.fromLength(0.0));
+    try testing.expect(std.meta.eql(Dimension.zero, Dimension.fromLength(0.0)));
+    try testing.expect(std.meta.eql(LengthPercentage.zero, LengthPercentage.fromLength(0.0)));
     try testing.expect(AvailableSpace.zero.eql(.{ .definite = 0.0 }));
-    try testing.expect(Dimension.auto == Dimension.auto);
+    try testing.expect(@as(Dimension, .auto) == .auto);
     try testing.expect(GridPlacement.auto == .auto);
-    try testing.expect(Dimension.min_content == Dimension.min_content);
-    try testing.expect(Dimension.max_content == Dimension.max_content);
+    try testing.expect(@as(Dimension, .min_content) == .min_content);
+    try testing.expect(@as(Dimension, .max_content) == .max_content);
     try testing.expect(TrackSizingFunction.min_content.eql(TrackSizingFunction.min_content));
     try testing.expect(GridTemplateComponent.max_content.single.eql(TrackSizingFunction.max_content));
 
     const s = Size(Dimension).auto;
-    try testing.expect(s.width == Dimension.auto and s.height == Dimension.auto);
+    try testing.expect(s.width == .auto and s.height == .auto);
     const r = Rect(LengthPercentage).zero;
-    try testing.expect(r.left == LengthPercentage.zero and r.bottom == LengthPercentage.zero);
+    try testing.expect(r.left.eql(.zero) and r.bottom.eql(.zero));
     const l = Line(Dimension).min_content;
-    try testing.expect(l.start == Dimension.min_content and l.end == Dimension.min_content);
+    try testing.expect(l.start == .min_content and l.end == .min_content);
     const p = Point(Dimension).max_content;
-    try testing.expect(p.x == Dimension.max_content and p.y == Dimension.max_content);
+    try testing.expect(p.x == .max_content and p.y == .max_content);
     try testing.expectEqual(Point(?f32){ .x = 0, .y = 0 }, Point(?f32).zero);
     const sa = Size(AvailableSpace).max_content;
     try testing.expect(sa.width.eql(.max_content) and sa.height.eql(.max_content));
@@ -133,22 +132,19 @@ test "zero / auto / min-content / max-content for every type" {
 }
 
 test "length / percent / fr / fit-content" {
-    try testing.expect(Dimension.fromLength(10) == Dimension.fromLength(10));
-    try testing.expect(LengthPercentageAuto.fromPercent(0.25) == LengthPercentageAuto.fromPercent(0.25));
+    try testing.expect(std.meta.eql(Dimension.fromLength(10), Dimension.fromLength(10)));
+    try testing.expect(std.meta.eql(LengthPercentageAuto.fromPercent(0.25), LengthPercentageAuto.fromPercent(0.25)));
     try testing.expect(AvailableSpace.fromLength(3).eql(.{ .definite = 3 }));
-    try testing.expect(MaxTrackSizingFunction.fromFr(2) == MaxTrackSizingFunction.fromFr(2));
-    try testing.expect(TrackSizingFunction.fromFr(2).eql(.{ .min = MinTrackSizingFunction.auto, .max = MaxTrackSizingFunction.fromFr(2) }));
+    try testing.expect(std.meta.eql(MaxTrackSizingFunction.fromFr(2), MaxTrackSizingFunction.fromFr(2)));
+    try testing.expect(TrackSizingFunction.fromFr(2).eql(.{ .min = .auto, .max = MaxTrackSizingFunction.fromFr(2) }));
     try testing.expect(GridTemplateComponent.fromFr(1).single.eql(TrackSizingFunction.fromFr(1)));
-    try testing.expect(CompactLength.fromFr(1) == CompactLength.fromFr(1));
-    try testing.expect(CompactLength.fitContent(LengthPercentage.fromLength(10)) == CompactLength.fitContentPx(10));
-    try testing.expect(CompactLength.fitContent(LengthPercentage.fromPercent(0.5)) == CompactLength.fitContentPercent(0.5));
-    try testing.expect(MaxTrackSizingFunction.fitContent(LengthPercentage.fromLength(10)) == MaxTrackSizingFunction.fitContentPx(10));
-    try testing.expect(TrackSizingFunction.fitContent(LengthPercentage.fromLength(10)).eql(.{ .min = MinTrackSizingFunction.auto, .max = MaxTrackSizingFunction.fitContentPx(10) }));
+    try testing.expect(std.meta.eql(MaxTrackSizingFunction.fitContent(LengthPercentage.fromLength(10)), MaxTrackSizingFunction.fitContentPx(10)));
+    try testing.expect(TrackSizingFunction.fitContent(LengthPercentage.fromLength(10)).eql(.{ .min = .auto, .max = MaxTrackSizingFunction.fitContentPx(10) }));
     try testing.expect(GridTemplateComponent.fitContent(LengthPercentage.fromLength(10)).single.eql(TrackSizingFunction.fitContent(LengthPercentage.fromLength(10))));
     const sl = Size(Dimension).fromLength(4);
-    try testing.expect(sl.width == Dimension.fromLength(4) and sl.height == Dimension.fromLength(4));
+    try testing.expect(sl.width.eql(.{ .length = 4 }) and sl.height.eql(.{ .length = 4 }));
     const rp = Rect(LengthPercentage).fromPercent(0.1);
-    try testing.expect(rp.top == LengthPercentage.fromPercent(0.1));
+    try testing.expect(std.meta.eql(rp.top, LengthPercentage.fromPercent(0.1)));
     const lf = Line(TrackSizingFunction).fitContent(LengthPercentage.fromLength(3));
     try testing.expect(lf.end.eql(TrackSizingFunction.fitContent(LengthPercentage.fromLength(3))));
     const pl = Point(f32).fromLength(2);

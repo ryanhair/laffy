@@ -22,13 +22,13 @@ pub fn main() !void {
     defer tree.deinit();
 
     const sidebar = try tree.newLeaf(.{
-        .size = .{ .width = laffy.Dimension.fromLength(80), .height = laffy.Dimension.auto },
+        .size = .{ .width = .{ .length = 80 }, .height = .auto },
     });
     const content = try tree.newLeaf(.{ .flex_grow = 1 });
     const root = try tree.newWithChildren(.{
         .display = .flex,
-        .size = .{ .width = laffy.Dimension.fromLength(300), .height = laffy.Dimension.fromLength(100) },
-        .gap = .{ .width = laffy.LengthPercentage.fromLength(10), .height = laffy.LengthPercentage.zero },
+        .size = .{ .width = .{ .length = 300 }, .height = .{ .length = 100 } },
+        .gap = .{ .width = .{ .length = 10 }, .height = .zero },
     }, &.{ sidebar, content });
 
     try tree.computeLayout(root, .{ .width = .max_content, .height = .max_content });
@@ -61,6 +61,9 @@ A C API over `TaffyTree` is in `include/laffy.h`; see [docs/c-api.md](docs/c-api
   provides a `Style` per node rather than its own style type.
 - Trees take an allocator. Layout can fail only with `error.OutOfMemory`.
 - `Style` borrows its grid track lists and line names as slices; keep them alive while in use.
+- Lengths are tagged unions (`.{ .length = 10 }`, `.{ .percent = 0.5 }`, `.auto`), 8 bytes each.
+  A `calc()` value holds a `u32` handle that the tree's `resolveCalcValue` interprets, not a
+  pointer. 32-bit targets are supported.
 - `TaffyTree` resolves `calc()` values to zero, as upstream's does. Custom trees can resolve them.
 - Not ported: Cargo feature flags (everything is always on), `serde` support, and CSS string
   parsing of style values.

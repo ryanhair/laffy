@@ -606,10 +606,10 @@ fn resolveIntrinsicTrackSizes(
                 const track = &axis_tracks[track_index];
 
                 // Handle base sizes
-                const min_tag = track.min_track_sizing_function.inner.tag();
-                const new_base_size: f32 = if (min_tag == CompactLength.min_content_tag)
+                const min_function = track.min_track_sizing_function;
+                const new_base_size: f32 = if (min_function == .min_content)
                     @max(track.base_size, try item_sizer.minContentContribution(item, axis_tracks))
-                else if (min_tag == CompactLength.max_content_tag)
+                else if (min_function == .max_content)
                     @max(track.base_size, try item_sizer.maxContentContribution(item, axis_tracks))
                     // If the container size is indefinite and has not yet been resolved then percentage sized
                     // tracks are treated as auto
@@ -1347,7 +1347,7 @@ fn expandFlexibleTracks(
             var hypothetical_grid_size: f32 = -0.0;
             for (axis_tracks) |*track| {
                 hypothetical_grid_size += if (track.max_track_sizing_function.isFr()) inner: {
-                    const track_flex_factor = track.max_track_sizing_function.inner.value();
+                    const track_flex_factor = track.max_track_sizing_function.flexFactor();
                     break :inner @max(track.base_size, track_flex_factor * flex_fraction);
                 } else track.base_size;
             }
@@ -1367,7 +1367,7 @@ fn expandFlexibleTracks(
     // than the track’s base size, set its base size to that product.
     for (axis_tracks) |*track| {
         if (!track.max_track_sizing_function.isFr()) continue;
-        const track_flex_factor = track.max_track_sizing_function.inner.value();
+        const track_flex_factor = track.max_track_sizing_function.flexFactor();
         track.base_size = @max(track.base_size, track_flex_factor * flex_fraction);
     }
 }
@@ -1402,9 +1402,9 @@ fn findSizeOfFr(tracks: []const GridTrack, space_to_fill: f32) f32 {
         for (tracks) |*track| {
             // Tracks for which flex_factor * hypothetical_fr_size < track.base_size are treated as inflexible
             if (track.max_track_sizing_function.isFr() and
-                track.max_track_sizing_function.inner.value() * hypothetical_fr_size >= track.base_size)
+                track.max_track_sizing_function.flexFactor() * hypothetical_fr_size >= track.base_size)
             {
-                naive_flex_factor_sum += track.max_track_sizing_function.inner.value();
+                naive_flex_factor_sum += track.max_track_sizing_function.flexFactor();
             } else {
                 used_space += track.base_size;
             }
@@ -1421,7 +1421,7 @@ fn findSizeOfFr(tracks: []const GridTrack, space_to_fill: f32) f32 {
         // We keep track of the hypothetical_fr_size
         const hypothetical_fr_size_is_valid = for (tracks) |*track| {
             if (track.max_track_sizing_function.isFr()) {
-                const track_flex_factor = track.max_track_sizing_function.inner.value();
+                const track_flex_factor = track.max_track_sizing_function.flexFactor();
                 if (!(track_flex_factor * hypothetical_fr_size >= track.base_size or
                     track_flex_factor * previous_iter_hypothetical_fr_size < track.base_size)) break false;
             }

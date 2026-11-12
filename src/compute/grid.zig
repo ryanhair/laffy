@@ -1546,7 +1546,7 @@ fn layoutNestedGrid(gpa: Allocator) !void {
     // grid areas
     const inner_columns = [_]GridTemplateComponent{
         GridTemplateComponent.fromFr(1.0),
-        GridTemplateComponent.fromMinMax(.{ .min = MinTrackSizingFunction.min_content, .max = MaxTrackSizingFunction.fromFr(2.0) }),
+        GridTemplateComponent.fromMinMax(.{ .min = .min_content, .max = MaxTrackSizingFunction.fromFr(2.0) }),
     };
     const inner_rows = [_]GridTemplateComponent{ GridTemplateComponent.auto, GridTemplateComponent.fromPercent(0.25) };
     const inner_areas = [_]GridTemplateArea{.{ .name = "hdr", .row_start = 1, .row_end = 2, .column_start = 1, .column_end = 3 }};

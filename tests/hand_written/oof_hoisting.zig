@@ -34,7 +34,7 @@ fn leafStyle(width: f32, height: f32) Style {
 
 /// Insets with only `left` and `top` set
 fn insetLeftTop(left: f32, top: f32) Rect(LengthPercentageAuto) {
-    return .{ .left = lpa(left), .top = lpa(top), .right = LengthPercentageAuto.auto, .bottom = LengthPercentageAuto.auto };
+    return .{ .left = lpa(left), .top = lpa(top), .right = .auto, .bottom = .auto };
 }
 
 fn point(x: f32, y: f32) Point(f32) {
@@ -206,7 +206,7 @@ test "absolute_within_absolute" {
     defer tree.deinit();
     const inner = try tree.newLeaf(.{
         .position = .absolute,
-        .inset = .{ .right = lpa(0.0), .bottom = lpa(0.0), .left = LengthPercentageAuto.auto, .top = LengthPercentageAuto.auto },
+        .inset = .{ .right = lpa(0.0), .bottom = lpa(0.0), .left = .auto, .top = .auto },
         .size = size(10.0, 10.0),
     });
     const outer = try tree.newWithChildren(
