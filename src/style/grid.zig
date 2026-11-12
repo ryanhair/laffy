@@ -895,13 +895,6 @@ pub const RepetitionCount = union(enum) {
     pub fn fromU16(value: u16) RepetitionCount {
         return .{ .count = value };
     }
-
-    /// Upstream `TryFrom<&str>`: accepts "auto-fit" or "auto-fill"
-    pub fn tryFromStr(value: []const u8) error{InvalidStringRepetitionValue}!RepetitionCount {
-        if (std.mem.eql(u8, value, "auto-fit")) return .auto_fit;
-        if (std.mem.eql(u8, value, "auto-fill")) return .auto_fill;
-        return error.InvalidStringRepetitionValue;
-    }
 };
 
 /// A typed representation of a `repeat(..)` in `grid-template-*` value
@@ -965,9 +958,10 @@ test "repetition track count saturates" {
     try testing.expectEqual(@as(u16, std.math.maxInt(u16)), repetition.getTrackCount());
 }
 
-test "track sizing functions are 8 bytes" {
-    try testing.expectEqual(@as(usize, 8), @sizeOf(MaxTrackSizingFunction));
-    try testing.expectEqual(@as(usize, 8), @sizeOf(MinTrackSizingFunction));
+// Checked in every build, so that a change that grows one of these types cannot go unnoticed
+comptime {
+    std.debug.assert(@sizeOf(MaxTrackSizingFunction) == 8);
+    std.debug.assert(@sizeOf(MinTrackSizingFunction) == 8);
 }
 
 test "track sizing function calc values" {
@@ -998,9 +992,6 @@ test "track sizing function conversions" {
 }
 
 test "repetition count and template components" {
-    try testing.expectEqual(RepetitionCount.auto_fit, try RepetitionCount.tryFromStr("auto-fit"));
-    try testing.expectEqual(RepetitionCount.auto_fill, try RepetitionCount.tryFromStr("auto-fill"));
-    try testing.expectError(error.InvalidStringRepetitionValue, RepetitionCount.tryFromStr("banana"));
     const auto_fit: GridTemplateComponent = .{ .repeat = .{ .count = .auto_fit, .tracks = &.{} } };
     try testing.expect(auto_fit.isAutoRepetition());
     const counted: GridTemplateComponent = .{ .repeat = .{ .count = .{ .count = 3 }, .tracks = &.{} } };

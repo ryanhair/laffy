@@ -33,8 +33,7 @@ pub fn flex(comptime Output: type, flex_fraction: anytype) Output {
 
 /// Returns an auto-repeated track definition.
 ///
-/// `repetition_kind` may be a `RepetitionCount`, an integer (repeat count), or the string
-/// "auto-fit" / "auto-fill" (panics on any other string).
+/// `repetition_kind` is a `RepetitionCount` (`.auto_fit`, `.auto_fill`) or an integer repeat count.
 /// `tracks` is borrowed by the returned value.
 pub fn repeat(repetition_kind: anytype, tracks: []const TrackSizingFunction) GridTemplateComponent {
     return .{ .repeat = .{
@@ -45,15 +44,10 @@ pub fn repeat(repetition_kind: anytype, tracks: []const TrackSizingFunction) Gri
 }
 
 fn toRepetitionCount(value: anytype) RepetitionCount {
-    const T = @TypeOf(value);
-    if (T == RepetitionCount) {
-        return value;
-    } else if (@typeInfo(T) == .int or @typeInfo(T) == .comptime_int) {
-        return .{ .count = @intCast(value) };
-    } else {
-        const str: []const u8 = value;
-        return RepetitionCount.tryFromStr(str) catch
-            @panic("repeat: a string repetition count must be \"auto-fit\" or \"auto-fill\"");
+    switch (@typeInfo(@TypeOf(value))) {
+        .int, .comptime_int => return .{ .count = @intCast(value) },
+        // A `RepetitionCount` or an enum literal naming one of its keywords
+        else => return value,
     }
 }
 
@@ -91,17 +85,17 @@ test "repeat u16" {
     );
 }
 
-test "repeat auto-fit str" {
+test "repeat auto-fit" {
     try testing.expectEqualDeep(
         GridTemplateComponent{ .repeat = .{ .count = .auto_fit, .tracks = TEST_VEC, .line_names = &.{} } },
-        repeat("auto-fit", TEST_VEC),
+        repeat(.auto_fit, TEST_VEC),
     );
 }
 
-test "repeat auto-fill str" {
+test "repeat auto-fill" {
     try testing.expectEqualDeep(
         GridTemplateComponent{ .repeat = .{ .count = .auto_fill, .tracks = TEST_VEC, .line_names = &.{} } },
-        repeat("auto-fill", TEST_VEC),
+        repeat(.auto_fill, TEST_VEC),
     );
 }
 

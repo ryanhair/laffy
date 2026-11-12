@@ -324,10 +324,11 @@ pub const JustifyContent = AlignContent;
 
 const testing = std.testing;
 
-test "align types within size budget" {
-    try testing.expect(@sizeOf(AlignItems) <= 2);
-    try testing.expect(@sizeOf(AlignContent) <= 2);
-    try testing.expect(@sizeOf(?AlignItems) <= 4);
+// Checked in every build, so that a change that grows one of these types cannot go unnoticed
+comptime {
+    std.debug.assert(@sizeOf(AlignItems) <= 2);
+    std.debug.assert(@sizeOf(AlignContent) <= 2);
+    std.debug.assert(@sizeOf(?AlignItems) <= 4);
 }
 
 test "align items is safe" {

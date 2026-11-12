@@ -223,10 +223,11 @@ pub const Dimension = union(enum) {
 
 const testing = std.testing;
 
-test "length types are 8 bytes" {
-    try testing.expectEqual(@as(usize, 8), @sizeOf(LengthPercentage));
-    try testing.expectEqual(@as(usize, 8), @sizeOf(LengthPercentageAuto));
-    try testing.expectEqual(@as(usize, 8), @sizeOf(Dimension));
+// Checked in every build, so that a change that grows one of these types cannot go unnoticed
+comptime {
+    std.debug.assert(@sizeOf(LengthPercentage) == 8);
+    std.debug.assert(@sizeOf(LengthPercentageAuto) == 8);
+    std.debug.assert(@sizeOf(Dimension) == 8);
 }
 
 test "constructors build the matching kind" {

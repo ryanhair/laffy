@@ -618,41 +618,42 @@ test "defaults match" {
     try testing.expectEqual(Display.flex, Style.default.display);
 }
 
-test "style sizes" {
+// Checked in every build, so that a change that grows one of these types cannot go unnoticed
+comptime {
     // Display and Position
-    try testing.expectEqual(1, @sizeOf(Display));
-    try testing.expectEqual(1, @sizeOf(BoxSizing));
-    try testing.expectEqual(1, @sizeOf(Position));
-    try testing.expectEqual(1, @sizeOf(Overflow));
+    std.debug.assert(@sizeOf(Display) == 1);
+    std.debug.assert(@sizeOf(BoxSizing) == 1);
+    std.debug.assert(@sizeOf(Position) == 1);
+    std.debug.assert(@sizeOf(Overflow) == 1);
 
     // Dimensions and aggregations of Dimensions
-    try testing.expectEqual(4, @sizeOf(f32));
-    try testing.expectEqual(8, @sizeOf(LengthPercentage));
-    try testing.expectEqual(8, @sizeOf(LengthPercentageAuto));
-    try testing.expectEqual(8, @sizeOf(Dimension));
-    try testing.expectEqual(16, @sizeOf(Size(LengthPercentage)));
-    try testing.expectEqual(16, @sizeOf(Size(LengthPercentageAuto)));
-    try testing.expectEqual(16, @sizeOf(Size(Dimension)));
-    try testing.expectEqual(32, @sizeOf(Rect(LengthPercentage)));
-    try testing.expectEqual(32, @sizeOf(Rect(LengthPercentageAuto)));
-    try testing.expectEqual(32, @sizeOf(Rect(Dimension)));
+    std.debug.assert(@sizeOf(f32) == 4);
+    std.debug.assert(@sizeOf(LengthPercentage) == 8);
+    std.debug.assert(@sizeOf(LengthPercentageAuto) == 8);
+    std.debug.assert(@sizeOf(Dimension) == 8);
+    std.debug.assert(@sizeOf(Size(LengthPercentage)) == 16);
+    std.debug.assert(@sizeOf(Size(LengthPercentageAuto)) == 16);
+    std.debug.assert(@sizeOf(Size(Dimension)) == 16);
+    std.debug.assert(@sizeOf(Rect(LengthPercentage)) == 32);
+    std.debug.assert(@sizeOf(Rect(LengthPercentageAuto)) == 32);
+    std.debug.assert(@sizeOf(Rect(Dimension)) == 32);
 
     // Alignment
-    try testing.expectEqual(1, @sizeOf(AlignContentKeyword));
-    try testing.expectEqual(1, @sizeOf(AlignItemsKeyword));
-    try testing.expectEqual(1, @sizeOf(AlignmentSafety));
-    try testing.expectEqual(2, @sizeOf(AlignContent));
-    try testing.expectEqual(2, @sizeOf(AlignItems));
+    std.debug.assert(@sizeOf(AlignContentKeyword) == 1);
+    std.debug.assert(@sizeOf(AlignItemsKeyword) == 1);
+    std.debug.assert(@sizeOf(AlignmentSafety) == 1);
+    std.debug.assert(@sizeOf(AlignContent) == 2);
+    std.debug.assert(@sizeOf(AlignItems) == 2);
 
     // Flexbox Container
-    try testing.expectEqual(1, @sizeOf(FlexDirection));
-    try testing.expectEqual(1, @sizeOf(FlexWrap));
+    std.debug.assert(@sizeOf(FlexDirection) == 1);
+    std.debug.assert(@sizeOf(FlexWrap) == 1);
 
     // CSS Grid Container
-    try testing.expectEqual(1, @sizeOf(GridAutoFlow));
-    try testing.expectEqual(8, @sizeOf(MinTrackSizingFunction));
-    try testing.expectEqual(8, @sizeOf(MaxTrackSizingFunction));
-    try testing.expectEqual(16, @sizeOf(TrackSizingFunction));
+    std.debug.assert(@sizeOf(GridAutoFlow) == 1);
+    std.debug.assert(@sizeOf(MinTrackSizingFunction) == 8);
+    std.debug.assert(@sizeOf(MaxTrackSizingFunction) == 8);
+    std.debug.assert(@sizeOf(TrackSizingFunction) == 16);
 }
 
 test "enums and helpers" {

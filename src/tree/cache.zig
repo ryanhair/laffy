@@ -517,7 +517,8 @@ test "storing a final layout replaces the previous one" {
     try testing.expect(cache.isEmpty());
 }
 
-test "the cache stays compact" {
+// Checked in every build, so that a change that grows one of these types cannot go unnoticed
+comptime {
     // Every node of a tree holds one cache. Keep an eye on its size.
-    try testing.expect(@sizeOf(Cache) <= 352);
+    std.debug.assert(@sizeOf(Cache) <= 352);
 }

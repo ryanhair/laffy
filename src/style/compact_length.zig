@@ -202,8 +202,11 @@ const all_kinds = [_]CompactLength{
     .content,
 };
 
-test "every length value is 8 bytes" {
-    try testing.expectEqual(@as(usize, 8), @sizeOf(CompactLength));
+comptime {
+    std.debug.assert(@sizeOf(CompactLength) == 8);
+}
+
+test "every kind of length value is listed" {
     try testing.expectEqual(all_kinds.len, @typeInfo(CompactLength).@"union".field_names.len);
 }
 
